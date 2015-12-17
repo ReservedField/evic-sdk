@@ -1,0 +1,69 @@
+#!/usr/bin/python
+
+# This file is part of eVic SDK.
+#
+# eVic SDK is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# eVic SDK is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with eVic SDK.  If not, see <http://www.gnu.org/licenses/>.
+#
+# Copyright (C) 2015 ReservedField
+
+import sys
+from PIL import Image
+
+# Check arguments
+if len(sys.argv) != 2:
+	print("Usage:", sys.argv[0], "<input file>")
+	exit(1)
+
+# Open image and convert to greyscale, then to pure B/W
+img = Image.open(sys.argv[1])
+img = img.convert('L')
+img = img.point(lambda x: 0 if x < 32 else 255, '1')
+
+# Slice the image into 8-pixel pages
+pages = []
+width, height = img.size
+for i in range((height + 7) // 8):
+	lowerBound = (i + 1) * 8
+	if lowerBound > height:
+		lowerBound = height
+
+	cropBox = (0, i * 8, width, lowerBound)
+	page = img.crop(cropBox)
+	pages.append(page)
+
+# Calulate image data
+imgBytes = []
+for page in reversed(pages):
+	pagePixels = page.load()
+	for x in reversed(range(width)):
+		curByte = 0
+		for y in range(page.size[1]):
+			curByte = (curByte << 1) | (pagePixels[x, y] // 0xFF)
+		imgBytes.append(curByte);
+
+# Output C header
+print("uint8_t bitmap[] = {")
+lines = [imgBytes[i:i+8] for i in range(0, len(imgBytes), 8)]
+for i, line in enumerate(lines):
+	text = "\t"
+	for byte in line:
+		text += "0x%02X, " % byte
+	if i == len(lines) - 1:
+		text = text[:-2]
+	else:
+		text = text[:-1]
+	print(text)
+print("};")
+print("int bitmapWidth  = %d;" % width)
+print("int bitmapHeight = %d;" % height)

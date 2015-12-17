@@ -1,0 +1,11 @@
+/doc/
+/example/**/bin/
+/lib/
+/nuvoton-sdk/Library/
+
+*.o
+*.a
+*.map
+*.lst
+*.elf
+*.bin

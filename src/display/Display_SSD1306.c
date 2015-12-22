@@ -18,30 +18,46 @@
  */
 
 #include <M451Series.h>
+#include <Display_SSD.h>
 #include <Display_SSD1306.h>
 #include <Display.h>
 #include <Timer.h>
 
-#define DISPLAY_SSD1306_RESET PA0
-#define DISPLAY_SSD1306_DC    PE10
-
 #define TODO_DATAFLAG 1
 
 static uint8_t Display_SSD1306_initCmds1[] = {
-	0xAE, 0xA8, 0x3F, 0xD5, 0xF1, 0xC8, 0xD3, 0x20, 0xDC, 0x00, 0x20,
-	0x81, 0x2F, 0xA1, 0xA4, 0xA6, 0xAD, 0x8A, 0xD9, 0x22, 0xDB, 0x35
+	SSD_DISPLAY_OFF,
+	SSD_SET_MULTIPLEX_RATIO, 0x3F,
+	SSD1306_SET_CLOCK_DIV,   0xF1,
+	SSD1306_SET_COM_REMAP,
+	SSD1306_SET_OFFSET,      0x20,
+	0xDC,
+	0x00,
+	0x20,
+	SSD_SET_CONTRAST_LEVEL,  0x2F,
+	SSD1306_SET_REMAP,
+	SSD1306_ENTIRE_DISPLAY_ON,
+	SSD1306_NORMAL_DISPLAY,
+	0xAD,
+	0x8A,
+	SSD1306_SET_PRECHARGE,   0x22,
+	SSD1306_SET_VCOMH,       0x35
 };
 
 static uint8_t Display_SSD1306_initCmds2[] = {
-	0xC0, 0xD3, 0x60, 0xDC, 0x20, 0xA0
+	SSD1306_SET_COM_NORMAL,
+	SSD1306_SET_OFFSET, 0x60,
+	0xDC,
+	0x20,
+	SSD1306_SET_NOREMAP
 };
 
 void Display_SSD1306_Write(uint8_t isData, const uint8_t *buf, uint32_t len) {
 	int i;
-	
+
 	// Set D/C#
-	DISPLAY_SSD1306_DC = isData ? 1 : 0;
-	
+	DISPLAY_SSD_DC = isData ? 1 : 0;
+
 	for(i = 0; i < len; i++) {
 		// Send byte, wait until it is transmitted
 		SPI_WRITE_TX(SPI0, buf[i]);
@@ -56,22 +72,22 @@ void Display_SSD1306_SendCommand(uint8_t cmd) {
 void Display_SSD1306_Init() {
 	int i, page;
 	uint8_t buf;
-	
+
 	// Reset controller
 	// TODO: figure out PA.1 and PC.4
 	PA1 = 1;
 	PC4 = 1;
 	Timer_DelayUs(1000);
-	DISPLAY_SSD1306_RESET = 0;
+	DISPLAY_SSD_RESET = 0;
 	Timer_DelayUs(1000);
-	DISPLAY_SSD1306_RESET = 1;
+	DISPLAY_SSD_RESET = 1;
 	Timer_DelayUs(1000);
-	
+
 	// Send initialization commands (1)
 	for(i = 0; i < sizeof(Display_SSD1306_initCmds1); i++) {
 		Display_SSD1306_SendCommand(Display_SSD1306_initCmds1[i]);
 	}
-	
+
 	if(TODO_DATAFLAG) {
 		// Send initialization commands (2)
 		for(i = 0; i < sizeof(Display_SSD1306_initCmds2); i++) {
@@ -82,33 +98,33 @@ void Display_SSD1306_Init() {
 	// Clear GDDRAM
 	for(page = 0; page < DISPLAY_FRAMEBUFFER_PAGES; page++) {
 		// Set page start address (start 0x00, end 0x12/0x10)
-		Display_SSD1306_SendCommand(0xB0 | page);
+		Display_SSD1306_SendCommand(SSD1306_PAGE_START_ADDRESS | page);
 		Display_SSD1306_SendCommand(0x00);
 		Display_SSD1306_SendCommand(TODO_DATAFLAG ? 0x12 : 0x10);
-		
+
 		// Clear page in GDDRAM
 		buf = 0x00;
 		for(i = 0; i < DISPLAY_FRAMEBUFFER_PAGE_SIZE; i++) {
 			Display_SSD1306_Write(1, &buf, 1);
 		}
 	}
-	
+
 	// Display ON
-	Display_SSD1306_SendCommand(0xAF);
-	
+	Display_SSD1306_SendCommand(SSD_DISPLAY_ON);
+
 	// Delay 20ms
 	Timer_DelayUs(20000);
 }
 
 void Display_SSD1306_Update(const uint8_t *framebuf) {
 	int page;
-	
+
 	for(page = 0; page < DISPLAY_FRAMEBUFFER_PAGES; page++) {
 		// Set page start address (start 0x00, end 0x12/0x10)
-		Display_SSD1306_SendCommand(0xB0 | page);
+		Display_SSD1306_SendCommand(SSD1306_PAGE_START_ADDRESS | page);
 		Display_SSD1306_SendCommand(0x00);
 		Display_SSD1306_SendCommand(TODO_DATAFLAG ? 0x12 : 0x10);
-		
+
 		// Write page to GDDRAM
 		Display_SSD1306_Write(1, framebuf, DISPLAY_FRAMEBUFFER_PAGE_SIZE);
 		framebuf += DISPLAY_FRAMEBUFFER_PAGE_SIZE;

@@ -17,50 +17,57 @@
  * Copyright (C) 2015 ReservedField
  */
 
-#ifndef EVICSDK_DISPLAY_SSD1306_H
-#define EVICSDK_DISPLAY_SSD1306_H
+#ifndef EVICSDK_DISPLAY_SSD1327_H
+#define EVICSDK_DISPLAY_SSD1327_H
 
 /*
  * Display controller commands.
  */
-#define SSD1306_SET_NOREMAP        0xA0
-#define SSD1306_SET_REMAP          0xA1
-#define SSD1306_ENTIRE_DISPLAY_ON  0xA4
-#define SSD1306_NORMAL_DISPLAY     0xA6
-#define SSD1306_PAGE_START_ADDRESS 0xB0
-#define SSD1306_SET_COM_NORMAL     0xC0
-#define SSD1306_SET_COM_REMAP      0xC8
-#define SSD1306_SET_OFFSET         0xD3
-#define SSD1306_SET_CLOCK_DIV      0xD5
-#define SSD1306_SET_PRECHARGE      0xD9
-#define SSD1306_SET_VCOMH          0xDB
+#define SSD1327_SET_COL_ADDRESS      0x15
+#define SSD1327_SET_ROW_ADDRESS      0x75
+#define SSD1327_SET_REMAP            0xA0
+#define SSD1327_SET_START_LINE       0xA1
+#define SSD1327_SET_OFFSET           0xA2
+#define SSD1327_NORMAL_DISPLAY       0xA4
+#define SSD1327_FUNC_SELECT_A        0xAB
+#define SSD1327_SET_CLOCK_DIV        0xB3
+#define SSD1327_SET_SECOND_PRECHARGE 0xB6
+#define SSD1327_SET_PRECHARGE        0xBC
+#define SSD1327_SET_VCOMH            0xBE
+#define SSD1327_FUNC_SELECT_B        0xD5
+#define SSD1327_SET_COMMAND_LOCK     0xFD
 
 /**
  * Writes data to the display controller.
  *
  * @param isData True if writing GDDRAM data (D/C# high).
- * @param buf    Data buffer.
- * @param len    Size in bytes of the data buffer.
+ * @param buf		 Data buffer.
+ * @param len		 Size in bytes of the data buffer.
  */
-void Display_SSD1306_Write(uint8_t isData, const uint8_t *buf, uint32_t len);
+void Display_SSD1327_Write(uint8_t isData, const uint8_t *buf, uint32_t len);
 
 /**
  * Sends a command to the display controller.
  *
  * @param cmd Command.
  */
-void Display_SSD1306_SendCommand(uint8_t cmd);
+void Display_SSD1327_SendCommand(uint8_t cmd);
+
+/**
+ * Clears the display controller GDDRAM.
+ */
+void Display_SSD1327_Clear();
 
 /**
  * Initializes the display controller.
  */
-void Display_SSD1306_Init();
+void Display_SSD1327_Init();
 
 /**
  * Sends the framebuffer to the controller and updates the display.
  *
  * @param framebuf Framebuffer.
  */
-void Display_SSD1306_Update(const uint8_t *framebuf);
+void Display_SSD1327_Update(const uint8_t *framebuf);
 
 #endif

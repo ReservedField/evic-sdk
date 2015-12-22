@@ -46,6 +46,11 @@
 #define DISPLAY_HEIGHT 128
 
 /**
+ * LCD type.
+ */
+#define LCD_TYPE B
+
+/**
  * Initializes the SPI interface for the display controller.
  * System control registers must be unlocked.
  */

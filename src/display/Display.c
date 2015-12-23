@@ -34,6 +34,7 @@
 #include <M451Series.h>
 #include <Display.h>
 #include <Display_SSD1306.h>
+#include <Display_SSD1327.h>
 #include <string.h>
 
 void Display_SetupSPI() {
@@ -48,27 +49,35 @@ void Display_SetupSPI() {
 	GPIO_SetMode(PE, BIT10, GPIO_MODE_OUTPUT);
 	PE12 = 0;
 	GPIO_SetMode(PE, BIT12, GPIO_MODE_OUTPUT);
-	
+
 	// Setup MFP
 	SYS->GPB_MFPL &= ~(SYS_GPE_MFPH_PE11MFP_Msk | SYS_GPE_MFPH_PE12MFP_Msk | SYS_GPE_MFPH_PE13MFP_Msk);
 	SYS->GPE_MFPH |= SYS_GPE_MFPH_PE11MFP_SPI0_MOSI0 | SYS_GPE_MFPH_PE12MFP_SPI0_SS | SYS_GPE_MFPH_PE13MFP_SPI0_CLK;
-	
+
 	// SPI0 master, MSB first, 8bit transaction, SPI Mode-0 timing, 4MHz clock
 	SPI_Open(SPI0, SPI_MASTER, SPI_MODE_0, 8, 4000000);
-	
+
 	// Low level active
 	SPI_EnableAutoSS(SPI0, SPI_SS, SPI_SS_ACTIVE_LOW);
-	
+
 	// Start SPI
 	SPI_ENABLE(SPI0);
 }
 
 void Display_Init() {
+#if LCD_TYPE == A
+	Display_SSD1327_Init();
+#else
 	Display_SSD1306_Init();
+#endif
 }
 
 void Display_Update(const uint8_t *framebuf) {
+#if LCD_TYPE == A
+	Display_SSD1327_Update(framebuf);
+#else
 	Display_SSD1306_Update(framebuf);
+#endif
 }
 
 void Display_PutPixels(uint8_t *framebuf, int x, int y, const uint8_t *pixels, int w, int h) {
@@ -82,7 +91,7 @@ void Display_PutPixels(uint8_t *framebuf, int x, int y, const uint8_t *pixels, i
 		y + h > DISPLAY_HEIGHT) {
 		return;
 	}
-	
+
 	// Calculate start & end pages
 	startPage = (y + 7) / 8;
 	endPage = startPage + (h + 7) / 8;

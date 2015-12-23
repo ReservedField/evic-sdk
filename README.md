@@ -62,8 +62,12 @@ make
 ```
 To clean you can use `make clean`, as usual.
 If the build succeeds, you should now have a `bin/helloworld.bin` file ready to flash.
-At the moment, only the SSD1306 display is supported. The following hardware versions
-use SSD1327 and are NOT supported right now:
+
+The display initialization procedure depends on a flag in the dataflash, which
+I haven't implemented yet. If your hardware version is supported but the display
+won't work, change the `TODO_DATAFLASH` define in `src/display/Display_SSD1306.c`
+or `src/display/Display_SSD1327.c` from `1` to `0`, rebuild the SDK and finally
+rebuild the APROM. The following hardware versions use SSD1327:
 - 1.02
 - 1.03
 - 1.06
@@ -71,10 +75,7 @@ use SSD1327 and are NOT supported right now:
 - 1.09
 - 1.11
 
-The SSD1306 initialization procedure also depends on a flag in the dataflash, which
-I haven't implemented yet. If your hardware version is supported but the display
-won't work, change the `TODO_DATAFLASH` define in `src/display/Display_SSD1306.c`
-from `1` to `0`, rebuild the SDK and finally rebuild the APROM.
+All the others use SSD1306.
 
 Flashing
 --------

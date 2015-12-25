@@ -47,8 +47,10 @@
 
 /**
  * LCD type.
+ * 0 -> SSD1327
+ * 1 -> SSD1306
  */
-#define LCD_TYPE B
+#define LCD_TYPE 1
 
 /**
  * Initializes the SPI interface for the display controller.

@@ -65,7 +65,7 @@ void Display_SetupSPI() {
 }
 
 void Display_Init() {
-#if LCD_TYPE == A
+#if LCD_TYPE == 0
 	Display_SSD1327_Init();
 #else
 	Display_SSD1306_Init();
@@ -73,7 +73,7 @@ void Display_Init() {
 }
 
 void Display_Update(const uint8_t *framebuf) {
-#if LCD_TYPE == A
+#if LCD_TYPE == 0
 	Display_SSD1327_Update(framebuf);
 #else
 	Display_SSD1306_Update(framebuf);

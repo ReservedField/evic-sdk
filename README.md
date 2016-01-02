@@ -29,17 +29,17 @@ Installation
    from Nuvoton and copy the `Library` folder inside `evic-sdk/nuvoton-sdk`, as to have
    `evic-sdk/nuvoton-sdk/Library`.
 
-4. Build the SDK:
-   ```
-   make
-   ```
-
-5. Point the `EVICSDK` environment variable to the `evic-sdk` folder. Tipically, you'll add
+4. Point the `EVICSDK` environment variable to the `evic-sdk` folder. Tipically, you'll add
    this to your `.bashrc` file in your home directory:
    ```
    export EVICSDK=/path/to/evic-sdk
    ```
-   Make sure to restart your terminal to ensure the variable is set before building APROMs.
+   Make sure to restart your terminal to ensure the variable is set before building.
+
+5. Build the SDK:
+   ```
+   make
+   ```
 
 At this point, the SDK should be fully set up. You can also generate Doxygen documentation with:
 ```

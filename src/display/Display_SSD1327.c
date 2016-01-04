@@ -30,18 +30,12 @@
 #define GRAYLOW  0x0F
 
 /* Changes to init commands compared to the official image:
- * Removed:
- *  0xB4 Not found in datasheet.
- *  0xB5 Set GPIO, Requires a second byte which was not there.
- * Added:
- *  SSD1327_SET_COMMAND_LOCK for unlocking the controller.
  * Modified:
- *  Set vertical re-map for dealing with the framebuffer format.
+ *     Set vertical re-map for dealing with the framebuffer format.
 */
 static uint8_t Display_SSD1327_initCmds1[] = {
-	SSD1327_SET_COMMAND_LOCK,     0x12,
 	SSD_DISPLAY_OFF,
-	SSD1327_SET_REMAP,            0x40,
+	SSD1327_SET_REMAP,            0x44,
 	SSD1327_SET_START_LINE,       0x00,
 	SSD1327_SET_OFFSET,           0x00,
 	SSD1327_NORMAL_DISPLAY,
@@ -49,6 +43,8 @@ static uint8_t Display_SSD1327_initCmds1[] = {
 	SSD1327_FUNC_SELECT_A,        0x01,
 	SSD_SET_CONTRAST_LEVEL,       0xA6,
 	SSD1327_SET_CLOCK_DIV,        0xB1,
+	0xB4,
+	0xB5,
 	SSD1327_SET_SECOND_PRECHARGE, 0x0D,
 	SSD1327_SET_PRECHARGE,        0x07,
 	SSD1327_SET_VCOMH,            0x07,
@@ -88,6 +84,10 @@ void Display_SSD1327_Init() {
 		Display_SSD_SendCommand(Display_SSD1327_initCmds1[i]);
 	}
 	
+	// Workaround for remap not set correctly with the first init commands
+	Display_SSD_SendCommand(SSD1327_SET_REMAP);
+	Display_SSD_SendCommand(0x44);
+
 	if(Dataflash_info.flipDisplay) {
 		// Send initialization commands (2)
 		for(i = 0; i < sizeof(Display_SSD1327_initCmds2); i++) {

@@ -143,6 +143,12 @@ void Display_PutText(int x, int y, const char *txt, const Font_Info_t *font) {
  			break;
  		}
 
+ 		// Handle spaces
+ 		if(txt[i] == ' ') {
+ 			curX += font->spacePixels;
+ 			continue;
+ 		}
+
  		// Sanity check
  		if(txt[i] < font->startChar || txt[i] > font->endChar) {
  			continue;

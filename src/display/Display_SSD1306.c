@@ -23,6 +23,7 @@
 #include <Display.h>
 #include <Timer.h>
 
+// Swapped to get (0,0) at top-left
 #define TODO_DATAFLAG 1
 
 static uint8_t Display_SSD1306_initCmds1[] = {
@@ -52,26 +53,8 @@ static uint8_t Display_SSD1306_initCmds2[] = {
 	SSD1306_SET_NOREMAP
 };
 
-void Display_SSD1306_Write(uint8_t isData, const uint8_t *buf, uint32_t len) {
-	int i;
-
-	// Set D/C#
-	DISPLAY_SSD_DC = isData ? 1 : 0;
-
-	for(i = 0; i < len; i++) {
-		// Send byte, wait until it is transmitted
-		SPI_WRITE_TX(SPI0, buf[i]);
-		while(SPI_IS_BUSY(SPI0));
-	}
-}
-
-void Display_SSD1306_SendCommand(uint8_t cmd) {
-	Display_SSD1306_Write(0, &cmd, 1);
-}
-
 void Display_SSD1306_Init() {
-	int i, page;
-	uint8_t buf;
+	int i;
 
 	// Reset controller
 	// TODO: figure out PA.1 and PC.4
@@ -85,32 +68,21 @@ void Display_SSD1306_Init() {
 
 	// Send initialization commands (1)
 	for(i = 0; i < sizeof(Display_SSD1306_initCmds1); i++) {
-		Display_SSD1306_SendCommand(Display_SSD1306_initCmds1[i]);
+		Display_SSD_SendCommand(Display_SSD1306_initCmds1[i]);
 	}
 
-	if(TODO_DATAFLAG) {
+	if(!TODO_DATAFLAG) {
 		// Send initialization commands (2)
 		for(i = 0; i < sizeof(Display_SSD1306_initCmds2); i++) {
-			Display_SSD1306_SendCommand(Display_SSD1306_initCmds2[i]);
+			Display_SSD_SendCommand(Display_SSD1306_initCmds2[i]);
 		}
 	}
 
-	// Clear GDDRAM
-	for(page = 0; page < DISPLAY_FRAMEBUFFER_PAGES; page++) {
-		// Set page start address (start 0x00, end 0x12/0x10)
-		Display_SSD1306_SendCommand(SSD1306_PAGE_START_ADDRESS | page);
-		Display_SSD1306_SendCommand(0x00);
-		Display_SSD1306_SendCommand(TODO_DATAFLAG ? 0x12 : 0x10);
-
-		// Clear page in GDDRAM
-		buf = 0x00;
-		for(i = 0; i < DISPLAY_FRAMEBUFFER_PAGE_SIZE; i++) {
-			Display_SSD1306_Write(1, &buf, 1);
-		}
-	}
+	// Update GDDRAM
+	Display_Update();
 
 	// Display ON
-	Display_SSD1306_SendCommand(SSD_DISPLAY_ON);
+	Display_SSD_SendCommand(SSD_DISPLAY_ON);
 
 	// Delay 20ms
 	Timer_DelayUs(20000);
@@ -120,13 +92,13 @@ void Display_SSD1306_Update(const uint8_t *framebuf) {
 	int page;
 
 	for(page = 0; page < DISPLAY_FRAMEBUFFER_PAGES; page++) {
-		// Set page start address (start 0x00, end 0x12/0x10)
-		Display_SSD1306_SendCommand(SSD1306_PAGE_START_ADDRESS | page);
-		Display_SSD1306_SendCommand(0x00);
-		Display_SSD1306_SendCommand(TODO_DATAFLAG ? 0x12 : 0x10);
+		// Set page start address (start 0x00, end 0x10/0x12)
+		Display_SSD_SendCommand(SSD1306_PAGE_START_ADDRESS | page);
+		Display_SSD_SendCommand(0x00);
+		Display_SSD_SendCommand(TODO_DATAFLAG ? 0x10 : 0x12);
 
 		// Write page to GDDRAM
-		Display_SSD1306_Write(1, framebuf, DISPLAY_FRAMEBUFFER_PAGE_SIZE);
+		Display_SSD_Write(1, framebuf, DISPLAY_FRAMEBUFFER_PAGE_SIZE);
 		framebuf += DISPLAY_FRAMEBUFFER_PAGE_SIZE;
 	}
 }

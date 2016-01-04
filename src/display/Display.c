@@ -31,11 +31,19 @@
  * - PE.13 (CLK)
  */
 
+#include <string.h>
 #include <M451Series.h>
 #include <Display.h>
+#include <Display_SSD.h>
 #include <Display_SSD1306.h>
 #include <Display_SSD1327.h>
-#include <string.h>
+#include <Timer.h>
+#include <Font.h>
+
+/**
+ * Global framebuffer.
+ */
+static uint8_t Display_framebuf[DISPLAY_FRAMEBUFFER_SIZE];
 
 void Display_SetupSPI() {
 	// Setup output pins
@@ -65,6 +73,10 @@ void Display_SetupSPI() {
 }
 
 void Display_Init() {
+	// Clear framebuffer
+	memset(Display_framebuf, 0x00, DISPLAY_FRAMEBUFFER_SIZE);
+
+	// Initialize display controller
 #if LCD_TYPE == 0
 	Display_SSD1327_Init();
 #else
@@ -72,16 +84,16 @@ void Display_Init() {
 #endif
 }
 
-void Display_Update(const uint8_t *framebuf) {
+void Display_Update() {
 #if LCD_TYPE == 0
-	Display_SSD1327_Update(framebuf);
+	Display_SSD1327_Update(Display_framebuf);
 #else
-	Display_SSD1306_Update(framebuf);
+	Display_SSD1306_Update(Display_framebuf);
 #endif
 }
 
-void Display_PutPixels(uint8_t *framebuf, int x, int y, const uint8_t *pixels, int w, int h) {
-	int startPage, endPage, firstPassEndPage, pixelX, page;
+void Display_PutPixels(int x, int y, const uint8_t *pixels, int w, int h) {
+	int startPage, endPage, pixelX, page;
 	uint8_t pixelMask;
 
 	// Sanity check
@@ -92,17 +104,13 @@ void Display_PutPixels(uint8_t *framebuf, int x, int y, const uint8_t *pixels, i
 		return;
 	}
 
-	// Calculate start & end pages
-	startPage = (y + 7) / 8;
-	endPage = startPage + (h + 7) / 8;
-
-	// If the last page is a full column, simply copy it
-	// If it isn't, bitmasking is needed
-	firstPassEndPage = (h % 8) == 0 ? endPage : endPage - 1;
+	// Calculate start & end for full pages
+	startPage = y / 8;
+	endPage = startPage + (h / 8);
 
 	// Copy the full pages
-	for(page = startPage; page < firstPassEndPage; page++) {
-		memcpy(&framebuf[page * DISPLAY_FRAMEBUFFER_PAGE_SIZE + x], &pixels[(page - startPage) * w], w);
+	for(page = startPage; page < endPage; page++) {
+		memcpy(&Display_framebuf[page * DISPLAY_FRAMEBUFFER_PAGE_SIZE + x], &pixels[(page - startPage) * w], w);
 	}
 
 	if(h % 8 != 0) {
@@ -112,8 +120,37 @@ void Display_PutPixels(uint8_t *framebuf, int x, int y, const uint8_t *pixels, i
 
 		for(pixelX = 0; pixelX < w; pixelX++) {
 			// Copy column by masking bits
-			framebuf[(endPage - 1) * DISPLAY_FRAMEBUFFER_PAGE_SIZE + x + pixelX] &= ~pixelMask;
-			framebuf[(endPage - 1) * DISPLAY_FRAMEBUFFER_PAGE_SIZE + x + pixelX] |= pixels[(endPage - 1 - startPage) * w + pixelX] & pixelMask;
+			Display_framebuf[endPage * DISPLAY_FRAMEBUFFER_PAGE_SIZE + x + pixelX] &= ~pixelMask;
+			Display_framebuf[endPage * DISPLAY_FRAMEBUFFER_PAGE_SIZE + x + pixelX] |= pixels[(endPage - startPage) * w + pixelX] & pixelMask;
 		}
 	}
+}
+
+void Display_PutText(int x, int y, const char *txt, const Font_Info_t *font) {
+	int i, curX, charIdx;
+ 	const uint8_t *charPtr;
+
+ 	curX = x;
+
+ 	for(i = 0; i < strlen(txt); i++) {
+ 		// Handle newlines
+ 		if(txt[i] == '\n') {
+ 			// TODO: support non-8-aligned Y
+ 			Display_PutText(x, (y + font->height + 7) & ~7, &txt[i + 1], font);
+ 			break;
+ 		}
+
+ 		// Sanity check
+ 		if(txt[i] < font->startChar || txt[i] > font->endChar) {
+ 			continue;
+ 		}
+
+ 		// Calculate character index and pointer to bitmap
+ 		charIdx = txt[i] - font->startChar;
+ 		charPtr = font->data + font->charInfo[charIdx].offset;
+
+ 		// Blit character
+		Display_PutPixels(curX, y, charPtr, font->charInfo[charIdx].width, font->height);
+		curX += font->charInfo[charIdx].width;
+ 	}
 }

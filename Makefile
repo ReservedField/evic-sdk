@@ -10,10 +10,12 @@ OBJS = $(NUVOSDK)/Device/Nuvoton/M451Series/Source/system_M451Series.o \
 	$(NUVOSDK)/StdDriver/src/sys.o \
 	$(NUVOSDK)/StdDriver/src/timer.o \
 	src/startup/init.o \
+	src/display/Display_SSD.o \
 	src/display/Display_SSD1306.o \
 	src/display/Display_SSD1327.o \
 	src/display/Display.o \
-	src/timer/Timer.o
+	src/timer/Timer.o \
+	src/font/Font_DejaVuSansMono_8pt.o
 
 OUTDIR = lib
 DOCDIR = doc

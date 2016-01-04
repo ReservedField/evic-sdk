@@ -20,6 +20,8 @@
 #ifndef EVICSDK_DISPLAY_H
 #define EVICSDK_DISPLAY_H
 
+#include <Font.h>
+
 /**
  * Framebuffer page size.
  */
@@ -65,26 +67,35 @@ void Display_Init();
 
 /**
  * Sends the framebuffer to the controller and updates the display.
- *
- * @param framebuf Framebuffer.
  */
-void Display_Update(const uint8_t *framebuf);
+void Display_Update();
 
 /**
  * Copies a bitmap in the framebuffer.
  * Each byte in the pixel buffer encodes a 8-pixel column.
  * Each bit is 1 if the pixel is on, 0 if it is off.
  * Top to bottom is MSB to LSB.
- * The bitmap is made of rows, from bottom-right to top-left.
- * The bottom-right corner is at (0, 0).
+ * The bitmap is made of rows, from top-left to bottom-right.
+ * The top-left corner is at (0, 0).
+ * TODO: this does not support non-8-aligned Y.
  *
- * @param framebuf Framebuffer.
- * @param x        X coordinate to place the bitmap at.
- * @param y        Y coordinate to place the bitmap at.
- * @param pixels   Pixel buffer.
- * @param w        Width of the bitmap.
- * @param h        Height of the bitmap.
+ * @param x      X coordinate to place the bitmap at.
+ * @param y      Y coordinate to place the bitmap at.
+ * @param pixels Pixel buffer.
+ * @param w      Width of the bitmap.
+ * @param h      Height of the bitmap.
  */
-void Display_PutPixels(uint8_t *framebuf, int x, int y, const uint8_t *pixels, int w, int h);
+void Display_PutPixels(int x, int y, const uint8_t *pixels, int w, int h);
+
+/**
+ * Blits text in the framebuffer.
+ * TODO: this does not support non-8-aligned Y.
+ *
+ * @param x    X coordinate to place the text at.
+ * @param y    Y coordinato to place the text at.
+ * @param txt  Text string.
+ * @param font Font to use.
+ */
+void Display_PutText(int x, int y, const char *txt, const Font_Info_t *font);
 
 #endif

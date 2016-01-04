@@ -39,4 +39,20 @@
  */
 #define DISPLAY_SSD_DC    PE10
 
+/**
+ * Writes data to the display controller.
+ *
+ * @param isData True if writing GDDRAM data (D/C# high).
+ * @param buf    Data buffer.
+ * @param len    Size in bytes of the data buffer.
+ */
+void Display_SSD_Write(uint8_t isData, const uint8_t *buf, uint32_t len);
+
+/**
+ * Sends a command to the display controller.
+ *
+ * @param cmd Command.
+ */
+void Display_SSD_SendCommand(uint8_t cmd);
+
 #endif

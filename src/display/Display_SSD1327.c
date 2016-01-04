@@ -24,6 +24,7 @@
 #include <Display.h>
 #include <Timer.h>
 
+// Swapped to get (0,0) at top-left
 #define TODO_DATAFLAG 1
 
 // Value for pixel ON
@@ -61,30 +62,6 @@ static uint8_t Display_SSD1327_initCmds2[] = {
 	SSD1327_SET_REMAP,  0x57
 };
 
-void Display_SSD1327_Write(uint8_t isData, const uint8_t *buf, uint32_t len) {
-	int i;
-
-	// Set D/C#
-	DISPLAY_SSD_DC = isData ? 1 : 0;
-
-	for(i = 0; i < len; i++) {
-		// Send byte, wait until it is transmitted
-		SPI_WRITE_TX(SPI0, buf[i]);
-		while(SPI_IS_BUSY(SPI0));
-	}
-}
-
-void Display_SSD1327_SendCommand(uint8_t cmd) {
-	Display_SSD1327_Write(0, &cmd, 1);
-}
-
-void Display_SSD1327_Clear() {
-	uint8_t buf[DISPLAY_FRAMEBUFFER_SIZE] = {0x00};
-
-	Display_SSD1327_Write(1, buf, DISPLAY_FRAMEBUFFER_SIZE);
-
-}
-
 void Display_SSD1327_Init() {
 	int i;
 
@@ -110,20 +87,22 @@ void Display_SSD1327_Init() {
 
 	// Send initialization commands (1)
 	for(i = 0; i < sizeof(Display_SSD1327_initCmds1); i++) {
-		Display_SSD1327_SendCommand(Display_SSD1327_initCmds1[i]);
+		Display_SSD_SendCommand(Display_SSD1327_initCmds1[i]);
 	}
 
-	if(TODO_DATAFLAG) {
+	// Swapped flag to get (0,0) at top-left
+	if(!TODO_DATAFLAG) {
 		// Send initialization commands (2)
 		for(i = 0; i < sizeof(Display_SSD1327_initCmds2); i++) {
-			Display_SSD1327_SendCommand(Display_SSD1327_initCmds2[i]);
+			Display_SSD_SendCommand(Display_SSD1327_initCmds2[i]);
 		}
 	}
-	// Clear GDDRAM
-	Display_SSD1327_Clear();
+
+	// Update GDDRAM
+	Display_Update();
 
 	// Display ON
-	Display_SSD1327_SendCommand(SSD_DISPLAY_ON);
+	Display_SSD_SendCommand(SSD_DISPLAY_ON);
 
 	// Delay 20ms
 	Timer_DelayUs(20000);
@@ -133,13 +112,13 @@ void Display_SSD1327_Update(const uint8_t *framebuf) {
 	int col, row, bit;
 	uint8_t value, pixelOne, pixelTwo;
 
-	Display_SSD1327_SendCommand(SSD1327_SET_ROW_ADDRESS);
-	Display_SSD1327_SendCommand(0x00); // Start
-	Display_SSD1327_SendCommand(0x7F); // End
+	Display_SSD_SendCommand(SSD1327_SET_ROW_ADDRESS);
+	Display_SSD_SendCommand(0x00); // Start
+	Display_SSD_SendCommand(0x7F); // End
 
-	Display_SSD1327_SendCommand(SSD1327_SET_COL_ADDRESS);
-	Display_SSD1327_SendCommand(0x10); // Start
-	Display_SSD1327_SendCommand(0x2F); // End
+	Display_SSD_SendCommand(SSD1327_SET_COL_ADDRESS);
+	Display_SSD_SendCommand(0x10); // Start
+	Display_SSD_SendCommand(0x2F); // End
 
 	// SSD1327 uses 4 bits per pixel but framebuffer is 1 bit per pixel.
 	for(col = 0; col < DISPLAY_WIDTH; col += 2) {
@@ -153,7 +132,7 @@ void Display_SSD1327_Update(const uint8_t *framebuf) {
 				value |= (pixelOne) ? GRAYLOW   : 0x00;
 				value |= (pixelTwo) ? GRAYHIGH  : 0x00;
 
-				Display_SSD1327_Write(1, &value, 1);
+				Display_SSD_Write(1, &value, 1);
 			}
 		}
 	}

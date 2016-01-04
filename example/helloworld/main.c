@@ -19,10 +19,7 @@
 
 #include <M451Series.h>
 #include <Display.h>
-
-#include "hello_image.h"
-
-uint8_t framebuf[DISPLAY_FRAMEBUFFER_SIZE];
+#include <Font.h>
 
 int main() {
 	// Initialize I/O
@@ -33,9 +30,9 @@ int main() {
 	// Initialize display
 	Display_Init();
 
-	// Build framebuffer
-	Display_PutPixels(framebuf, 0, 0, bitmap, bitmapWidth, bitmapHeight);
+	// Blit text
+	Display_PutText(8, 56, "Hello,\nWorld.", FONT_DEJAVU_8PT);
 
 	// Update display
-	Display_Update(framebuf);
+	Display_Update();
 }

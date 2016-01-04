@@ -15,8 +15,9 @@ OBJS = $(NUVOSDK)/Device/Nuvoton/M451Series/Source/system_M451Series.o \
 	src/display/Display_SSD1306.o \
 	src/display/Display_SSD1327.o \
 	src/display/Display.o \
+	src/font/Font_DejaVuSansMono_8pt.o \
 	src/timer/Timer.o \
-	src/font/Font_DejaVuSansMono_8pt.o
+	src/button/Button.o
 
 OUTDIR = lib
 DOCDIR = doc

@@ -64,6 +64,11 @@ void Display_Init();
 void Display_Update();
 
 /**
+ * Clears the framebuffer.
+ */
+void Display_Clear();
+
+/**
  * Copies a bitmap in the framebuffer.
  * Each byte in the pixel buffer encodes a 8-pixel column.
  * Each bit is 1 if the pixel is on, 0 if it is off.

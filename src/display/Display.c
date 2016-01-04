@@ -74,8 +74,7 @@ void Display_SetupSPI() {
 }
 
 void Display_Init() {
-	// Clear framebuffer
-	memset(Display_framebuf, 0x00, DISPLAY_FRAMEBUFFER_SIZE);
+	Display_Clear();
 
 	// Initialize display controller
 	if(Dataflash_info.displayType == DISPLAY_SSD1327) {
@@ -93,6 +92,10 @@ void Display_Update() {
 	else {
 		Display_SSD1306_Update(Display_framebuf);
 	}
+}
+
+void Display_Clear() {
+	memset(Display_framebuf, 0x00, DISPLAY_FRAMEBUFFER_SIZE);
 }
 
 void Display_PutPixels(int x, int y, const uint8_t *pixels, int w, int h) {

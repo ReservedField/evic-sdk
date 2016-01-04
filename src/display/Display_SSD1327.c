@@ -23,9 +23,7 @@
 #include <Display_SSD1327.h>
 #include <Display.h>
 #include <Timer.h>
-
-// Swapped to get (0,0) at top-left
-#define TODO_DATAFLAG 1
+#include <Dataflash.h>
 
 // Value for pixel ON
 #define GRAYHIGH 0xF0
@@ -89,9 +87,8 @@ void Display_SSD1327_Init() {
 	for(i = 0; i < sizeof(Display_SSD1327_initCmds1); i++) {
 		Display_SSD_SendCommand(Display_SSD1327_initCmds1[i]);
 	}
-
-	// Swapped flag to get (0,0) at top-left
-	if(!TODO_DATAFLAG) {
+	
+	if(Dataflash_info.flipDisplay) {
 		// Send initialization commands (2)
 		for(i = 0; i < sizeof(Display_SSD1327_initCmds2); i++) {
 			Display_SSD_SendCommand(Display_SSD1327_initCmds2[i]);

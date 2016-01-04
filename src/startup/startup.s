@@ -186,6 +186,7 @@ BSS_Zero_Check:
 	BLX   R0
 
 	@ Lock registers
+	LDR   R0, =0x40000100
 	MOVS  R1, #0
 	STR   R1, [R0]
 

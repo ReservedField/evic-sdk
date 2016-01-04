@@ -39,6 +39,7 @@
 #include <Display_SSD1327.h>
 #include <Timer.h>
 #include <Font.h>
+#include <Dataflash.h>
 
 /**
  * Global framebuffer.
@@ -77,19 +78,21 @@ void Display_Init() {
 	memset(Display_framebuf, 0x00, DISPLAY_FRAMEBUFFER_SIZE);
 
 	// Initialize display controller
-#if LCD_TYPE == 0
-	Display_SSD1327_Init();
-#else
-	Display_SSD1306_Init();
-#endif
+	if(Dataflash_info.displayType == DISPLAY_SSD1327) {
+		Display_SSD1327_Init();
+	}
+	else {
+		Display_SSD1306_Init();
+	}
 }
 
 void Display_Update() {
-#if LCD_TYPE == 0
-	Display_SSD1327_Update(Display_framebuf);
-#else
-	Display_SSD1306_Update(Display_framebuf);
-#endif
+	if(Dataflash_info.displayType == DISPLAY_SSD1327) {
+		Display_SSD1327_Update(Display_framebuf);
+	}
+	else {
+		Display_SSD1306_Update(Display_framebuf);
+	}
 }
 
 void Display_PutPixels(int x, int y, const uint8_t *pixels, int w, int h) {

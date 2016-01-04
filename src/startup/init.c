@@ -18,6 +18,7 @@
  */
 
 #include <M451Series.h>
+#include <Dataflash.h>
 
 /**
  * PLL clock: 72MHz.
@@ -60,4 +61,9 @@ void SYS_Init() {
 	
 	// Update system core clock
 	SystemCoreClockUpdate();
+
+	// Initialize dataflash
+	// TODO: why is SYS_UnlockReg() needed? Should be already unlocked.
+	SYS_UnlockReg();
+	Dataflash_Init();
 }

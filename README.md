@@ -50,29 +50,6 @@ To clean up the build (for example if you want to do a full rebuild), use the st
 make clean
 ```
 
-Display driver
---------------
-
-The eVic VTC Mini uses either the SSD1306 or the SSD1327 display controller, depending
-on the hardware version. The following hardware versions use the SSD1327:
-- 1.02
-- 1.03
-- 1.06
-- 1.08
-- 1.09
-- 1.11
-
-All the other use SSD1306.
-
-Since dataflash support isn't built in at the moment, you have to manually select the display.
-To do so, edit the `LCD_TYPE` define in `src/include/Display.h`. Set it to `0` if you have a
-SSD1327 display, or to `1` if you have a SSD1306.
-
-If you set the display type correctly but it still doesn't work, change the `TODO_DATAFLASH`
-define in `src/display/Display_SSD1306.c` or `src/display/Display_SSD1327.c` from `1` to `0`.
-
-After altering those files, you have to rebuild the SDK and then the APROM.
-
 Building your first APROM
 --------------------------
 

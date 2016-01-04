@@ -22,9 +22,7 @@
 #include <Display_SSD1306.h>
 #include <Display.h>
 #include <Timer.h>
-
-// Swapped to get (0,0) at top-left
-#define TODO_DATAFLAG 1
+#include <Dataflash.h>
 
 static uint8_t Display_SSD1306_initCmds1[] = {
 	SSD_DISPLAY_OFF,
@@ -71,7 +69,7 @@ void Display_SSD1306_Init() {
 		Display_SSD_SendCommand(Display_SSD1306_initCmds1[i]);
 	}
 
-	if(!TODO_DATAFLAG) {
+	if(Dataflash_info.flipDisplay) {
 		// Send initialization commands (2)
 		for(i = 0; i < sizeof(Display_SSD1306_initCmds2); i++) {
 			Display_SSD_SendCommand(Display_SSD1306_initCmds2[i]);
@@ -92,10 +90,10 @@ void Display_SSD1306_Update(const uint8_t *framebuf) {
 	int page;
 
 	for(page = 0; page < DISPLAY_FRAMEBUFFER_PAGES; page++) {
-		// Set page start address (start 0x00, end 0x10/0x12)
+		// Set page start address (start 0x00, end 0x12/0x10)
 		Display_SSD_SendCommand(SSD1306_PAGE_START_ADDRESS | page);
 		Display_SSD_SendCommand(0x00);
-		Display_SSD_SendCommand(TODO_DATAFLAG ? 0x10 : 0x12);
+		Display_SSD_SendCommand(Dataflash_info.flipDisplay ? 0x12 : 0x10);
 
 		// Write page to GDDRAM
 		Display_SSD_Write(1, framebuf, DISPLAY_FRAMEBUFFER_PAGE_SIZE);

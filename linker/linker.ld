@@ -78,6 +78,7 @@ SECTIONS {
 		BSS_Start = .;
 		*(.bss*)
 		*(COMMON)
+		. = ALIGN(4);
 		BSS_End = .;
 	} > RAM
 

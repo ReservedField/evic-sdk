@@ -22,14 +22,6 @@
 #include <Font.h>
 
 int main() {
-	// Initialize I/O
-	SYS_UnlockReg();
-	Display_SetupSPI();
-	SYS_LockReg();
-	
-	// Initialize display
-	Display_Init();
-
 	// Blit text
 	Display_PutText(8, 56, "Hello,\nWorld.", FONT_DEJAVU_8PT);
 

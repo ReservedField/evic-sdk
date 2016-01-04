@@ -27,15 +27,6 @@ int main() {
 	uint8_t state;
 	char buf[100];
 
-	// Initialize I/O
-	SYS_UnlockReg();
-	Display_SetupSPI();
-	Button_Init();
-	SYS_LockReg();
-	
-	// Initialize display
-	Display_Init();
-
 	while(1) {
 		// Build state report
 		state = Button_GetState();

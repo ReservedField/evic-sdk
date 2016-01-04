@@ -19,6 +19,8 @@
 
 #include <M451Series.h>
 #include <Dataflash.h>
+#include <Display.h>
+#include <Button.h>
 
 /**
  * PLL clock: 72MHz.
@@ -66,4 +68,11 @@ void SYS_Init() {
 	// TODO: why is SYS_UnlockReg() needed? Should be already unlocked.
 	SYS_UnlockReg();
 	Dataflash_Init();
+
+	// Initialize I/O
+	Display_SetupSPI();
+	Button_Init();
+
+	// Initialize display
+	Display_Init();
 }

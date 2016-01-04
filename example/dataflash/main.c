@@ -26,14 +26,6 @@
 int main() {
 	char hwVerMajor, hwVerMinor1, hwVerMinor2, buffer[100];
 
-	// Initialize I/O
-	SYS_UnlockReg();
-	Display_SetupSPI();
-	SYS_LockReg();
-	
-	// Initialize display
-	Display_Init();
-
 	// Build version chars
 	hwVerMajor = '0' + (Dataflash_info.hwVersion / 100);
 	hwVerMinor1 = '0' + ((Dataflash_info.hwVersion % 100) / 10);

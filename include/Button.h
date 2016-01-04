@@ -34,7 +34,7 @@
 #define BUTTON_MASK_LEFT  0x04
 
 /**
- * Initializes the button library.
+ * Initializes the buttons I/O.
  * System control registers must be unlocked.
  */
 void Button_Init();

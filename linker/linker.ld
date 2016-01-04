@@ -85,6 +85,7 @@ SECTIONS {
 	BSS_Size = . - BSS_Start;
 	
 	.heap : {
+		end = .;
 		*(.heap*)
 		Heap_Limit = .;
 	} > RAM

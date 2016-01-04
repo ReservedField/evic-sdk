@@ -48,9 +48,13 @@ $(TARGET).elf: $(OBJS)
 	mkdir -p $(BINDIR)
 	$(LD) $(OBJS) $(LDFLAGS) -o $(BINDIR)/$(TARGET).elf
 
-$(TARGET).bin: $(TARGET).elf
-	$(OBJCOPY) -O binary -j .text -j .data $(BINDIR)/$(TARGET).elf $(BINDIR)/$(TARGET).bin
+$(TARGET)_unencrypted.bin: $(TARGET).elf
+	$(OBJCOPY) -O binary -j .text -j .data $(BINDIR)/$(TARGET).elf $(BINDIR)/$(TARGET)_unencrypted.bin
 	rm -f $(BINDIR)/$(TARGET).elf
+
+$(TARGET).bin: $(TARGET)_unencrypted.bin
+	evic convert $(BINDIR)/$(TARGET)_unencrypted.bin -o $(BINDIR)/$(TARGET).bin
+	rm -f $(BINDIR)/$(TARGET)_unencrypted.bin
 
 clean:
 	rm -rf $(OBJS) $(BINDIR)

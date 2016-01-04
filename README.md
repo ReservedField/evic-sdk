@@ -19,24 +19,26 @@ Installation
    aren't available for you distro, you may have to compile it yourself.
    I still haven't tested it on Windows.
 
-2. Clone this repository:
+2. Setup [python-evic](https://github.com/Ban3/python-evic).
+
+3. Clone this repository:
    ```
    git clone https://github.com/ReservedField/evic-sdk.git
    cd evic-sdk
    ```
 
-3. Download the latest [M451 series SDK](http://www.nuvoton.com/hq/support/tool-and-software/software)
+4. Download the latest [M451 series SDK](http://www.nuvoton.com/hq/support/tool-and-software/software)
    from Nuvoton and copy the `Library` folder inside `evic-sdk/nuvoton-sdk`, as to have
    `evic-sdk/nuvoton-sdk/Library`.
 
-4. Point the `EVICSDK` environment variable to the `evic-sdk` folder. Tipically, you'll add
+5. Point the `EVICSDK` environment variable to the `evic-sdk` folder. Tipically, you'll add
    this to your `.bashrc` file in your home directory:
    ```
    export EVICSDK=/path/to/evic-sdk
    ```
    Make sure to restart your terminal to ensure the variable is set before building.
 
-5. Build the SDK:
+6. Build the SDK:
    ```
    make
    ```
@@ -62,18 +64,24 @@ make
 ```
 To clean you can use `make clean`, as usual.
 If the build succeeds, you should now have a `bin/helloworld.bin` file ready to flash.
+This file is encrypted and compatible with the official updater.
+You can also generate a unencrypted binary:
+```
+make helloworld_unencrypted.bin
+```
 
 Flashing
 --------
 
-To flash, use [python-evic](https://github.com/Ban3/python-evic). I suggest to backup your
-dataflash first, in case anything goes south:
+You can flash the output binary using the official updater. For development,
+using `python-evic` is quicker and simpler.
+I suggest to backup your dataflash before flashing, in case anything goes south:
 ```
 evic dump-dataflash -o data.bin
 ```
-Now, flash with APROM verification disabled:
+Now, flash:
 ```
-evic upload --no-verify aprom --unencrypted bin/helloworld.bin
+evic upload bin/helloworld.bin
 ```
 If everything went well you should see the "Hello, World." message.
 

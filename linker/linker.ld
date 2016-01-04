@@ -68,6 +68,8 @@ SECTIONS {
 		KEEP(*(SORT(.fini_array.*)))
 		KEEP(*(.fini_array))
 
+		*(.verify)
+
 		. = ALIGN(4);
 		Data_End_RAM = .;
 	} > RAM

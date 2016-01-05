@@ -84,10 +84,6 @@ void Display_SSD1327_Init() {
 	for(i = 0; i < sizeof(Display_SSD1327_initCmds1); i++) {
 		Display_SSD_SendCommand(Display_SSD1327_initCmds1[i]);
 	}
-	
-	// Workaround for remap not set correctly with the first init commands
-	Display_SSD_SendCommand(SSD1327_SET_REMAP);
-	Display_SSD_SendCommand(0x44);
 
 	if(Dataflash_info.flipDisplay) {
 		// Send initialization commands (2)

@@ -23,7 +23,7 @@
 /**
  * Delays for the specified time.
  *
- * @param delay Delay in microseconds. Valid range is 100 - 1000000.
+ * @param delay Delay in microseconds. Valid range is 0 - 233016.
  */
 void Timer_DelayUs(uint32_t delay);
 

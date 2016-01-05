@@ -20,5 +20,6 @@
 #include <M451Series.h>
 
 void Timer_DelayUs(uint32_t delay) {
-	TIMER_Delay(TIMER0, delay);
+	// TODO: why doesn't TIMER_Delay(TIMER0, delay) work?
+	CLK_SysTickDelay(delay);
 }

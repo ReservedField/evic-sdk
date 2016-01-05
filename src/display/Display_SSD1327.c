@@ -42,6 +42,7 @@ static uint8_t Display_SSD1327_initCmds1[] = {
 	SSD_SET_MULTIPLEX_RATIO,      0x7F,
 	SSD1327_FUNC_SELECT_A,        0x01,
 	SSD_SET_CONTRAST_LEVEL,       0xA6,
+	SSD1327_SET_PHASE_LENGTH,     0x31,
 	SSD1327_SET_CLOCK_DIV,        0xB1,
 	0xB4,
 	0xB5,

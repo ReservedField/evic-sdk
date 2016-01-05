@@ -26,7 +26,7 @@ Stack_Top:
 	.section .heap
 	.align 3
 .ifndef Heap_Size
-	.equ    Heap_Size, 0x0
+	.equ    Heap_Size, 0xC00
 	.global Heap_Size
 .endif
 	.global Heap_Base

@@ -6,10 +6,10 @@ MEMORY {
 
 /* Library configurations */
 GROUP(
-	thumb/libgcc.a
-	thumb/libc.a
-	thumb/libm.a
-	thumb/libnosys.a
+	armv7e-m/libgcc.a
+	armv7e-m/libc.a
+	armv7e-m/libm.a
+	armv7e-m/libnosys.a
 )
 
 ENTRY(Reset_Handler)

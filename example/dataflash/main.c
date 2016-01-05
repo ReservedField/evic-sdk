@@ -24,18 +24,18 @@
 #include <Dataflash.h>
 
 int main() {
-	char hwVerMajor, hwVerMinor1, hwVerMinor2, buffer[100];
+	int hwVerMajor, hwVerMinor;
+	char buffer[100];
 
-	// Build version chars
-	hwVerMajor = '0' + (Dataflash_info.hwVersion / 100);
-	hwVerMinor1 = '0' + ((Dataflash_info.hwVersion % 100) / 10);
-	hwVerMinor2 = '0' + (Dataflash_info.hwVersion % 10);
+	// Separate major/minor version
+	hwVerMajor = Dataflash_info.hwVersion / 100;
+	hwVerMinor = Dataflash_info.hwVersion % 100;
 
 	// Build and blit text
-	sprintf(buffer, "Hw: %c.%c%c\n%s\nFlip: %c",
-		hwVerMajor, hwVerMinor1, hwVerMinor2,
+	sprintf(buffer, "Hw: %d.%02d\n%s\nFlip: %d",
+		hwVerMajor, hwVerMinor,
 		Dataflash_info.displayType == DISPLAY_SSD1327 ? "SSD1327" : "SSD1306",
-		Dataflash_info.flipDisplay ? '1' : '0');
+		Dataflash_info.flipDisplay);
 	Display_PutText(0, 0, buffer, FONT_DEJAVU_8PT);
 
 	// Update display

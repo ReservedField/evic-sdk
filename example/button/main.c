@@ -30,10 +30,11 @@ int main() {
 	while(1) {
 		// Build state report
 		state = Button_GetState();
-		sprintf(buf, "Fire: %c\nRight: %c\nLeft: %c",
-			(state & BUTTON_MASK_FIRE) ? '1' : '0',
-			(state & BUTTON_MASK_RIGHT) ? '1' : '0',
-			(state & BUTTON_MASK_LEFT) ? '1' : '0');
+		sprintf(buf, "Mask: %02X\n\nFire: %d\nRight: %d\nLeft: %d",
+			state,
+			(state & BUTTON_MASK_FIRE) ? 1 : 0,
+			(state & BUTTON_MASK_RIGHT) ? 1 : 0,
+			(state & BUTTON_MASK_LEFT) ? 1 : 0);
 
 		// Clear and blit text
 		Display_Clear();

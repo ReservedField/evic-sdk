@@ -15,6 +15,7 @@
  * along with eVic SDK.  If not, see <http://www.gnu.org/licenses/>.
  *
  * Copyright (C) 2015 ReservedField
+ * Copyright (C) 2015 Jussi Timperi
  */
 
 /**
@@ -78,7 +79,10 @@ void Display_Init() {
 
 void Display_Flip() {
 	// TODO: Set the value in data flash here
+	Display_SSD_SetOn(0);
 	Display_SSD_Flip();
+	Display_SSD_Update(Display_framebuf);
+	Display_SSD_SetOn(1);
 }
 
 void Display_Update() {

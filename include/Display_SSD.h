@@ -40,7 +40,15 @@
 #define DISPLAY_SSD_DC    PE10
 
 /**
+ * Turns the display on or off.
+ *
+ * @param isOn True to turn the display on, false to turn it off.
+ */
+void Display_SSD_SetOn(uint8_t isOn);
+
+/**
  * Flips the display according to the display orientation value in data flash.
+ * An update must be issued afterwards.
  */
 void Display_SSD_Flip();
 

@@ -15,6 +15,7 @@
  * along with eVic SDK.  If not, see <http://www.gnu.org/licenses/>.
  *
  * Copyright (C) 2015 ReservedField
+ * Copyright (C) 2015 Jussi Timperi
  */
 #include <M451Series.h>
 #include <Timer.h>
@@ -73,8 +74,7 @@ void Display_SSD_Init() {
 		initCmds_size = sizeof(Display_SSD1306_initCmds);
 	}
 
-	// Initialize display controller
-	// Reset controller
+	// Reset display controller
 	// TODO: figure out PA.1 and PC.4
 	PA1 = 1;
 	PC4 = 1;
@@ -84,7 +84,7 @@ void Display_SSD_Init() {
 	DISPLAY_SSD_RESET = 1;
 	Timer_DelayUs(1000);
 
-	// Send initialization commands (1)
+	// Send initialization commands
 	for(i = 0; i < initCmds_size; i++) {
 		Display_SSD_SendCommand(*(initCmds + i));
 	}
@@ -97,8 +97,12 @@ void Display_SSD_Init() {
 	Display_Update();
 
 	// Display ON
-	Display_SSD_SendCommand(SSD_DISPLAY_ON);
+	Display_SSD_SetOn(1);
 
 	// Delay 20ms
 	Timer_DelayUs(20000);
+}
+
+void Display_SSD_SetOn(uint8_t isOn) {
+	Display_SSD_SendCommand(isOn ? SSD_DISPLAY_ON : SSD_DISPLAY_OFF);
 }

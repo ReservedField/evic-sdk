@@ -55,6 +55,7 @@ void Display_SSD1306_Update(const uint8_t *framebuf);
 
 /**
  * Flips the display according to the display orientation value in data flash.
+ * An update must be issued afterwards.
  */
 void Display_SSD1306_Flip();
 

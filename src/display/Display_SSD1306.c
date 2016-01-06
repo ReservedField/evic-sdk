@@ -15,6 +15,7 @@
  * along with eVic SDK.  If not, see <http://www.gnu.org/licenses/>.
  *
  * Copyright (C) 2015 ReservedField
+ * Copyright (C) 2015 Jussi Timperi
  */
 
 #include <M451Series.h>
@@ -58,10 +59,10 @@ void Display_SSD1306_Update(const uint8_t *framebuf) {
 }
 
 void Display_SSD1306_Flip() {
-		Display_SSD_SendCommand(Dataflash_info.flipDisplay ? SSD1306_SET_COM_NORMAL : SSD1306_SET_COM_REMAP);
-		Display_SSD_SendCommand(SSD1306_SET_OFFSET);
-		Display_SSD_SendCommand(Dataflash_info.flipDisplay ? 0x60 : 0x20);
-		Display_SSD_SendCommand(0xDC);
-		Display_SSD_SendCommand(Dataflash_info.flipDisplay ? 0x20 : 0x00);
-		Display_SSD_SendCommand(Dataflash_info.flipDisplay ? SSD1306_SET_NOREMAP : SSD1306_SET_REMAP);
+	Display_SSD_SendCommand(Dataflash_info.flipDisplay ? SSD1306_SET_COM_NORMAL : SSD1306_SET_COM_REMAP);
+	Display_SSD_SendCommand(SSD1306_SET_OFFSET);
+	Display_SSD_SendCommand(Dataflash_info.flipDisplay ? 0x60 : 0x20);
+	Display_SSD_SendCommand(0xDC);
+	Display_SSD_SendCommand(Dataflash_info.flipDisplay ? 0x20 : 0x00);
+	Display_SSD_SendCommand(Dataflash_info.flipDisplay ? SSD1306_SET_NOREMAP : SSD1306_SET_REMAP);
 }

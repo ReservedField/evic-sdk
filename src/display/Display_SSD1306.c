@@ -44,17 +44,18 @@ uint8_t Display_SSD1306_initCmds[] = {
 };
 
 void Display_SSD1306_Update(const uint8_t *framebuf) {
-	int page;
+	int page, x;
 
-	for(page = 0; page < DISPLAY_FRAMEBUFFER_PAGES; page++) {
+	for(page = 0; page < SSD1306_NUM_PAGES; page++) {
 		// Set page start address (start 0x00, end 0x12/0x10)
 		Display_SSD_SendCommand(SSD1306_PAGE_START_ADDRESS | page);
 		Display_SSD_SendCommand(0x00);
 		Display_SSD_SendCommand(Dataflash_info.flipDisplay ? 0x12 : 0x10);
 
 		// Write page to GDDRAM
-		Display_SSD_Write(1, framebuf, DISPLAY_FRAMEBUFFER_PAGE_SIZE);
-		framebuf += DISPLAY_FRAMEBUFFER_PAGE_SIZE;
+		for(x = 0; x < DISPLAY_WIDTH; x++) {
+			Display_SSD_Write(1, &framebuf[x * (DISPLAY_HEIGHT / 8) + page], 1);
+		}
 	}
 }
 

@@ -17,25 +17,21 @@
  * Copyright (C) 2015 ReservedField
  */
 
+/**
+ * \file
+ * Display library header file.
+ * The bitmap format is column-major.
+ * Each byte encodes 8 vertical pixels.
+ * A bit value of 1 means pixel on, 0 means pixel off.
+ * The topmost pixel is the least significant bit.
+ * The bitmap direction is top-to-bottom, left-to-right.
+ * The origin (0, 0) is at the top-left corner.
+ */
+
 #ifndef EVICSDK_DISPLAY_H
 #define EVICSDK_DISPLAY_H
 
 #include <Font.h>
-
-/**
- * Framebuffer page size.
- */
-#define DISPLAY_FRAMEBUFFER_PAGE_SIZE 0x40
-
-/**
- * Number of framebuffer pages.
- */
-#define DISPLAY_FRAMEBUFFER_PAGES 0x10
-
-/**
- * Framebuffer size.
- */
-#define DISPLAY_FRAMEBUFFER_SIZE (DISPLAY_FRAMEBUFFER_PAGE_SIZE * DISPLAY_FRAMEBUFFER_PAGES)
 
 /**
  * Display width, in pixels.
@@ -46,6 +42,11 @@
  * Display height, in pixels.
  */
 #define DISPLAY_HEIGHT 128
+
+/**
+ * Framebuffer size.
+ */
+#define DISPLAY_FRAMEBUFFER_SIZE (DISPLAY_HEIGHT / 8 * DISPLAY_WIDTH)
 
 /**
  * Initializes the SPI interface for the display controller.
@@ -81,24 +82,19 @@ void Display_Update();
 void Display_Clear();
 
 /**
- * Copies a bitmap in the framebuffer.
- * Each byte in the pixel buffer encodes a 8-pixel column.
- * Each bit is 1 if the pixel is on, 0 if it is off.
- * Top to bottom is MSB to LSB.
- * The bitmap is made of rows, from top-left to bottom-right.
- * The top-left corner is at (0, 0).
+ * Copies a bitmap into the framebuffer.
  * TODO: this does not support non-8-aligned Y.
  *
  * @param x      X coordinate to place the bitmap at.
  * @param y      Y coordinate to place the bitmap at.
- * @param pixels Pixel buffer.
+ * @param bitmap Bitmap buffer.
  * @param w      Width of the bitmap.
  * @param h      Height of the bitmap.
  */
-void Display_PutPixels(int x, int y, const uint8_t *pixels, int w, int h);
+void Display_PutPixels(int x, int y, const uint8_t *bitmap, int w, int h);
 
 /**
- * Blits text in the framebuffer.
+ * Blits text into the framebuffer.
  * TODO: this does not support non-8-aligned Y.
  *
  * @param x    X coordinate to place the text at.

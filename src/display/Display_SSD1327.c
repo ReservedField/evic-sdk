@@ -65,12 +65,12 @@ void Display_SSD1327_Update(const uint8_t *framebuf) {
 
 	// SSD1327 uses 4 bits per pixel but framebuffer is 1 bit per pixel.
 	for(col = 0; col < DISPLAY_WIDTH; col += 2) {
-		for(row = 0; row < 16; row++) {
+		for(row = 0; row < (DISPLAY_HEIGHT / 8); row++) {
 			for(bit = 0; bit < 8; bit++) {
 				value = 0x0;
 
-				pixelOne = framebuf[col + (64 * row)] >> bit & 0x01;
-				pixelTwo = framebuf[col + (64 * row) + 1] >> bit & 0x01;
+				pixelOne = framebuf[col + ((DISPLAY_HEIGHT / 8) * row)] >> bit & 0x01;
+				pixelTwo = framebuf[col + ((DISPLAY_HEIGHT / 8) * row) + 1] >> bit & 0x01;
 
 				value |= (pixelOne) ? GRAYLOW   : 0x00;
 				value |= (pixelTwo) ? GRAYHIGH  : 0x00;

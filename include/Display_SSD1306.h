@@ -35,9 +35,14 @@
 #define SSD1306_SET_PRECHARGE      0xD9
 #define SSD1306_SET_VCOMH          0xDB
 
+/**
+ * Number of pages in SSD1306 GDDRAM.
+ */
+#define SSD1306_NUM_PAGES 0x10
 
-/*
- * Initialization commands
+
+/**
+ * Initialization commands.
  */
 extern uint8_t Display_SSD1306_initCmds[22];
 

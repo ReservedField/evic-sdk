@@ -97,9 +97,9 @@ void Display_Clear() {
 	memset(Display_framebuf, 0x00, DISPLAY_FRAMEBUFFER_SIZE);
 }
 
-void Display_PutPixels(int x, int y, const uint8_t *pixels, int w, int h) {
-	int startPage, endPage, pixelX, page;
-	uint8_t pixelMask;
+void Display_PutPixels(int x, int y, const uint8_t *bitmap, int w, int h) {
+	int colSize, numFullRows, startRow, endRow, curX;
+	uint8_t rowMask;
 
 	// Sanity check
 	if(x < 0 || y < 0 ||
@@ -109,26 +109,29 @@ void Display_PutPixels(int x, int y, const uint8_t *pixels, int w, int h) {
 		return;
 	}
 
-	// Calculate start & end for full pages
-	startPage = y / 8;
-	endPage = startPage + (h / 8);
+	// Size (in bytes) of a column in the bitmap
+	colSize = (h + 7) / 8;
 
-	// Copy the full pages
-	for(page = startPage; page < endPage; page++) {
-		memcpy(&Display_framebuf[page * DISPLAY_FRAMEBUFFER_PAGE_SIZE + x], &pixels[(page - startPage) * w], w);
-	}
+	// Full rows are rows with 8 pixels of vertical data
+	// The mask has the lowest (h % 8) bits set (0 if all rows are full)
+	numFullRows = h / 8;
+	rowMask = (1 << (h % 8)) - 1;
 
-	if(h % 8 != 0) {
-		// Last page is not a full column
-		// Lowest (h % 8) bits set
-		pixelMask = (1 << (h % 8)) - 1;
+	startRow = y / 8;
+	endRow = startRow + numFullRows;
 
-		for(pixelX = 0; pixelX < w; pixelX++) {
-			// Copy column by masking bits
-			Display_framebuf[endPage * DISPLAY_FRAMEBUFFER_PAGE_SIZE + x + pixelX] &= ~pixelMask;
-			Display_framebuf[endPage * DISPLAY_FRAMEBUFFER_PAGE_SIZE + x + pixelX] |= pixels[(endPage - startPage) * w + pixelX] & pixelMask;
+	for(curX = 0; curX < w; curX++) {
+		// Copy full rows
+		memcpy(&Display_framebuf[(x + curX) * (DISPLAY_HEIGHT / 8) + startRow],
+			&bitmap[curX * colSize], numFullRows);
+
+		if(rowMask) {
+			// Last row is not full
+			Display_framebuf[(x + curX) * (DISPLAY_HEIGHT / 8) + endRow] &= ~rowMask;
+			Display_framebuf[(x + curX) * (DISPLAY_HEIGHT / 8) + endRow] |= bitmap[curX * colSize + numFullRows] & rowMask;
 		}
 	}
+
 }
 
 void Display_PutText(int x, int y, const char *txt, const Font_Info_t *font) {

@@ -77,6 +77,10 @@ void Display_Init() {
 	Display_SSD_Init();
 }
 
+void Display_SetOn(uint8_t isOn) {
+	Display_SSD_SetOn(isOn);
+}
+
 void Display_Flip() {
 	// TODO: Set the value in data flash here
 	Display_SSD_SetOn(0);

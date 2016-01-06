@@ -59,6 +59,13 @@ void Display_SetupSPI();
 void Display_Init();
 
 /**
+ * Turns the display on or off.
+ *
+ * @param isOn True to turn the display on, false to turn it off.
+ */
+void Display_SetOn(uint8_t isOn);
+
+/**
  * Flips the display.
  */
 void Display_Flip();

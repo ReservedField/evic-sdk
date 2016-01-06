@@ -35,6 +35,12 @@
 #define SSD1306_SET_PRECHARGE      0xD9
 #define SSD1306_SET_VCOMH          0xDB
 
+
+/*
+ * Initialization commands
+ */
+extern uint8_t Display_SSD1306_initCmds[22];
+
 /**
  * Initializes the display controller.
  */
@@ -46,5 +52,10 @@ void Display_SSD1306_Init();
  * @param framebuf Framebuffer.
  */
 void Display_SSD1306_Update(const uint8_t *framebuf);
+
+/**
+ * Flips the display according to the display orientation value in data flash.
+ */
+void Display_SSD1306_Flip();
 
 #endif

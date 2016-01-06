@@ -35,8 +35,6 @@
 #include <M451Series.h>
 #include <Display.h>
 #include <Display_SSD.h>
-#include <Display_SSD1306.h>
-#include <Display_SSD1327.h>
 #include <Timer.h>
 #include <Font.h>
 #include <Dataflash.h>
@@ -75,23 +73,16 @@ void Display_SetupSPI() {
 
 void Display_Init() {
 	Display_Clear();
+	Display_SSD_Init();
+}
 
-	// Initialize display controller
-	if(Dataflash_info.displayType == DISPLAY_SSD1327) {
-		Display_SSD1327_Init();
-	}
-	else {
-		Display_SSD1306_Init();
-	}
+void Display_Flip() {
+	// TODO: Set the value in data flash here
+	Display_SSD_Flip();
 }
 
 void Display_Update() {
-	if(Dataflash_info.displayType == DISPLAY_SSD1327) {
-		Display_SSD1327_Update(Display_framebuf);
-	}
-	else {
-		Display_SSD1306_Update(Display_framebuf);
-	}
+	Display_SSD_Update(Display_framebuf);
 }
 
 void Display_Clear() {
@@ -134,35 +125,35 @@ void Display_PutPixels(int x, int y, const uint8_t *pixels, int w, int h) {
 
 void Display_PutText(int x, int y, const char *txt, const Font_Info_t *font) {
 	int i, curX, charIdx;
- 	const uint8_t *charPtr;
+	const uint8_t *charPtr;
 
- 	curX = x;
+	curX = x;
 
- 	for(i = 0; i < strlen(txt); i++) {
- 		// Handle newlines
- 		if(txt[i] == '\n') {
- 			// TODO: support non-8-aligned Y
- 			Display_PutText(x, (y + font->height + 7) & ~7, &txt[i + 1], font);
- 			break;
- 		}
+	for(i = 0; i < strlen(txt); i++) {
+		// Handle newlines
+		if(txt[i] == '\n') {
+			// TODO: support non-8-aligned Y
+			Display_PutText(x, (y + font->height + 7) & ~7, &txt[i + 1], font);
+			break;
+		}
 
- 		// Handle spaces
- 		if(txt[i] == ' ') {
- 			curX += font->spacePixels;
- 			continue;
- 		}
+		// Handle spaces
+		if(txt[i] == ' ') {
+			curX += font->spacePixels;
+			continue;
+		}
 
- 		// Sanity check
- 		if(txt[i] < font->startChar || txt[i] > font->endChar) {
- 			continue;
- 		}
+		// Sanity check
+		if(txt[i] < font->startChar || txt[i] > font->endChar) {
+			continue;
+		}
 
- 		// Calculate character index and pointer to bitmap
- 		charIdx = txt[i] - font->startChar;
- 		charPtr = font->data + font->charInfo[charIdx].offset;
+		// Calculate character index and pointer to bitmap
+		charIdx = txt[i] - font->startChar;
+		charPtr = font->data + font->charInfo[charIdx].offset;
 
- 		// Blit character
+		// Blit character
 		Display_PutPixels(curX, y, charPtr, font->charInfo[charIdx].width, font->height);
 		curX += font->charInfo[charIdx].width;
- 	}
+	}
 }

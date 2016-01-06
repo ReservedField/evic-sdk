@@ -59,6 +59,11 @@ void Display_SetupSPI();
 void Display_Init();
 
 /**
+ * Flips the display.
+ */
+void Display_Flip();
+
+/**
  * Sends the framebuffer to the controller and updates the display.
  */
 void Display_Update();

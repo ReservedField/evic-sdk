@@ -21,10 +21,9 @@
 #include <Display_SSD.h>
 #include <Display_SSD1306.h>
 #include <Display.h>
-#include <Timer.h>
 #include <Dataflash.h>
 
-static uint8_t Display_SSD1306_initCmds1[] = {
+uint8_t Display_SSD1306_initCmds[] = {
 	SSD_DISPLAY_OFF,
 	SSD_SET_MULTIPLEX_RATIO, 0x3F,
 	SSD1306_SET_CLOCK_DIV,   0xF1,
@@ -43,49 +42,6 @@ static uint8_t Display_SSD1306_initCmds1[] = {
 	SSD1306_SET_VCOMH,       0x35
 };
 
-static uint8_t Display_SSD1306_initCmds2[] = {
-	SSD1306_SET_COM_NORMAL,
-	SSD1306_SET_OFFSET, 0x60,
-	0xDC,
-	0x20,
-	SSD1306_SET_NOREMAP
-};
-
-void Display_SSD1306_Init() {
-	int i;
-
-	// Reset controller
-	// TODO: figure out PA.1 and PC.4
-	PA1 = 1;
-	PC4 = 1;
-	Timer_DelayUs(1000);
-	DISPLAY_SSD_RESET = 0;
-	Timer_DelayUs(1000);
-	DISPLAY_SSD_RESET = 1;
-	Timer_DelayUs(1000);
-
-	// Send initialization commands (1)
-	for(i = 0; i < sizeof(Display_SSD1306_initCmds1); i++) {
-		Display_SSD_SendCommand(Display_SSD1306_initCmds1[i]);
-	}
-
-	if(Dataflash_info.flipDisplay) {
-		// Send initialization commands (2)
-		for(i = 0; i < sizeof(Display_SSD1306_initCmds2); i++) {
-			Display_SSD_SendCommand(Display_SSD1306_initCmds2[i]);
-		}
-	}
-
-	// Update GDDRAM
-	Display_Update();
-
-	// Display ON
-	Display_SSD_SendCommand(SSD_DISPLAY_ON);
-
-	// Delay 20ms
-	Timer_DelayUs(20000);
-}
-
 void Display_SSD1306_Update(const uint8_t *framebuf) {
 	int page;
 
@@ -99,4 +55,13 @@ void Display_SSD1306_Update(const uint8_t *framebuf) {
 		Display_SSD_Write(1, framebuf, DISPLAY_FRAMEBUFFER_PAGE_SIZE);
 		framebuf += DISPLAY_FRAMEBUFFER_PAGE_SIZE;
 	}
+}
+
+void Display_SSD1306_Flip() {
+		Display_SSD_SendCommand(Dataflash_info.flipDisplay ? SSD1306_SET_COM_NORMAL : SSD1306_SET_COM_REMAP);
+		Display_SSD_SendCommand(SSD1306_SET_OFFSET);
+		Display_SSD_SendCommand(Dataflash_info.flipDisplay ? 0x60 : 0x20);
+		Display_SSD_SendCommand(0xDC);
+		Display_SSD_SendCommand(Dataflash_info.flipDisplay ? 0x20 : 0x00);
+		Display_SSD_SendCommand(Dataflash_info.flipDisplay ? SSD1306_SET_NOREMAP : SSD1306_SET_REMAP);
 }

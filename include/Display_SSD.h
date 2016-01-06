@@ -40,6 +40,23 @@
 #define DISPLAY_SSD_DC    PE10
 
 /**
+ * Flips the display according to the display orientation value in data flash.
+ */
+void Display_SSD_Flip();
+
+/**
+ * Sends the framebuffer to the controller and updates the display.
+ *
+ * @param framebuf Framebuffer.
+ */
+void Display_SSD_Update(const uint8_t *framebuf);
+
+/**
+ * Initializes the display controller.
+ */
+void Display_SSD_Init();
+
+/**
  * Writes data to the display controller.
  *
  * @param isData True if writing GDDRAM data (D/C# high).

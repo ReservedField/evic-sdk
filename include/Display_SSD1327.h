@@ -38,10 +38,10 @@
 #define SSD1327_FUNC_SELECT_B        0xD5
 #define SSD1327_SET_COMMAND_LOCK     0xFD
 
-/**
- * Initializes the display controller.
+/*
+ * Initialization commands
  */
-void Display_SSD1327_Init();
+extern uint8_t Display_SSD1327_initCmds[28];
 
 /**
  * Sends the framebuffer to the controller and updates the display.
@@ -49,5 +49,10 @@ void Display_SSD1327_Init();
  * @param framebuf Framebuffer.
  */
 void Display_SSD1327_Update(const uint8_t *framebuf);
+
+/**
+ * Flips the display according to the display orientation value in data flash.
+ */
+void Display_SSD1327_Flip();
 
 #endif

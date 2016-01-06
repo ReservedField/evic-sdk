@@ -83,7 +83,6 @@ void Display_Clear();
 
 /**
  * Copies a bitmap into the framebuffer.
- * TODO: this does not support non-8-aligned Y.
  *
  * @param x      X coordinate to place the bitmap at.
  * @param y      Y coordinate to place the bitmap at.
@@ -95,7 +94,6 @@ void Display_PutPixels(int x, int y, const uint8_t *bitmap, int w, int h);
 
 /**
  * Blits text into the framebuffer.
- * TODO: this does not support non-8-aligned Y.
  *
  * @param x    X coordinate to place the text at.
  * @param y    Y coordinato to place the text at.

@@ -97,9 +97,87 @@ void Display_Clear() {
 	memset(Display_framebuf, 0x00, DISPLAY_FRAMEBUFFER_SIZE);
 }
 
+/**
+ * Copies bits across byte boundaries.
+ * Copy is done LSB to MSB.
+ * This is an internal function.
+ *
+ * @param dst       Destination buffer.
+ * @param src       Source buffer.
+ * @param dstOffset Offset from destination, in bits.
+ * @param size      Size to copy, in bits.
+ */
+static void Display_BitCopy(uint8_t *dst, const uint8_t *src, uint32_t dstOffset, uint32_t size) {
+	uint32_t numFullBytes;
+	uint8_t bitMask1, bitMask2, remSize, dstOffsetRem;
+
+	// Handle bigger-than-7 dstOffset
+	dst += dstOffset / 8;
+	dstOffset = dstOffset % 8;
+
+	// If copying whole bytes, fall back to faster memcpy
+	if(dstOffset == 0 && size % 8 == 0) {
+		memcpy(dst, src, size / 8);
+		return;
+	}
+
+	numFullBytes = size / 8;
+	dstOffsetRem = 8 - dstOffset;
+
+	if(dstOffset == 0) {
+		// Destination is byte-aligned
+		// Copy full bytes with faster memcpy
+		memcpy(dst, src, numFullBytes);
+		src += numFullBytes;
+		dst += numFullBytes;
+	}
+	else {
+		// Lowest dstOffsetRem bits set
+		bitMask1 = (1 << dstOffsetRem) - 1;
+		// Highest dstOffset bits set
+		bitMask2 = ~bitMask1;
+
+		while(numFullBytes--) {
+			// dstOffsetRem bits, from src[0] low to dst[0] high
+			dst[0] &= ~(bitMask1 << dstOffset);
+			dst[0] |= (src[0] & bitMask1) << dstOffset;
+
+			// dstOffset bits, from src[0] high to dst[1] low
+			dst[1] &= ~(bitMask2 >> dstOffsetRem);
+			dst[1] |= (src[0] & bitMask2) >> dstOffsetRem;
+
+			src++;
+			dst++;
+		}
+	}
+
+	remSize = size % 8;
+	if(remSize == 0) {
+		// No trailing bits to copy
+		return;
+	}
+
+	if(remSize > dstOffsetRem) {
+		// The last source byte will span across two destination bytes
+		remSize -= dstOffsetRem;
+
+		// remSize bits, from src[0] (trucated at size) high to dst[1] low
+		bitMask2 = ((1 << remSize) - 1) << dstOffsetRem;
+		dst[1] &= ~(bitMask2 >> dstOffsetRem);
+		dst[1] |= (src[0] & bitMask2) >> dstOffsetRem;
+
+		// Setup final dst[0] copy
+		remSize = dstOffsetRem;
+	}
+
+	// remSize bits, from src[0] low to dst[0] high
+	bitMask1 = (1 << remSize) - 1;
+	dst[0] &= ~(bitMask1 << dstOffset);
+	dst[0] |= (src[0] & bitMask1) << dstOffset;
+}
+
 void Display_PutPixels(int x, int y, const uint8_t *bitmap, int w, int h) {
-	int colSize, numFullRows, startRow, endRow, curX;
-	uint8_t rowMask;
+	int colSize, startRow, curX;
 
 	// Sanity check
 	if(x < 0 || y < 0 ||
@@ -111,25 +189,13 @@ void Display_PutPixels(int x, int y, const uint8_t *bitmap, int w, int h) {
 
 	// Size (in bytes) of a column in the bitmap
 	colSize = (h + 7) / 8;
-
-	// Full rows are rows with 8 pixels of vertical data
-	// The mask has the lowest (h % 8) bits set (0 if all rows are full)
-	numFullRows = h / 8;
-	rowMask = (1 << (h % 8)) - 1;
-
+	// Row containing the first point of the bitmap
 	startRow = y / 8;
-	endRow = startRow + numFullRows;
 
 	for(curX = 0; curX < w; curX++) {
-		// Copy full rows
-		memcpy(&Display_framebuf[(x + curX) * (DISPLAY_HEIGHT / 8) + startRow],
-			&bitmap[curX * colSize], numFullRows);
-
-		if(rowMask) {
-			// Last row is not full
-			Display_framebuf[(x + curX) * (DISPLAY_HEIGHT / 8) + endRow] &= ~rowMask;
-			Display_framebuf[(x + curX) * (DISPLAY_HEIGHT / 8) + endRow] |= bitmap[curX * colSize + numFullRows] & rowMask;
-		}
+		// Copy column
+		Display_BitCopy(&Display_framebuf[(x + curX) * (DISPLAY_HEIGHT / 8) + startRow],
+			&bitmap[curX * colSize], y % 8, h);
 	}
 
 }
@@ -143,8 +209,7 @@ void Display_PutText(int x, int y, const char *txt, const Font_Info_t *font) {
 	for(i = 0; i < strlen(txt); i++) {
 		// Handle newlines
 		if(txt[i] == '\n') {
-			// TODO: support non-8-aligned Y
-			Display_PutText(x, (y + font->height + 7) & ~7, &txt[i + 1], font);
+			Display_PutText(x, y + font->height, &txt[i + 1], font);
 			break;
 		}
 

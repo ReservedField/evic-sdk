@@ -69,8 +69,8 @@ void Display_SSD1327_Update(const uint8_t *framebuf) {
 			for(bit = 0; bit < 8; bit++) {
 				value = 0x0;
 
-				pixelOne = framebuf[col + ((DISPLAY_HEIGHT / 8) * row)] >> bit & 0x01;
-				pixelTwo = framebuf[col + ((DISPLAY_HEIGHT / 8) * row) + 1] >> bit & 0x01;
+				pixelOne = framebuf[row + ((DISPLAY_HEIGHT / 8) * col)] >> bit & 0x01;
+				pixelTwo = framebuf[row + ((DISPLAY_HEIGHT / 8) * (col + 1))] >> bit & 0x01;
 
 				value |= (pixelOne) ? GRAYLOW   : 0x00;
 				value |= (pixelTwo) ? GRAYHIGH  : 0x00;

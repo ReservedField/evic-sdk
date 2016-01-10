@@ -32,6 +32,9 @@
  * System control registers must be unlocked.
  */
 void SYS_Init() {
+	// TODO: why is SYS_UnlockReg() needed? Should be already unlocked.
+	SYS_UnlockReg();
+
 	// HIRC clock (internal RC 22.1184MHz)
 	CLK_EnableXtalRC(CLK_PWRCTL_HIRCEN_Msk);
 	CLK_WaitClockReady(CLK_STATUS_HIRCSTB_Msk);
@@ -51,13 +54,20 @@ void SYS_Init() {
 	CLK_WaitClockReady(CLK_STATUS_PLLSTB_Msk);
 	
 	// SPI0 clock: PCLK0
-	CLK_SetModuleClock(SPI0_MODULE, CLK_CLKSEL2_SPI0SEL_PCLK0, MODULE_NoMsk);
+	CLK_SetModuleClock(SPI0_MODULE, CLK_CLKSEL2_SPI0SEL_PCLK0, 0);
 	CLK_EnableModuleClock(SPI0_MODULE);
 	
 	// TMR0 clock: HXT
 	CLK_SetModuleClock(TMR0_MODULE, CLK_CLKSEL1_TMR0SEL_HXT, 0);
 	CLK_EnableModuleClock(TMR0_MODULE);
 
+	// USBD clock
+	CLK_SetModuleClock(USBD_MODULE, 0, CLK_CLKDIV0_USB(3));
+	CLK_EnableModuleClock(USBD_MODULE);
+	
+	// Enable USB 3.3V LDO
+	SYS->USBPHY = SYS_USBPHY_LDO33EN_Msk;
+	
 	// Enable BOD (reset, 2.2V)
 	SYS_EnableBOD(SYS_BODCTL_BOD_RST_EN, SYS_BODCTL_BODVL_2_2V);
 	
@@ -65,8 +75,6 @@ void SYS_Init() {
 	SystemCoreClockUpdate();
 
 	// Initialize dataflash
-	// TODO: why is SYS_UnlockReg() needed? Should be already unlocked.
-	SYS_UnlockReg();
 	Dataflash_Init();
 
 	// Initialize I/O

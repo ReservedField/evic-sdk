@@ -101,3 +101,20 @@ Unless you're messing with the LDROM, this is practically unbrickable - you can 
 to LDROM and restore. Actually, APROM update is always done from LDROM - the official firmware
 doesn't even contain flash writing routines, it only provides access to the dataflash and the
 actual APROM upload happens in LDROM after a reset.
+
+USB debugging
+-------------
+
+The SDK provides a working CDC-compliant USB virtual COM port driver. This allows you to
+communicate with a computer for debugging purposes. On Linux and Mac it's plug-and-play. On
+Windows, you have to create an INF file with the virtual COM VID/PID pair to get it to install
+the driver. An example can be found in the Nuvoton SDK, under `SampleCode/StdDriver/USBD_VCOM_
+SinglePort/Windows Driver`.
+
+An example on how to use the port is given in `example/usbdebug`. You can communicate with it
+using your favorite serial port terminal. All the line coding parameters (baud rate, parity, 
+stop bits, data bits) are ignored, so you don't need to worry about them.
+
+There are a few caveats, which will be fixed soon:
+- At most 63 bytes can be transferred at a time.
+- Host-to-device communication is not implemented yet (you can't receive data).

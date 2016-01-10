@@ -9,6 +9,7 @@ OBJS = $(NUVOSDK)/Device/Nuvoton/M451Series/Source/system_M451Series.o \
 	$(NUVOSDK)/StdDriver/src/spi.o \
 	$(NUVOSDK)/StdDriver/src/sys.o \
 	$(NUVOSDK)/StdDriver/src/timer.o \
+	$(NUVOSDK)/StdDriver/src/usbd.o \
 	src/startup/init.o \
 	src/dataflash/Dataflash.o \
 	src/display/Display_SSD.o \
@@ -17,7 +18,8 @@ OBJS = $(NUVOSDK)/Device/Nuvoton/M451Series/Source/system_M451Series.o \
 	src/display/Display.o \
 	src/font/Font_DejaVuSansMono_8pt.o \
 	src/timer/Timer.o \
-	src/button/Button.o
+	src/button/Button.o \
+	src/usb/USB_VirtualCOM.o
 
 OUTDIR = lib
 DOCDIR = doc

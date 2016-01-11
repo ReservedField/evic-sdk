@@ -21,6 +21,7 @@
 #include <Dataflash.h>
 #include <Display.h>
 #include <Button.h>
+#include <ADC.h>
 
 /**
  * PLL clock: 72MHz.
@@ -67,6 +68,10 @@ void SYS_Init() {
 	
 	// Enable USB 3.3V LDO
 	SYS->USBPHY = SYS_USBPHY_LDO33EN_Msk;
+
+	// EADC clock: 72Mhz / 8
+	CLK_SetModuleClock(EADC_MODULE, 0, CLK_CLKDIV0_EADC(8));
+	CLK_EnableModuleClock(EADC_MODULE);
 	
 	// Enable BOD (reset, 2.2V)
 	SYS_EnableBOD(SYS_BODCTL_BOD_RST_EN, SYS_BODCTL_BODVL_2_2V);
@@ -80,6 +85,7 @@ void SYS_Init() {
 	// Initialize I/O
 	Display_SetupSPI();
 	Button_Init();
+	ADC_Init();
 
 	// Initialize display
 	Display_Init();

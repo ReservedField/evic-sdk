@@ -21,7 +21,8 @@ OBJS = $(NUVOSDK)/Device/Nuvoton/M451Series/Source/system_M451Series.o \
 	src/timer/Timer.o \
 	src/button/Button.o \
 	src/usb/USB_VirtualCOM.o \
-	src/adc/ADC.o
+	src/adc/ADC.o \
+	src/battery/Battery.o
 
 OUTDIR = lib
 DOCDIR = doc

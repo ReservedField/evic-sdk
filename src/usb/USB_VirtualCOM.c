@@ -274,11 +274,17 @@ typedef struct {
 static USB_VirtualCOM_LineCoding_t lineCoding = {115200, 0, 0, 8};
 
 /**
+ * True when USB is ready for a device-to-host packet.
+ */
+static volatile uint8_t USB_VirtualCOM_canTx = 0;
+
+/**
  * Handler for bulk IN transfers.
  * This is an internal function.
  */
 static void USB_VirtualCOM_HandleBulkIn() {
 	// TODO: implement > 63 byte transfers
+	USB_VirtualCOM_canTx = 1;
 }
 
 /**
@@ -447,9 +453,15 @@ void USB_VirtualCOM_Init() {
 
 	// Enable USB interrupt
 	NVIC_EnableIRQ(USBD_IRQn);
+
+	USB_VirtualCOM_canTx = 1;
 }
 
 void USB_VirtualCOM_Send(const uint8_t *buf, uint32_t size) {
+	// Wait for USB to be ready
+	while(!USB_VirtualCOM_canTx);
+	USB_VirtualCOM_canTx = 0;
+
 	// TODO: support > 63 byte transfers
 	size = Minimum(size, USB_VCOM_BULK_IN_MAX_PKT_SIZE - 1);
 

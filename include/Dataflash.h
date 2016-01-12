@@ -21,20 +21,6 @@
 #define EVICSDK_DATAFLASH_H
 
 /**
- * Display type enum.
- */
-typedef enum {
-	/**
-	 * SSD1306 display.
-	 */
-	DISPLAY_SSD1306,
-	/**
-	 * SSD1327 display.
-	 */
-	DISPLAY_SSD1327
-} Dataflash_DisplayType_t;
-
-/**
  * This structure contains the dataflash information.
  */
 typedef struct {
@@ -42,10 +28,6 @@ typedef struct {
 	 * Hardware version.
 	 */
 	uint8_t hwVersion;
-	/**
-	 * Display type.
-	 */
-	Dataflash_DisplayType_t displayType;
 	/**
 	 * Flipped display flag.
 	 */

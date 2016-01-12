@@ -49,6 +49,22 @@
 #define DISPLAY_FRAMEBUFFER_SIZE (DISPLAY_HEIGHT / 8 * DISPLAY_WIDTH)
 
 /**
+ * Display type enum.
+ */
+typedef enum {
+	/**
+	 * SSD1306 display.
+	 */
+	DISPLAY_SSD1306,
+	/**
+	 * SSD1327 display.
+	 */
+	DISPLAY_SSD1327
+} Display_Type_t;
+
+extern Display_Type_t Display_type;
+
+/**
  * Initializes the SPI interface for the display controller.
  * System control registers must be unlocked.
  */

@@ -34,7 +34,7 @@ int main() {
 	// Build and blit text
 	sprintf(buffer, "Hw: %d.%02d\n%s\nFlip: %d",
 		hwVerMajor, hwVerMinor,
-		Dataflash_info.displayType == DISPLAY_SSD1327 ? "SSD1327" : "SSD1306",
+		Display_type == DISPLAY_SSD1327 ? "SSD1327" : "SSD1306",
 		Dataflash_info.flipDisplay);
 	Display_PutText(0, 0, buffer, FONT_DEJAVU_8PT);
 

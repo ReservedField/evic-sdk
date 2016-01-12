@@ -43,7 +43,7 @@ void Display_SSD_SendCommand(uint8_t cmd) {
 }
 
 void Display_SSD_Flip() {
-	if(Dataflash_info.displayType == DISPLAY_SSD1327) {
+	if(Display_type == DISPLAY_SSD1327) {
 		Display_SSD1327_Flip();
 	}
 	else {
@@ -52,7 +52,7 @@ void Display_SSD_Flip() {
 }
 
 void Display_SSD_Update(const uint8_t *framebuf) {
-	if(Dataflash_info.displayType == DISPLAY_SSD1327) {
+	if(Display_type == DISPLAY_SSD1327) {
 		Display_SSD1327_Update(framebuf);
 	}
 	else {
@@ -65,7 +65,7 @@ void Display_SSD_Init() {
 	uint8_t *initCmds;
 	uint8_t initCmds_size;
 
-	if(Dataflash_info.displayType == DISPLAY_SSD1327) {
+	if(Display_type == DISPLAY_SSD1327) {
 		initCmds = Display_SSD1327_initCmds;
 		initCmds_size = sizeof(Display_SSD1327_initCmds);
 	}

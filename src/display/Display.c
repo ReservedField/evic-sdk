@@ -45,6 +45,8 @@
  */
 static uint8_t Display_framebuf[DISPLAY_FRAMEBUFFER_SIZE];
 
+Display_Type_t Display_type;
+
 void Display_SetupSPI() {
 	// Setup output pins
 	PA0 = 0;
@@ -73,6 +75,19 @@ void Display_SetupSPI() {
 }
 
 void Display_Init() {
+	switch(Dataflash_info.hwVersion) {
+		case 102:
+		case 103:
+		case 106:
+		case 108:
+		case 109:
+		case 111:
+			Display_type = DISPLAY_SSD1327;
+			break;
+		default:
+			Display_type = DISPLAY_SSD1306;
+			break;
+	}
 	Display_Clear();
 	Display_SSD_Init();
 }

@@ -59,19 +59,6 @@ void Dataflash_Init() {
 	// Populate info structure
 	Dataflash_info.hwVersion = FMC_Read(base + DATAFLASH_OFFSET_HWVER) & 0xFF;
 	Dataflash_info.flipDisplay = (FMC_Read(base + DATAFLASH_OFFSET_DISPLAYFLIP) & 0x04) ? 1 : 0;
-	switch(Dataflash_info.hwVersion) {
-		case 102:
-		case 103:
-		case 106:
-		case 108:
-		case 109:
-		case 111:
-			Dataflash_info.displayType = DISPLAY_SSD1327;
-			break;
-		default:
-			Dataflash_info.displayType = DISPLAY_SSD1306;
-			break;
-	}
 
 	// Close FMC
 	FMC_Close();

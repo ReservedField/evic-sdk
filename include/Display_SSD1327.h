@@ -15,6 +15,7 @@
  * along with eVic SDK.  If not, see <http://www.gnu.org/licenses/>.
  *
  * Copyright (C) 2015 ReservedField
+ * Copyright (C) 2016 Jussi Timperi
  */
 
 #ifndef EVICSDK_DISPLAY_SSD1327_H
@@ -38,10 +39,10 @@
 #define SSD1327_FUNC_SELECT_B        0xD5
 #define SSD1327_SET_COMMAND_LOCK     0xFD
 
-/*
- * Initialization commands
+/**
+ * Sends the initialization commands to the controller.
  */
-extern uint8_t Display_SSD1327_initCmds[28];
+void Display_SSD1327_SendInitCmds();
 
 /**
  * Sends the framebuffer to the controller and updates the display.

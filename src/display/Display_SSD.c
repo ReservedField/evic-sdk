@@ -61,18 +61,6 @@ void Display_SSD_Update(const uint8_t *framebuf) {
 }
 
 void Display_SSD_Init() {
-	int i;
-	uint8_t *initCmds;
-	uint8_t initCmds_size;
-
-	if(Display_GetType() == DISPLAY_SSD1327) {
-		initCmds = Display_SSD1327_initCmds;
-		initCmds_size = sizeof(Display_SSD1327_initCmds);
-	}
-	else {
-		initCmds = Display_SSD1306_initCmds;
-		initCmds_size = sizeof(Display_SSD1306_initCmds);
-	}
 
 	// Reset display controller
 	// TODO: figure out PA.1 and PC.4
@@ -84,9 +72,11 @@ void Display_SSD_Init() {
 	DISPLAY_SSD_RESET = 1;
 	Timer_DelayUs(1000);
 
-	// Send initialization commands
-	for(i = 0; i < initCmds_size; i++) {
-		Display_SSD_SendCommand(*(initCmds + i));
+	if(Display_GetType() == DISPLAY_SSD1327) {
+		Display_SSD1327_SendInitCmds();
+	}
+	else {
+		Display_SSD1306_SendInitCmds();
 	}
 
 	if(Dataflash_info.flipDisplay) {

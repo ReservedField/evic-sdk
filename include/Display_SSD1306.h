@@ -15,6 +15,7 @@
  * along with eVic SDK.  If not, see <http://www.gnu.org/licenses/>.
  *
  * Copyright (C) 2015 ReservedField
+ * Copyright (C) 2016 Jussi Timperi
  */
 
 #ifndef EVICSDK_DISPLAY_SSD1306_H
@@ -40,16 +41,10 @@
  */
 #define SSD1306_NUM_PAGES 0x10
 
-
 /**
- * Initialization commands.
+ * Sends the initialization commands to the controller.
  */
-extern uint8_t Display_SSD1306_initCmds[22];
-
-/**
- * Initializes the display controller.
- */
-void Display_SSD1306_Init();
+void Display_SSD1306_SendInitCmds();
 
 /**
  * Sends the framebuffer to the controller and updates the display.

@@ -24,7 +24,7 @@
 #include <Display.h>
 #include <Dataflash.h>
 
-uint8_t Display_SSD1306_initCmds[] = {
+static uint8_t Display_SSD1306_initCmds[] = {
 	SSD_DISPLAY_OFF,
 	SSD_SET_MULTIPLEX_RATIO, 0x3F,
 	SSD1306_SET_CLOCK_DIV,   0xF1,
@@ -42,6 +42,10 @@ uint8_t Display_SSD1306_initCmds[] = {
 	SSD1306_SET_PRECHARGE,   0x22,
 	SSD1306_SET_VCOMH,       0x35
 };
+
+void Display_SSD1306_SendInitCmds() {
+	Display_SSD_Write(0, Display_SSD1306_initCmds, sizeof(Display_SSD1306_initCmds));
+}
 
 void Display_SSD1306_Update(const uint8_t *framebuf) {
 	int page, x;

@@ -15,6 +15,7 @@
  * along with eVic SDK.  If not, see <http://www.gnu.org/licenses/>.
  *
  * Copyright (C) 2015 ReservedField
+ * Copyright (C) 2016 Jussi Timperi
  */
 
 /**
@@ -62,8 +63,6 @@ typedef enum {
 	DISPLAY_SSD1327
 } Display_Type_t;
 
-extern Display_Type_t Display_type;
-
 /**
  * Initializes the SPI interface for the display controller.
  * System control registers must be unlocked.
@@ -74,6 +73,13 @@ void Display_SetupSPI();
  * Initializes the display controller.
  */
 void Display_Init();
+
+/**
+ * Returns the display controller type.
+ *
+ * @return Returns the display type.
+ */
+Display_Type_t Display_GetType();
 
 /**
  * Turns the display on or off.

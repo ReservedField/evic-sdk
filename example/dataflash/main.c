@@ -15,6 +15,7 @@
  * along with eVic SDK.  If not, see <http://www.gnu.org/licenses/>.
  *
  * Copyright (C) 2015 ReservedField
+ * Copyright (C) 2016 Jussi Timperi
  */
 
 #include <stdio.h>
@@ -34,7 +35,7 @@ int main() {
 	// Build and blit text
 	sprintf(buffer, "Hw: %d.%02d\n%s\nFlip: %d",
 		hwVerMajor, hwVerMinor,
-		Display_type == DISPLAY_SSD1327 ? "SSD1327" : "SSD1306",
+		Display_GetType() == DISPLAY_SSD1327 ? "SSD1327" : "SSD1306",
 		Dataflash_info.flipDisplay);
 	Display_PutText(0, 0, buffer, FONT_DEJAVU_8PT);
 

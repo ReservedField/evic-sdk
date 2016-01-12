@@ -45,7 +45,7 @@
  */
 static uint8_t Display_framebuf[DISPLAY_FRAMEBUFFER_SIZE];
 
-Display_Type_t Display_type;
+static Display_Type_t Display_type;
 
 void Display_SetupSPI() {
 	// Setup output pins
@@ -94,6 +94,10 @@ void Display_Init() {
 
 void Display_SetOn(uint8_t isOn) {
 	Display_SSD_SetOn(isOn);
+}
+
+Display_Type_t Display_GetType() {
+	return Display_type;
 }
 
 void Display_Flip() {

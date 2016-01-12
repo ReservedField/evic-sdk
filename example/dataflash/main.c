@@ -36,7 +36,7 @@ int main() {
 	sprintf(buffer, "Hw: %d.%02d\n%s\nFlip: %d",
 		hwVerMajor, hwVerMinor,
 		Display_GetType() == DISPLAY_SSD1327 ? "SSD1327" : "SSD1306",
-		Dataflash_info.flipDisplay);
+		Display_IsFlipped());
 	Display_PutText(0, 0, buffer, FONT_DEJAVU_8PT);
 
 	// Update display

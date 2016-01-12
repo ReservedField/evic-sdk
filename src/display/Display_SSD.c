@@ -79,7 +79,7 @@ void Display_SSD_Init() {
 		Display_SSD1306_SendInitCmds();
 	}
 
-	if(Dataflash_info.flipDisplay) {
+	if(Display_IsFlipped()) {
 		Display_SSD_Flip();
 	}
 

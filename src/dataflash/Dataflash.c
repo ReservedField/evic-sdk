@@ -15,6 +15,7 @@
  * along with eVic SDK.  If not, see <http://www.gnu.org/licenses/>.
  *
  * Copyright (C) 2015 ReservedField
+ * Copyright (C) 2016 Jussi Timperi
  */
 
 #include <M451Series.h>
@@ -22,7 +23,7 @@
 
 // Offsets in the dataflash
 #define DATAFLASH_OFFSET_HWVER       0x04
-#define DATAFLASH_OFFSET_DISPLAYFLIP 0x78
+#define DATAFLASH_OFFSET_STATUS      0x78
 
 Dataflash_Info_t Dataflash_info;
 
@@ -58,7 +59,7 @@ void Dataflash_Init() {
 
 	// Populate info structure
 	Dataflash_info.hwVersion = FMC_Read(base + DATAFLASH_OFFSET_HWVER) & 0xFF;
-	Dataflash_info.flipDisplay = (FMC_Read(base + DATAFLASH_OFFSET_DISPLAYFLIP) & 0x04) ? 1 : 0;
+	Dataflash_info.status = FMC_Read(base + DATAFLASH_OFFSET_STATUS);
 
 	// Close FMC
 	FMC_Close();

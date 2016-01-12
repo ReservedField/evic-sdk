@@ -32,6 +32,7 @@
 #ifndef EVICSDK_DISPLAY_H
 #define EVICSDK_DISPLAY_H
 
+#include <stdbool.h>
 #include <Font.h>
 
 /**
@@ -87,6 +88,13 @@ Display_Type_t Display_GetType();
  * @param isOn True to turn the display on, false to turn it off.
  */
 void Display_SetOn(uint8_t isOn);
+
+/**
+ * Returns if the display is flipped or not.
+ *
+ * @return True if the display is flipped, false if not.
+ */
+bool Display_IsFlipped();
 
 /**
  * Flips the display.

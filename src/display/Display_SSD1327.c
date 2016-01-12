@@ -18,6 +18,7 @@
  * Copyright (C) 2015 Jussi Timperi
  */
 
+#include <stdbool.h>
 #include <M451Series.h>
 #include <Display_SSD.h>
 #include <Display_SSD1327.h>
@@ -86,8 +87,12 @@ void Display_SSD1327_Update(const uint8_t *framebuf) {
 }
 
 void Display_SSD1327_Flip() {
+	bool flipped;
+
+	flipped = Display_IsFlipped();
+
 	Display_SSD_SendCommand(SSD1327_SET_OFFSET);
-	Display_SSD_SendCommand(Dataflash_info.flipDisplay ? 0x80 : 0x00);
+	Display_SSD_SendCommand(flipped ? 0x80 : 0x00);
 	Display_SSD_SendCommand(SSD1327_SET_REMAP);
-	Display_SSD_SendCommand(Dataflash_info.flipDisplay ? 0x57 : 0x44);
+	Display_SSD_SendCommand(flipped ? 0x57 : 0x44);
 }

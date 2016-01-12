@@ -18,6 +18,7 @@
  * Copyright (C) 2015 Jussi Timperi
  */
 
+#include <stdbool.h>
 #include <M451Series.h>
 #include <Display_SSD.h>
 #include <Display_SSD1306.h>
@@ -54,7 +55,7 @@ void Display_SSD1306_Update(const uint8_t *framebuf) {
 		// Set page start address (start 0x00, end 0x12/0x10)
 		Display_SSD_SendCommand(SSD1306_PAGE_START_ADDRESS | page);
 		Display_SSD_SendCommand(0x00);
-		Display_SSD_SendCommand(Dataflash_info.flipDisplay ? 0x12 : 0x10);
+		Display_SSD_SendCommand(Display_IsFlipped() ? 0x12 : 0x10);
 
 		// Write page to GDDRAM
 		for(x = 0; x < DISPLAY_WIDTH; x++) {
@@ -64,10 +65,14 @@ void Display_SSD1306_Update(const uint8_t *framebuf) {
 }
 
 void Display_SSD1306_Flip() {
-	Display_SSD_SendCommand(Dataflash_info.flipDisplay ? SSD1306_SET_COM_NORMAL : SSD1306_SET_COM_REMAP);
+	bool flipped;
+
+	flipped = Display_IsFlipped();
+
+	Display_SSD_SendCommand(flipped ? SSD1306_SET_COM_NORMAL : SSD1306_SET_COM_REMAP);
 	Display_SSD_SendCommand(SSD1306_SET_OFFSET);
-	Display_SSD_SendCommand(Dataflash_info.flipDisplay ? 0x60 : 0x20);
+	Display_SSD_SendCommand(flipped ? 0x60 : 0x20);
 	Display_SSD_SendCommand(0xDC);
-	Display_SSD_SendCommand(Dataflash_info.flipDisplay ? 0x20 : 0x00);
-	Display_SSD_SendCommand(Dataflash_info.flipDisplay ? SSD1306_SET_NOREMAP : SSD1306_SET_REMAP);
+	Display_SSD_SendCommand(flipped ? 0x20 : 0x00);
+	Display_SSD_SendCommand(flipped ? SSD1306_SET_NOREMAP : SSD1306_SET_REMAP);
 }

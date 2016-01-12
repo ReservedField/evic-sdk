@@ -100,8 +100,12 @@ Display_Type_t Display_GetType() {
 	return Display_type;
 }
 
+bool Display_IsFlipped() {
+	return (Dataflash_info.status & DATAFLASH_STATUS_FLIP) ? true : false;
+}
+
 void Display_Flip() {
-	// TODO: Set the value in data flash here
+	Dataflash_info.status ^= DATAFLASH_STATUS_FLIP;
 	Display_SSD_SetOn(0);
 	Display_SSD_Flip();
 	Display_SSD_Update(Display_framebuf);

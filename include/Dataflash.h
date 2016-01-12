@@ -15,10 +15,17 @@
  * along with eVic SDK.  If not, see <http://www.gnu.org/licenses/>.
  *
  * Copyright (C) 2015 ReservedField
+ * Copyright (C) 2016 Jussi Timperi
  */
 
 #ifndef EVICSDK_DATAFLASH_H
 #define EVICSDK_DATAFLASH_H
+
+
+/**
+ * Status flag.
+ */
+#define DATAFLASH_STATUS_FLIP 4 // Display flipped.
 
 /**
  * This structure contains the dataflash information.
@@ -29,9 +36,9 @@ typedef struct {
 	 */
 	uint8_t hwVersion;
 	/**
-	 * Flipped display flag.
+	 * Status flag.
 	 */
-	uint8_t flipDisplay;
+	uint32_t status;
 } Dataflash_Info_t;
 
 /**

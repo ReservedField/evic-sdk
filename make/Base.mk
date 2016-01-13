@@ -12,13 +12,14 @@ OBJS += $(EVICSDK)/src/startup/startup.o
 CPU = cortex-m4
 
 ifeq ($(shell $(CC) -v 2>&1 | grep -c "clang version"), 1)
-	CFLAGS += -target armv7em-none-eabi -fshort-enums
+	CFLAGS  += -target armv7em-none-eabi -fshort-enums
+	LDFLAGS += -target armv7em-none-eabi -ccc-gcc-name arm-none-eabi-gcc
 else
 	CC := arm-none-eabi-gcc
 endif
 
 AS = arm-none-eabi-as
-LD = arm-none-eabi-gcc
+LD = $(CC)
 OBJCOPY = arm-none-eabi-objcopy
 
 BINDIR = bin

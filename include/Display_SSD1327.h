@@ -21,6 +21,8 @@
 #ifndef EVICSDK_DISPLAY_SSD1327_H
 #define EVICSDK_DISPLAY_SSD1327_H
 
+#include <stdint.h>
+
 /*
  * Display controller commands.
  */

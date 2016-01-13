@@ -36,7 +36,6 @@
 #include <M451Series.h>
 #include <Display.h>
 #include <Display_SSD.h>
-#include <Timer.h>
 #include <Font.h>
 #include <Dataflash.h>
 

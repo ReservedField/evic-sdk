@@ -21,6 +21,8 @@
 #ifndef EVICSDK_DISPLAY_SSD_H
 #define EVICSDK_DISPLAY_SSD_H
 
+#include <stdint.h>
+
 /**
  * Commands shared by the SSDxxxx display controllers.
  */

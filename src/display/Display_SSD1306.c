@@ -19,11 +19,9 @@
  */
 
 #include <stdbool.h>
-#include <M451Series.h>
 #include <Display_SSD.h>
 #include <Display_SSD1306.h>
 #include <Display.h>
-#include <Dataflash.h>
 
 static uint8_t Display_SSD1306_initCmds[] = {
 	SSD_DISPLAY_OFF,

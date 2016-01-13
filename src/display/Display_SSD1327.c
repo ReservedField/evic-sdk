@@ -19,11 +19,9 @@
  */
 
 #include <stdbool.h>
-#include <M451Series.h>
 #include <Display_SSD.h>
 #include <Display_SSD1327.h>
 #include <Display.h>
-#include <Dataflash.h>
 
 // Value for pixel ON
 #define GRAYHIGH 0xF0

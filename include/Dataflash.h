@@ -14,18 +14,26 @@
  * You should have received a copy of the GNU General Public License
  * along with eVic SDK.  If not, see <http://www.gnu.org/licenses/>.
  *
- * Copyright (C) 2015 ReservedField
+ * Copyright (C) 2015-2016 ReservedField
  * Copyright (C) 2016 Jussi Timperi
  */
 
 #ifndef EVICSDK_DATAFLASH_H
 #define EVICSDK_DATAFLASH_H
 
-
 /**
  * Status flag.
  */
 #define DATAFLASH_STATUS_FLIP 4 // Display flipped.
+
+/**
+ * Boot flag: boot from APROM.
+ */
+#define DATAFLASH_BOOTFLAG_APROM 0x00
+/**
+ * Boot flag: boot from LDROM.
+ */
+#define DATAFLASH_BOOTFLAG_LDROM 0x01
 
 /**
  * This structure contains the dataflash information.
@@ -39,6 +47,10 @@ typedef struct {
 	 * Status flag.
 	 */
 	uint32_t status;
+	/**
+	 * Boot flag. One of DATAFLASH_BOOTFLAG_*.
+	 */
+	uint8_t bootFlag;
 } Dataflash_Info_t;
 
 /**
@@ -48,6 +60,7 @@ extern Dataflash_Info_t Dataflash_info;
 
 /**
  * Reads the dataflash and initializes the info structure.
+ * Additionally, it defaults boot to APROM.
  * System control registers must be unlocked.
  */
 void Dataflash_Init();

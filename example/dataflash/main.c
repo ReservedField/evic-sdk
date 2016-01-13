@@ -14,7 +14,7 @@
  * You should have received a copy of the GNU General Public License
  * along with eVic SDK.  If not, see <http://www.gnu.org/licenses/>.
  *
- * Copyright (C) 2015 ReservedField
+ * Copyright (C) 2015-2016 ReservedField
  * Copyright (C) 2016 Jussi Timperi
  */
 
@@ -33,10 +33,11 @@ int main() {
 	hwVerMinor = Dataflash_info.hwVersion % 100;
 
 	// Build and blit text
-	sprintf(buffer, "Hw: %d.%02d\n%s\nFlip: %d",
+	sprintf(buffer, "Hw: %d.%02d\n%s\nFlip: %d\nBoot: %s",
 		hwVerMajor, hwVerMinor,
 		Display_GetType() == DISPLAY_SSD1327 ? "SSD1327" : "SSD1306",
-		Display_IsFlipped());
+		Display_IsFlipped(),
+		Dataflash_info.bootFlag == DATAFLASH_BOOTFLAG_LDROM ? "LD" : "AP");
 	Display_PutText(0, 0, buffer, FONT_DEJAVU_8PT);
 
 	// Update display

@@ -13,13 +13,12 @@ CPU = cortex-m4
 
 ifeq ($(shell $(CC) -v 2>&1 | grep -c "clang version"), 1)
 	CFLAGS  += -target armv7em-none-eabi -fshort-enums
-	LDFLAGS += -target armv7em-none-eabi -ccc-gcc-name arm-none-eabi-gcc
 else
 	CC := arm-none-eabi-gcc
 endif
 
 AS = arm-none-eabi-as
-LD = $(CC)
+LD = arm-none-eabi-ld
 OBJCOPY = arm-none-eabi-objcopy
 
 BINDIR = bin
@@ -30,7 +29,9 @@ INCDIRS = -I$(NUVOSDK)/CMSIS/Include \
 	-I$(EVICSDK)/include
 
 LDSCRIPT = $(EVICSDK)/linker/linker.ld
-LIBDIRS = -L$(EVICSDK)/lib
+LIBDIRS = -L/usr/arm-none-eabi/lib \
+   -L/usr/lib/gcc/arm-none-eabi/$(shell arm-none-eabi-gcc -v 2>&1 | grep '^gcc version' | awk '{print $$3}') \
+   -L$(EVICSDK)/lib
 LIBS = -levicsdk
 
 CFLAGS += -Wall -mcpu=$(CPU) -mthumb -Os
@@ -38,9 +39,9 @@ CFLAGS += $(INCDIRS)
 
 ASFLAGS += -mcpu=$(CPU)
 
-LDFLAGS += -nostdlib -nostartfiles -T$(LDSCRIPT)
 LDFLAGS += $(LIBDIRS)
 LDFLAGS += $(LIBS)
+LDFLAGS += -nostdlib -nostartfiles -T$(LDSCRIPT)
 
 all: $(TARGET).bin
 

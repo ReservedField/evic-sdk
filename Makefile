@@ -29,7 +29,12 @@ DOCDIR = doc
 
 CPU = cortex-m4
 
-CC = arm-none-eabi-gcc
+ifeq ($(shell $(CC) -v 2>&1 | grep -c "clang version"), 1)
+	CFLAGS += -target armv7em-none-eabi -fshort-enums
+else
+	CC := arm-none-eabi-gcc
+endif
+
 AS = arm-none-eabi-as
 AR = arm-none-eabi-ar
 OBJCOPY = arm-none-eabi-objcopy
@@ -39,7 +44,7 @@ INCDIRS += -I$(NUVOSDK)/Device/Nuvoton/M451Series/Include
 INCDIRS += -I$(NUVOSDK)/StdDriver/inc
 INCDIRS += -Iinclude
 
-CFLAGS  = -Wall -mcpu=$(CPU) -mthumb -Os
+CFLAGS += -Wall -mcpu=$(CPU) -mthumb -Os
 CFLAGS += $(INCDIRS)
 
 ASFLAGS = -mcpu=$(CPU)

@@ -24,6 +24,9 @@ OBJS = $(NUVOSDK)/Device/Nuvoton/M451Series/Source/system_M451Series.o \
 	src/adc/ADC.o \
 	src/battery/Battery.o
 
+AEABI_OBJS = src/aeabi/aeabi_memset-thumb2.o \
+	src/aeabi/aeabi_memclr.o
+
 OUTDIR = lib
 DOCDIR = doc
 
@@ -31,8 +34,19 @@ CPU = cortex-m4
 
 ifeq ($(shell $(CC) -v 2>&1 | grep -c "clang version"), 1)
 	CFLAGS += -target armv7em-none-eabi -fshort-enums
+
+	AEABI_COUNT = $(shell arm-none-eabi-nm -g /usr/arm-none-eabi/lib/armv7e-m/libc.a | grep -Ec 'T __aeabi_mem(set|clr)[48]?$$')
+	ifeq ($(AEABI_COUNT), 0)
+		# __aeabi_memset* and __aeabi_memclr* are not exported by libc
+		# We provide our own implementations
+		OBJS += $(AEABI_OBJS)
+	else ifneq ($(AEABI_COUNT), 6)
+		# Only part of __aeabi_memset* and __aeabi_memclr* are exported by libc
+		# This should never happen, bail out in __aeabi_check
+		AEABI_ERROR = 1
+	endif
 else
-	CC := arm-none-eabi-gcc
+	CC = arm-none-eabi-gcc
 endif
 
 AS = arm-none-eabi-as
@@ -49,7 +63,7 @@ CFLAGS += $(INCDIRS)
 
 ASFLAGS = -mcpu=$(CPU)
 
-all: $(TARGET).a
+all: __aeabi_check $(TARGET).a
 
 %.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@
@@ -65,6 +79,11 @@ docs:
 	doxygen
 
 clean:
-	rm -rf $(OBJS) $(OUTDIR)/$(TARGET).a $(OUTDIR) $(DOCDIR)
+	rm -rf $(OBJS) $(AEABI_OBJS) $(OUTDIR)/$(TARGET).a $(OUTDIR) $(DOCDIR)
 
-.PHONY: all clean docs
+__aeabi_check:
+ifneq ($(AEABI_ERROR),)
+	$(error Your libc is exporting only part of __aeabi symbols)
+endif
+
+.PHONY: all clean docs __aeabi_check

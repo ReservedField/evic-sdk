@@ -34,7 +34,9 @@ int main() {
 		if(Battery_IsPresent()) {
 			// Read voltage
 			battVolt = Battery_GetVoltage();
-			sprintf(buf, "Voltage:\n%d.%03d V", battVolt / 1000, battVolt % 1000);
+			sprintf(buf, "Voltage:\n%d.%03d V\n%s",
+				battVolt / 1000, battVolt % 1000,
+				Battery_IsCharging() ? "Charging" : "");
 		}
 		else {
 			sprintf(buf, "No batt");

@@ -34,9 +34,17 @@ void Battery_Init();
 uint8_t Battery_IsPresent();
 
 /**
+ * Checks if the battery is charging (USB connected).
+ *
+ * @return True if the battery is charging, false otherwise.
+ */
+uint8_t Battery_IsCharging();
+
+/**
  * Reads the battery voltage.
- * If the battery is not present, this will return wrong values.
- * Always check for battery before trying to read the voltage.
+ * If the battery is not present or charging, this will
+ * return wrong values. Always check the battery status
+ * before trying to read the voltage.
  *
  * @return Battery voltage, in millivolts.
  */

@@ -37,6 +37,10 @@ uint8_t Battery_IsPresent() {
 	return !PD7;
 }
 
+uint8_t Battery_IsCharging() {
+	return Battery_IsPresent() && USBD_IS_ATTACHED();
+}
+
 uint16_t Battery_GetVoltage() {
 	// Double the voltage to compensate for the divider
 	uint16_t adcValue = ADC_Read(ADC_MODULE_VBAT);

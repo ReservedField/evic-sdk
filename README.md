@@ -1,6 +1,6 @@
 eVic SDK is a software development kit for writing APROMs for the Joyetech eVic VTC Mini.
 
-Installation
+Installation under linux
 ---------------
 
 1. You need to setup an arm-none-eabi GCC toolchain and newlib.
@@ -43,20 +43,11 @@ Installation
    make
    ```
 
-At this point, the SDK should be fully set up. You can also generate Doxygen documentation with:
-```
-make docs
-```
-To clean up the build (for example if you want to do a full rebuild), use the standard:
-```
-make clean
-```
-
 Installation under windows
 ---------------
 1.  Installing under windows is almost the same as under linux machine. You need [cygwin](https://www.cygwin.com/), [make for windows](http://gnuwin32.sourceforge.net/packages/make.htm) and [gcc-arm toolchain](https://launchpad.net/gcc-arm-embedded) installed and added to path (so you can call `make` and `arm-none-eabi-gcc` from the command line). Although having cygwin in your path is necessary you don't (and probably shouldn't) run it under bash. Windows commandline is okay.
 
-2. Setup [python-evic](https://github.com/Ban3/python-evic) (Again, you need to be able to run evic from anywhere in cmd).
+2. Setup [python-evic](https://github.com/Ban3/python-evic) (Again, you need to be able to run `evic` from anywhere in cmd).
 
 3. Clone this repository:
    ```
@@ -70,11 +61,21 @@ Installation under windows
 
 5. Set `EVICSKD` to point to your sdk location using **forward slashes** (this is very important), so it looks like this: `SET EVICSDK=C:/evic-sdk`
 
-6. You will also need to set `ARMGCC` variable poining to arm-none-eabi install location like `SET ARMGCC=D:/arm-none-eabi`. Again, remember about **forward slashes**
+6. You will also need to set `ARMGCC` variable poining to arm-none-eabi install location like `SET ARMGCC=D:/arm-none-eabi`. The folder you point to should contain `bin`, `lib` and `arm-none-eabi` folders. Again, remember about **forward slashes**.
 
 7. Build the sdk with `make`.
 
-8. SDK should be compiled set up at this point.
+Making docs and cleaning up
+---------------
+
+At this point, the SDK should be fully set up. You can also generate Doxygen documentation with:
+```
+make docs
+```
+To clean up the build (for example if you want to do a full rebuild), use the standard:
+```
+make clean
+```
 
 Building your first APROM
 --------------------------

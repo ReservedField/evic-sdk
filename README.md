@@ -52,6 +52,30 @@ To clean up the build (for example if you want to do a full rebuild), use the st
 make clean
 ```
 
+Installation under windows
+---------------
+1.  Installing under windows is almost the same as under linux machine. You need [cygwin](https://www.cygwin.com/), [make for windows](http://gnuwin32.sourceforge.net/packages/make.htm) and [gcc-arm toolchain](https://launchpad.net/gcc-arm-embedded) installed and added to path (so you can call `make` and `arm-none-eabi-gcc` from the command line). Although having cygwin in your path is necessary you don't (and probably shouldn't) run it under bash. Windows commandline is okay.
+
+2. Setup [python-evic](https://github.com/Ban3/python-evic) (Again, you need to be able to run evic from anywhere in cmd).
+
+3. Clone this repository:
+   ```
+   git clone https://github.com/ReservedField/evic-sdk.git
+   cd evic-sdk
+   ```
+
+4. Download the latest [M451 series SDK](http://www.nuvoton.com/hq/support/tool-and-software/software)
+   from Nuvoton and copy the `Library` folder inside `evic-sdk/nuvoton-sdk`, as to have
+   `evic-sdk/nuvoton-sdk/Library`.
+
+5. Set `EVICSKD` to point to your sdk location using **forward slashes** (this is very important), so it looks like this: `SET EVICSDK=C:/evic-sdk`
+
+6. You will also need to set `ARMGCC` variable poining to arm-none-eabi install location like `SET ARMGCC=D:/arm-none-eabi`. Again, remember about **forward slashes**
+
+7. Build the sdk with `make`.
+
+8. SDK should be compiled set up at this point.
+
 Building your first APROM
 --------------------------
 

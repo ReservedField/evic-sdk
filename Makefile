@@ -32,17 +32,24 @@ DOCDIR = doc
 
 CPU = cortex-m4
 
-ifeq ($(shell $(CC) -v 2>&1 | grep -c "clang version"), 1)
+ifneq ($(OS),Windows_NT)
+	ARMGCC = /usr
+endif
+
+ifeq ($(ARMGCC),)
+	# ARMGCC not set, bail out in env_check
+	ARMGCC_ERROR = 1
+else ifeq ($(shell $(CC) -v 2>&1 | grep -c "clang version"), 1)
 	CFLAGS += -target armv7em-none-eabi -fshort-enums
 
-	AEABI_COUNT = $(shell arm-none-eabi-nm -g /usr/arm-none-eabi/lib/armv7e-m/libc.a | grep -Ec 'T __aeabi_mem(set|clr)[48]?$$')
+	AEABI_COUNT = $(shell arm-none-eabi-nm -g $(ARMGCC)/arm-none-eabi/lib/armv7e-m/libc.a | grep -Ec 'T __aeabi_mem(set|clr)[48]?$$')
 	ifeq ($(AEABI_COUNT), 0)
 		# __aeabi_memset* and __aeabi_memclr* are not exported by libc
 		# We provide our own implementations
 		OBJS += $(AEABI_OBJS)
 	else ifneq ($(AEABI_COUNT), 6)
 		# Only part of __aeabi_memset* and __aeabi_memclr* are exported by libc
-		# This should never happen, bail out in __aeabi_check
+		# This should never happen, bail out in env_check
 		AEABI_ERROR = 1
 	endif
 else
@@ -63,7 +70,7 @@ CFLAGS += $(INCDIRS)
 
 ASFLAGS = -mcpu=$(CPU)
 
-all: __aeabi_check $(TARGET).a
+all: env_check $(TARGET).a
 
 %.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@
@@ -81,9 +88,12 @@ docs:
 clean:
 	rm -rf $(OBJS) $(AEABI_OBJS) $(OUTDIR)/$(TARGET).a $(OUTDIR) $(DOCDIR)
 
-__aeabi_check:
+env_check:
+ifneq ($(ARMGCC_ERROR),)
+	$(error You must set the ARMGCC environment variable)
+endif
 ifneq ($(AEABI_ERROR),)
 	$(error Your libc is exporting only part of __aeabi symbols)
 endif
 
-.PHONY: all clean docs __aeabi_check
+.PHONY: all clean docs env_check

@@ -29,9 +29,16 @@ INCDIRS = -I$(NUVOSDK)/CMSIS/Include \
 	-I$(EVICSDK)/include
 
 LDSCRIPT = $(EVICSDK)/linker/linker.ld
-LIBDIRS = -L/usr/arm-none-eabi/lib \
-   -L/usr/lib/gcc/arm-none-eabi/$(shell arm-none-eabi-gcc -v 2>&1 | grep '^gcc version' | awk '{print $$3}') \
-   -L$(EVICSDK)/lib
+
+ifeq ($(OS),Windows_NT)
+	LIBDIRS = -L$(ARMGCC)/arm-none-eabi/lib \
+			-L$(ARMGCC)/lib/gcc/arm-none-eabi/5.2.1
+else
+	LIBDIRS = -L/usr/arm-none-eabi/lib \
+			-L/usr/lib/gcc/arm-none-eabi/$(shell arm-none-eabi-gcc -v 2>&1 | grep '^gcc version' | awk '{print $$3}')
+endif
+
+LIBDIRS += -L$(EVICSDK)/lib  
 LIBS = -levicsdk
 
 CFLAGS += -Wall -mcpu=$(CPU) -mthumb -Os

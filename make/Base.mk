@@ -30,15 +30,14 @@ INCDIRS = -I$(NUVOSDK)/CMSIS/Include \
 
 LDSCRIPT = $(EVICSDK)/linker/linker.ld
 
-ifeq ($(OS),Windows_NT)
-	LIBDIRS = -L$(ARMGCC)/arm-none-eabi/lib \
-			-L$(ARMGCC)/lib/gcc/arm-none-eabi/5.2.1
-else
-	LIBDIRS = -L/usr/arm-none-eabi/lib \
-			-L/usr/lib/gcc/arm-none-eabi/$(shell arm-none-eabi-gcc -v 2>&1 | grep '^gcc version' | awk '{print $$3}')
+ifneq ($(OS),Windows_NT)
+	ARMGCC = /usr
 endif
 
-LIBDIRS += -L$(EVICSDK)/lib  
+LIBDIRS = -L$(ARMGCC)/arm-none-eabi/lib \
+	-L$(ARMGCC)/lib/gcc/arm-none-eabi/$(shell arm-none-eabi-gcc -v 2>&1 | grep '^gcc version' | awk '{print $$3}') \
+	-L$(EVICSDK)/lib
+
 LIBS = -levicsdk
 
 CFLAGS += -Wall -mcpu=$(CPU) -mthumb -Os
@@ -50,7 +49,7 @@ LDFLAGS += $(LIBDIRS)
 LDFLAGS += $(LIBS)
 LDFLAGS += -nostdlib -nostartfiles -T$(LDSCRIPT)
 
-all: $(TARGET).bin
+all: env_check $(TARGET).bin
 
 %.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@
@@ -73,4 +72,9 @@ $(TARGET).bin: $(TARGET)_unencrypted.bin
 clean:
 	rm -rf $(OBJS) $(BINDIR)
 
-.PHONY: all clean
+env_check:
+ifeq ($(ARMGCC),)
+	$(error You must set the ARMGCC environment variable)
+endif
+
+.PHONY: all clean env_check

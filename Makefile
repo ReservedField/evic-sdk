@@ -58,13 +58,6 @@ else
 endif
 
 ifneq ($(ARMGCC),)
-	ifdef NEED_FIXPATH
-		OBJS_FIXPATH := $(shell cygpath -w $(OBJS))
-		EVICSDK := $(shell cygpath -w $(EVICSDK))
-	else
-		OBJS_FIXPATH := $(OBJS)
-	endif
-
 	ifdef CC_IS_CLANG
 		CFLAGS += -target armv7em-none-eabi -fshort-enums
 
@@ -80,6 +73,13 @@ ifneq ($(ARMGCC),)
 		endif
 	else
 		CC := arm-none-eabi-gcc
+	endif
+
+	ifdef NEED_FIXPATH
+		OBJS_FIXPATH := $(shell cygpath -w $(OBJS))
+		EVICSDK := $(shell cygpath -w $(EVICSDK))
+	else
+		OBJS_FIXPATH := $(OBJS)
 	endif
 endif
 

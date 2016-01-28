@@ -27,9 +27,10 @@ git
 ```
 
 On any OS, you also need a working [python-evic](https://github.com/Ban3/python-evic) install.
-On Cygwin, hidapi won't build as-is. Follow those instructions:
+**On Cygwin**, hidapi won't build as-is, so follow those instructions:
 
 1. Install the following packages (python, basic build environment, libs and utils):
+   
    ```
    binutils
    gcc-core
@@ -43,6 +44,7 @@ On Cygwin, hidapi won't build as-is. Follow those instructions:
    patch
    ```
 2. Download, patch and install hidapi:
+   
    ```
    wget https://pypi.python.org/packages/source/h/hidapi/hidapi-0.7.99.post12.tar.gz
    tar -zxvf hidapi-0.7.99.post12.tar.gz
@@ -52,6 +54,7 @@ On Cygwin, hidapi won't build as-is. Follow those instructions:
    python setup.py install
    ```
 3. Download and install python-evic:
+   
    ```
    git clone https://github.com/Ban3/python-evic
    cd python-evic
@@ -77,7 +80,7 @@ Installation
    ```
    echo "export EVICSDK=$(pwd)" >> $HOME/.bashrc
    ```
-   On Windows, you also need to point `ARMGCC` to your ARM toolchain install. Use a Cygwin-style
+   **On Windows**, you also need to point `ARMGCC` to your ARM toolchain install. Use a Cygwin-style
    path. For example, if my toolchain is installed to `C:\arm-none-eabi-gcc`, I would add this
    to my Cygwin `/home/username/.bashrc` file:
    ```

@@ -1,72 +1,94 @@
 eVic SDK is a software development kit for writing APROMs for the Joyetech eVic VTC Mini.
 
-Installation under linux
----------------
+Setting up the environment
+--------------------------
 
-1. You need to setup an arm-none-eabi GCC toolchain and newlib.
-   On Fedora, install the following packages:
-   ```
-   arm-none-eabi-gcc
-   arm-none-eabi-newlib
-   ```
-   On Ubuntu, the following packages should be enough:
-   ```
-   gcc-arm-none-eabi
-   libnewlib-arm-none-eabi
-   ```
-   I only tested it on Fedora at the moment, but there shouldn't
-   be issues with other distros. In case the precompiled packages
-   aren't available for you distro, you may have to compile it yourself.
-   I still haven't tested it on Windows.
+To use evic-sdk, you need a working arm-none-eabi GCC toolchain,
+binutils and libc. On Linux, most distros have precompiled packages
+in their repos. For example, on Fedora, install the following
+packages:
+```
+arm-none-eabi-gcc
+arm-none-eabi-newlib
+```
+On Ubuntu, the following should be enough:
+```
+gcc-arm-none-eabi
+libnewlib-arm-none-eabi
+```
 
-2. Setup [python-evic](https://github.com/Ban3/python-evic).
+On Windows, first install the [precompiled ARM toolchain](https://launchpad.net/gcc-arm-embedded).
+Choose an installation path without spaces to avoid problems with
+the build process. Then, install [Cygwin](https://www.cygwin.com/)
+and add the following packages on top of the base install:
+```
+make
+git
+```
 
-3. Clone this repository:
+On any OS, you also need a working [python-evic](https://github.com/Ban3/python-evic) install.
+On Cygwin, hidapi won't build as-is. Follow those instructions:
+
+1. Install the following packages (python, basic build environment, libs and utils):
+   ```
+   binutils
+   gcc-core
+   gcc-g++
+   python
+   libhidapi0
+   libhidapi-devel
+   libusb1.0
+   libusb1.0-devel
+   wget
+   patch
+   ```
+2. Download, patch and install hidapi:
+   ```
+   wget https://pypi.python.org/packages/source/h/hidapi/hidapi-0.7.99.post12.tar.gz
+   tar -zxvf hidapi-0.7.99.post12.tar.gz
+   cd hidapi-0.7.99.post12
+   printf "54c54\n< if sys.platform.startswith('win'):\n---\n> if sys.platform.startswith('win') or sys.platform.startswith('cygwin'):\n" > setup.patch
+   patch setup.py < setup.patch
+   python setup.py install
+   ```
+3. Download and install python-evic:
+   ```
+   git clone https://github.com/Ban3/python-evic
+   cd python-evic
+   python setup.py install
+   ```
+This makes python-evic work for encryption/decryption. Upload does not work yet.
+
+Installation
+------------
+
+1. Clone this repository:
    ```
    git clone https://github.com/ReservedField/evic-sdk.git
    cd evic-sdk
    ```
 
-4. Download the latest [M451 series SDK](http://www.nuvoton.com/hq/support/tool-and-software/software)
+2. Download the latest [M451 series SDK](http://www.nuvoton.com/hq/support/tool-and-software/software)
    from Nuvoton and copy the `Library` folder inside `evic-sdk/nuvoton-sdk`, as to have
    `evic-sdk/nuvoton-sdk/Library`.
 
-5. Point the `EVICSDK` environment variable to the `evic-sdk` folder. Tipically, you'll add
-   this to your `.bashrc` file in your home directory:
+3. Point the `EVICSDK` environment variable to the `evic-sdk` folder. This should do (assuming your
+   current directory is evic-sdk):
    ```
-   export EVICSDK=/path/to/evic-sdk
+   echo "export EVICSDK=$(pwd)" >> $HOME/.bashrc
    ```
-   Make sure to restart your terminal to ensure the variable is set before building.
+   On Windows, you also need to point `ARMGCC` to your ARM toolchain install. Use a Cygwin-style
+   path. For example, if my toolchain is installed to `C:\arm-none-eabi-gcc`, I would add this
+   to my Cygwin `/home/username/.bashrc` file:
+   ```
+   export ARMGCC=/cygdrive/C/arm-none-eabi-gcc
+   ```
+   Make sure to restart your terminal to ensure variables are set before building.
 
-6. Build the SDK:
+4. Build the SDK:
    ```
    make
    ```
-
-Installation under windows
----------------
-1.  Installing under windows is almost the same as under linux machine. You need [cygwin](https://www.cygwin.com/), [make for windows](http://gnuwin32.sourceforge.net/packages/make.htm) and [gcc-arm toolchain](https://launchpad.net/gcc-arm-embedded) installed and added to path (so you can call `make` and `arm-none-eabi-gcc` from the command line). Although having cygwin in your path is necessary you don't (and probably shouldn't) run it under bash. Windows commandline is okay.
-
-2. Setup [python-evic](https://github.com/Ban3/python-evic) (Again, you need to be able to run `evic` from anywhere in cmd).
-
-3. Clone this repository:
-   ```
-   git clone https://github.com/ReservedField/evic-sdk.git
-   cd evic-sdk
-   ```
-
-4. Download the latest [M451 series SDK](http://www.nuvoton.com/hq/support/tool-and-software/software)
-   from Nuvoton and copy the `Library` folder inside `evic-sdk/nuvoton-sdk`, as to have
-   `evic-sdk/nuvoton-sdk/Library`.
-
-5. Set `EVICSKD` to point to your sdk location using **forward slashes** (this is very important), so it looks like this: `SET EVICSDK=C:/evic-sdk`
-
-6. You will also need to set `ARMGCC` variable poining to arm-none-eabi install location like `SET ARMGCC=D:/arm-none-eabi`. The folder you point to should contain `bin`, `lib` and `arm-none-eabi` folders. Again, remember about **forward slashes**.
-
-7. Build the sdk with `make`.
-
-Making docs and cleaning up
----------------
 
 At this point, the SDK should be fully set up. You can also generate Doxygen documentation with:
 ```
@@ -133,8 +155,8 @@ USB debugging
 The SDK provides a working CDC-compliant USB virtual COM port driver. This allows you to
 communicate with a computer for debugging purposes. On Linux and Mac it's plug-and-play. On
 Windows, you have to create an INF file with the virtual COM VID/PID pair to get it to install
-the driver. An example can be found in the Nuvoton SDK, under `SampleCode/StdDriver/USBD_VCOM_
-SinglePort/Windows Driver`.
+the driver. An example can be found in the Nuvoton SDK, under
+`SampleCode/StdDriver/USBD_VCOM_SinglePort/Windows Driver`.
 
 An example on how to use the port is given in `example/usbdebug`. You can communicate with it
 using your favorite serial port terminal. All the line coding parameters (baud rate, parity, 

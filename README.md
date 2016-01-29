@@ -27,7 +27,10 @@ git
 ```
 
 On any OS, you also need a working [python-evic](https://github.com/Ban3/python-evic) install.
-**On Cygwin**, hidapi won't build as-is, so follow those instructions:
+
+**On Cygwin**, hidapi (needed by python-evic) won't build as-is. There are various issues
+(Cygwin not recognized as a target, DLL naming conflict, HID open permissions).
+Follow those instructions to get python-evic to work on Cygwin:
 
 1. Install the following packages (python, basic build environment, libs and utils):
    
@@ -47,10 +50,10 @@ On any OS, you also need a working [python-evic](https://github.com/Ban3/python-
    
    ```
    wget https://pypi.python.org/packages/source/h/hidapi/hidapi-0.7.99.post12.tar.gz
+   wget http://pastebin.com/raw/16E7UdNF && echo >> 16E7UdNF
    tar -zxvf hidapi-0.7.99.post12.tar.gz
+   patch -s -p0 < 16E7UdNF
    cd hidapi-0.7.99.post12
-   printf "54c54\n< if sys.platform.startswith('win'):\n---\n> if sys.platform.startswith('win') or sys.platform.startswith('cygwin'):\n" > setup.patch
-   patch setup.py < setup.patch
    python setup.py install
    ```
 3. Download and install python-evic:
@@ -60,7 +63,6 @@ On any OS, you also need a working [python-evic](https://github.com/Ban3/python-
    cd python-evic
    python setup.py install
    ```
-This makes python-evic work for encryption/decryption. Upload does not work yet.
 
 Installation
 ------------

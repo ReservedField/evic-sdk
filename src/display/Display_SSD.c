@@ -18,7 +18,7 @@
  * Copyright (C) 2016 Jussi Timperi
  */
 #include <M451Series.h>
-#include <Timer.h>
+#include <TimerUtils.h>
 #include <Display.h>
 #include <Display_SSD.h>
 #include <Display_SSD1306.h>

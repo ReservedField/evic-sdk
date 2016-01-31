@@ -58,9 +58,15 @@ void SYS_Init() {
 	CLK_SetModuleClock(SPI0_MODULE, CLK_CLKSEL2_SPI0SEL_PCLK0, 0);
 	CLK_EnableModuleClock(SPI0_MODULE);
 	
-	// TMR0 clock: HXT
+	// TMR0-3 clock: HXT
 	CLK_SetModuleClock(TMR0_MODULE, CLK_CLKSEL1_TMR0SEL_HXT, 0);
+	CLK_SetModuleClock(TMR1_MODULE, CLK_CLKSEL1_TMR1SEL_HXT, 0);
+	CLK_SetModuleClock(TMR2_MODULE, CLK_CLKSEL1_TMR2SEL_HXT, 0);
+	CLK_SetModuleClock(TMR3_MODULE, CLK_CLKSEL1_TMR3SEL_HXT, 0);
 	CLK_EnableModuleClock(TMR0_MODULE);
+	CLK_EnableModuleClock(TMR1_MODULE);
+	CLK_EnableModuleClock(TMR2_MODULE);
+	CLK_EnableModuleClock(TMR3_MODULE);
 
 	// USBD clock
 	CLK_SetModuleClock(USBD_MODULE, 0, CLK_CLKDIV0_USB(3));

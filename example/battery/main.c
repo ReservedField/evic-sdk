@@ -21,11 +21,10 @@
 #include <M451Series.h>
 #include <Display.h>
 #include <Font.h>
-#include <Timer.h>
+#include <TimerUtils.h>
 #include <Battery.h>
 
 int main() {
-	int i;
 	char buf[100];
 	uint16_t battVolt;
 
@@ -48,8 +47,6 @@ int main() {
 		Display_Update();
 
 		// Update every second
-		for(i = 0; i < 10; i++) {
-			Timer_DelayUs(100000);
-		}
+		Timer_DelayMs(1000);
 	}
 }

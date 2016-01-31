@@ -26,7 +26,7 @@ OBJS := $(NUVOSDK)/Device/Nuvoton/M451Series/Source/system_M451Series.o \
 	src/display/Display_SSD1327.o \
 	src/display/Display.o \
 	src/font/Font_DejaVuSansMono_8pt.o \
-	src/timer/Timer.o \
+	src/timer/TimerUtils.o \
 	src/button/Button.o \
 	src/usb/USB_VirtualCOM.o \
 	src/adc/ADC.o \

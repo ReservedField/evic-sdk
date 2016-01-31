@@ -21,11 +21,9 @@
 #include <Display.h>
 #include <Font.h>
 #include <USB_VirtualCOM.h>
-#include <Timer.h>
+#include <TimerUtils.h>
 
 int main() {
-	int i;
-
 	// The virtual COM port is not initialized by default.
 	// To initialize it, follow those steps:
 	// 1) Unlock system control registers.
@@ -44,8 +42,6 @@ int main() {
 		USB_VirtualCOM_SendString("Hello, USB!\r\n");
 
 		// Wait 3 seconds
-		for(i=0;i<30;i++) {
-			Timer_DelayUs(100000);
-		}
+		Timer_DelayMs(3000);
 	}
 }

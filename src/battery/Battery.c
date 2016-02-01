@@ -28,6 +28,15 @@
  * PD.7 is low when the battery is present.
  */
 
+/**
+ * Battery mV voltage to percent lookup table.
+ * batteryTable[i] maps the 10% range starting at 10*i%.
+ * Linear interpolation is done inside the range.
+ */
+static const uint16_t Battery_percentTable[11] = {
+	3100, 3300, 3420, 3500, 3580, 3630, 3680, 3790, 3890, 4000, 4100
+};
+
 void Battery_Init() {
 	// Setup presence pin
 	// Debounce: 1024 LIRC clocks
@@ -48,4 +57,25 @@ uint16_t Battery_GetVoltage() {
 	// Double the voltage to compensate for the divider
 	uint16_t adcValue = ADC_Read(ADC_MODULE_VBAT);
 	return adcValue * 2 * ADC_VREF / ADC_DENOMINATOR;
+}
+
+uint8_t Battery_VoltageToPercent(uint16_t volts) {
+	uint8_t i;
+	uint16_t lowerBound, higherBound;
+
+	// Handle corner cases
+	if(volts <= Battery_percentTable[0]) {
+		return 0;
+	}
+	else if(volts >= Battery_percentTable[10]) {
+		return 100;
+	}
+
+	// Look up higher bound
+	for(i = 1; i < 11 && volts > Battery_percentTable[i]; i++);
+
+	// Interpolate
+	lowerBound = Battery_percentTable[i - 1];
+	higherBound = Battery_percentTable[i];
+	return 10 * (i - 1) + (volts - lowerBound) * 10 / (higherBound - lowerBound);
 }

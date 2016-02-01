@@ -29,7 +29,7 @@
 int main() {
 	char buf[100];
 	uint16_t volts, battVolts;
-	uint8_t btnState;
+	uint8_t btnState, battPerc;
 
 	// Let's start with 3.00V as the initial value
 	volts = 300;
@@ -72,17 +72,20 @@ int main() {
 
 		// Get battery voltage
 		if(Battery_IsPresent()) {
-			battVolts = Battery_GetVoltage() / 10;
+			battVolts = Battery_GetVoltage();
 		}
 		else {
 			battVolts = 0;
 		}
 
+		// Calculate battery charge
+		battPerc = Battery_VoltageToPercent(battVolts);
+
 		// Display info
-		sprintf(buf, "Voltage:\n%d.%02dV\n%s\n\nBattery:\n%d.%02dV\n%s",
+		sprintf(buf, "Voltage:\n%d.%02dV\n%s\n\nBattery:\n%d%%\n%s",
 			volts / 100, volts % 100,
 			Atomizer_IsOn() ? "FIRING" : "",
-			battVolts / 100, battVolts % 100,
+			battPerc,
 			Battery_IsCharging() ? "CHARGING" : "");
 		Display_Clear();
 		Display_PutText(0, 0, buf, FONT_DEJAVU_8PT);

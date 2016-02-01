@@ -50,4 +50,13 @@ uint8_t Battery_IsCharging();
  */
 uint16_t Battery_GetVoltage();
 
+/**
+ * Converts a battery voltage to a charge percent.
+ *
+ * @param volts Battery voltage, in millivolts.
+ *
+ * @return Battery charge percentage (0 - 100).
+ */
+uint8_t Battery_VoltageToPercent(uint16_t volts);
+
 #endif

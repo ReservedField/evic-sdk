@@ -27,15 +27,20 @@
 int main() {
 	char buf[100];
 	uint16_t battVolt;
+	uint8_t battPerc;
 
 	while(1) {
 		// Check if the battery is present
 		if(Battery_IsPresent()) {
 			// Read voltage
 			battVolt = Battery_GetVoltage();
-			sprintf(buf, "Voltage:\n%d.%03d V\n%s",
+			// Calculate percent
+			battPerc = Battery_VoltageToPercent(battVolt);
+
+			sprintf(buf, "Voltage:\n%d.%03d V\nCharge:\n%d%%\n%s",
 				battVolt / 1000, battVolt % 1000,
-				Battery_IsCharging() ? "Charging" : "");
+				battPerc,
+				Battery_IsCharging() ? "CHARGING" : "");
 		}
 		else {
 			sprintf(buf, "No batt");

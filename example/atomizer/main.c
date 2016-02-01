@@ -37,7 +37,8 @@ uint16_t wattsToVolts(uint32_t watts, uint16_t res) {
 
 int main() {
 	char buf[100];
-	uint16_t volts, watts, newVolts, battVolts, res;
+	uint16_t volts, newVolts, battVolts, res;
+	uint32_t watts;
 	uint8_t btnState, battPerc;
 
 	// Measure initial resistance
@@ -118,7 +119,7 @@ int main() {
 		battPerc = Battery_VoltageToPercent(battVolts);
 
 		// Display info
-		sprintf(buf, "Power:\n%d.%01dW\nV: %d.%02dV\nR: %d.%02do\n%s\n\nBattery:\n%d%%\n%s",
+		sprintf(buf, "Power:\n%lu.%01luW\nV: %d.%02dV\nR: %d.%02do\n%s\n\nBattery:\n%d%%\n%s",
 			watts / 1000, watts % 1000 / 100,
 			volts / 1000, volts % 1000 / 10,
 			res / 1000, res % 1000 / 10,

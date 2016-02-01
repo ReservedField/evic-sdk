@@ -37,6 +37,11 @@
 #define ADC_MODULE_VATM 0x01
 
 /**
+ * Atomizer resistance module.
+ */
+#define ADC_MODULE_RES  0x02
+
+/**
  * Battery voltage module.
  * The battery voltage is read through a 1/2 voltage divider.
  */

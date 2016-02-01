@@ -15,6 +15,7 @@
  * along with eVic SDK.  If not, see <http://www.gnu.org/licenses/>.
  *
  * Copyright (C) 2016 ReservedField
+ * Copyright (C) 2016 kfazz
  */
 
 #ifndef EVICSDK_ATOMIZER_H
@@ -56,5 +57,16 @@ void Atomizer_Control(uint8_t powerOn);
  * @return True if the atomizer is powered on, false otherwise.
  */
 uint8_t Atomizer_IsOn();
+
+/**
+ * Reads the atomizer resistance.
+ * If the atomizer is powered off, this powers it on for a
+ * few milliseconds at a very low voltage, in order to
+ * measure its resistance. Because of this, avoid continually
+ * calling it while not firing.
+ *
+ * @return Atomizer resistance, in milliohms.
+ */
+uint16_t Atomizer_ReadResistance();
 
 #endif

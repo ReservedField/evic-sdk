@@ -18,6 +18,7 @@
  */
 
 #include <stdio.h>
+#include <math.h>
 #include <M451Series.h>
 #include <Display.h>
 #include <Font.h>
@@ -26,13 +27,26 @@
 #include <TimerUtils.h>
 #include <Battery.h>
 
+uint16_t wattsToVolts(uint32_t watts, uint16_t res) {
+	// Units: mV, mW, mOhm
+	// V = sqrt(P * R)
+	// Round to nearest multiple of 10
+	uint16_t volts = (sqrt(watts * res) + 5) / 10;
+	return volts * 10;
+}
+
 int main() {
 	char buf[100];
-	uint16_t volts, battVolts;
+	uint16_t volts, watts, newVolts, battVolts, res;
 	uint8_t btnState, battPerc;
 
-	// Let's start with 3.00V as the initial value
-	volts = 3000;
+	// Measure initial resistance
+	res = Atomizer_ReadResistance();
+
+	// Let's start with 10.0W as the initial value
+	// We keep watts as mW
+	watts = 10000;
+	volts = wattsToVolts(watts, res);
 	Atomizer_SetOutputVoltage(volts);
 
 	while(1) {
@@ -50,24 +64,46 @@ int main() {
 
 		// Handle plus/minus keys
 		if(btnState & BUTTON_MASK_RIGHT) {
-			if(volts < ATOMIZER_MAX_VOLTS) {
-				volts += 10;
-			}
+			newVolts = wattsToVolts(watts + 100, res);
 
-			// Set voltage
-			Atomizer_SetOutputVoltage(volts);
-			// Slow down increment
-			Timer_DelayMs(50);
-		}
-		if(btnState & BUTTON_MASK_LEFT) {
-			if(volts >= 10) {
-				volts -= 10;
+			if(newVolts <= ATOMIZER_MAX_VOLTS) {
+				watts += 100;
+				volts = newVolts;
+
+				// Set voltage
+				Atomizer_SetOutputVoltage(volts);
+				// Slow down increment
+				Timer_DelayMs(50);
 			}
+		}
+		if(btnState & BUTTON_MASK_LEFT && watts >= 100) {
+			watts -= 100;
+			volts = wattsToVolts(watts, res);
 
 			// Set voltage
 			Atomizer_SetOutputVoltage(volts);
 			// Slow down decrement
 			Timer_DelayMs(50);
+		}
+
+		if(Atomizer_IsOn()) {
+			// Update resistance while firing
+			res = Atomizer_ReadResistance();
+
+			// Update output voltage to correct res variations
+			// We only do 10mV steps, otherwise a flake res reading
+			// can make it plummet to zero and stop.
+			newVolts = wattsToVolts(watts, res);
+			if(newVolts != volts) {
+				if(newVolts < volts && volts >= 10) {
+					volts -= 10;
+				}
+				else if(newVolts > volts && volts + 10 <= ATOMIZER_MAX_VOLTS) {
+					volts += 10;
+				}
+
+				Atomizer_SetOutputVoltage(volts);
+			}
 		}
 
 		// Get battery voltage
@@ -82,8 +118,10 @@ int main() {
 		battPerc = Battery_VoltageToPercent(battVolts);
 
 		// Display info
-		sprintf(buf, "Voltage:\n%d.%02dV\n%s\n\nBattery:\n%d%%\n%s",
+		sprintf(buf, "Power:\n%d.%01dW\nV: %d.%02dV\nR: %d.%02do\n%s\n\nBattery:\n%d%%\n%s",
+			watts / 1000, watts % 1000 / 100,
 			volts / 1000, volts % 1000 / 10,
+			res / 1000, res % 1000 / 10,
 			Atomizer_IsOn() ? "FIRING" : "",
 			battPerc,
 			Battery_IsCharging() ? "CHARGING" : "");

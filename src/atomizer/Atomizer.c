@@ -15,12 +15,14 @@
  * along with eVic SDK.  If not, see <http://www.gnu.org/licenses/>.
  *
  * Copyright (C) 2016 ReservedField
+ * Copyright (C) 2016 kfazz
  */
 
 #include <M451Series.h>
 #include <Atomizer.h>
 #include <ADC.h>
 #include <TimerUtils.h>
+#include <Dataflash.h>
 
 /**
  * \file
@@ -70,6 +72,12 @@ static volatile uint16_t Atomizer_curCmr = 10;
  * Current converters state.
  */
 static volatile Atomizer_ConverterState_t Atomizer_curState = POWEROFF;
+
+/**
+ * Shunt resistor value.
+ * Depends on hardware version.
+ */
+static uint8_t Atomizer_shuntRes;
 
 /**
  * Configures a PWM channel.
@@ -218,6 +226,33 @@ static void Atomizer_TimerCallback(uint32_t unused) {
 }
 
 void Atomizer_Init() {
+	// Select shunt value based on hardware version
+	switch(Dataflash_info.hwVersion) {
+		case 101:
+		case 108:
+			Atomizer_shuntRes = 125;
+			break;
+		case 103:
+		case 104:
+		case 105:
+		case 106:
+			Atomizer_shuntRes = 110;
+			break;
+		case 107:
+		case 109:
+			Atomizer_shuntRes = 120;
+			break;
+		case 110:
+		case 111:
+			Atomizer_shuntRes = 105;
+			break;
+		case 100:
+		case 102:
+		default:
+			Atomizer_shuntRes = 115;
+			break;
+	}
+
 	// Setup control pins
 	PC1 = 0;
 	GPIO_SetMode(PC, BIT1, GPIO_MODE_OUTPUT);
@@ -280,4 +315,44 @@ void Atomizer_Control(uint8_t powerOn) {
 
 uint8_t Atomizer_IsOn() {
 	return Atomizer_curState != POWEROFF;
+}
+
+uint16_t Atomizer_ReadResistance() {
+	uint32_t vSum, rSum;
+	uint16_t savedTargetVolts = 0, res;
+	uint8_t wasOff = 0, numSamples, i;
+
+	if(Atomizer_curState == POWEROFF) {
+		// Power on at 1.00V for measurement
+		wasOff = 1;
+		savedTargetVolts = Atomizer_targetVolts;
+		Atomizer_targetVolts = 1000;
+		Atomizer_Control(1);
+		Timer_DelayMs(2);
+	}
+
+	// Sample V and R
+	vSum = rSum = 0;
+	numSamples = wasOff ? 50 : 1;
+	for(i = 0; i < numSamples; i++) {
+		Timer_DelayUs(10);
+		rSum += ADC_Read(ADC_MODULE_RES);
+		Timer_DelayUs(10);
+		vSum += ADC_Read(ADC_MODULE_VATM);
+	}
+
+	if(rSum == 0) {
+		rSum = 1;
+	}
+
+	// Calculate resistance
+	res = (1300 * Atomizer_shuntRes / 100 * vSum) / (3 * rSum);
+
+	if(wasOff) {
+		// Power off and restore previous target voltage
+		Atomizer_Control(0);
+		Atomizer_targetVolts = savedTargetVolts;
+	}
+
+	return res;
 }

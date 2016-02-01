@@ -37,9 +37,9 @@
 #define ADC_MODULE_VATM 0x01
 
 /**
- * Atomizer resistance module.
+ * Atomizer current shunt module.
  */
-#define ADC_MODULE_RES  0x02
+#define ADC_MODULE_CURS  0x02
 
 /**
  * Battery voltage module.

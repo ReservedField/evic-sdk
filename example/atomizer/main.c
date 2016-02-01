@@ -14,7 +14,8 @@
  * You should have received a copy of the GNU General Public License
  * along with eVic SDK.  If not, see <http://www.gnu.org/licenses/>.
  *
- * Copyright (C) 2015-2016 ReservedField
+ * Copyright (C) 2016 ReservedField
+ * Copyright (C) 2016 kfazz
  */
 
 #include <stdio.h>
@@ -75,7 +76,7 @@ int main() {
 				// Set voltage
 				Atomizer_SetOutputVoltage(volts);
 				// Slow down increment
-				Timer_DelayMs(50);
+				Timer_DelayMs(25);
 			}
 		}
 		if(btnState & BUTTON_MASK_LEFT && watts >= 100) {
@@ -85,7 +86,7 @@ int main() {
 			// Set voltage
 			Atomizer_SetOutputVoltage(volts);
 			// Slow down decrement
-			Timer_DelayMs(50);
+			Timer_DelayMs(25);
 		}
 
 		if(Atomizer_IsOn()) {
@@ -93,15 +94,18 @@ int main() {
 			Atomizer_ReadInfo(&atomInfo);
 
 			// Update output voltage to correct res variations
-			// We only do 10mV steps, otherwise a flake res reading
-			// can make it plummet to zero and stop.
+			// If the new voltage is lower, we only correct it in
+			// 10mV steps, otherwise a flake res reading might
+			// make the voltage plummet to zero and stop.
+			// If the new voltage is higher, we immediately set
+			// it, so that the atomizer hits harder.
 			newVolts = wattsToVolts(watts, atomInfo.resistance);
 			if(newVolts != volts) {
 				if(newVolts < volts && volts >= 10) {
 					volts -= 10;
 				}
-				else if(newVolts > volts && volts + 10 <= ATOMIZER_MAX_VOLTS) {
-					volts += 10;
+				else if(newVolts > volts && newVolts <= ATOMIZER_MAX_VOLTS) {
+					volts = newVolts;
 				}
 
 				Atomizer_SetOutputVoltage(volts);
@@ -120,7 +124,7 @@ int main() {
 		battPerc = Battery_VoltageToPercent(battVolts);
 
 		// Display info
-		sprintf(buf, "Power:\n%lu.%01luW\nV: %d.%02dV\nR: %d.%02do\nI: %lu.%02luA\n%s\n\nBattery:\n%d%%\n%s",
+		sprintf(buf, "Power:\n%lu.%01luW\nV:%2d.%02dV\nR:%2d.%02do\nI:%2lu.%02luA\n%s\n\nBattery:\n%d%%\n%s",
 			watts / 1000, watts % 1000 / 100,
 			atomInfo.voltage / 1000, atomInfo.voltage % 1000 / 10,
 			atomInfo.resistance / 1000, atomInfo.resistance % 1000 / 10,

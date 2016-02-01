@@ -42,8 +42,8 @@
 
 /* Macros to convert ADC values */
 #define ATOMIZER_ADC_VOLTAGE(x) ((11090 * x) / ADC_DENOMINATOR)
-#define ATOMIZER_ADC_RESISTANCE(voltsX, resX) ((1300 * Atomizer_shuntRes / 100 * voltsX) / (3 * resX))
-#define ATOMIZER_ADC_CURRENT(x) ((ADC_VREF * x * 1000) / ADC_DENOMINATOR / Atomizer_shuntRes)
+#define ATOMIZER_ADC_RESISTANCE(voltsX, currX) ((1300 * Atomizer_shuntRes / 100 * voltsX) / (3 * currX))
+#define ATOMIZER_ADC_CURRENT(x) ((ADC_VREF * x * 100) / ADC_DENOMINATOR * 10 / Atomizer_shuntRes)
 
 /**
  * Type for storing converters state.
@@ -323,7 +323,7 @@ uint8_t Atomizer_IsOn() {
 }
 
 void Atomizer_ReadInfo(Atomizer_Info_t *info) {
-	uint32_t vSum, rSum;
+	uint32_t vSum, iSum;
 	uint16_t savedTargetVolts = 0;
 	uint8_t wasOff = 0, numSamples, i;
 
@@ -336,21 +336,21 @@ void Atomizer_ReadInfo(Atomizer_Info_t *info) {
 		Timer_DelayMs(2);
 	}
 
-	// Sample V and R
-	vSum = rSum = 0;
+	// Sample V and I
+	vSum = iSum = 0;
 	numSamples = wasOff ? 50 : 1;
 	for(i = 0; i < numSamples; i++) {
 		Timer_DelayUs(10);
-		rSum += ADC_Read(ADC_MODULE_RES);
+		iSum += ADC_Read(ADC_MODULE_CURS);
 		Timer_DelayUs(10);
 		vSum += ADC_Read(ADC_MODULE_VATM);
 	}
 
-	if(rSum == 0) {
-		rSum = 1;
+	if(iSum == 0) {
+		iSum = 1;
 	}
 
-	info->resistance = ATOMIZER_ADC_RESISTANCE(vSum, rSum);
+	info->resistance = ATOMIZER_ADC_RESISTANCE(vSum, iSum);
 
 	if(wasOff) {
 		info->voltage = info->current = 0;
@@ -361,6 +361,6 @@ void Atomizer_ReadInfo(Atomizer_Info_t *info) {
 	}
 	else {
 		info->voltage = ATOMIZER_ADC_VOLTAGE(vSum);
-		info->current = ATOMIZER_ADC_CURRENT(rSum);
+		info->current = ATOMIZER_ADC_CURRENT(iSum);
 	}
 }

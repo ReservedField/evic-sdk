@@ -32,7 +32,7 @@ int main() {
 	uint8_t btnState, battPerc;
 
 	// Let's start with 3.00V as the initial value
-	volts = 300;
+	volts = 3000;
 	Atomizer_SetOutputVoltage(volts);
 
 	while(1) {
@@ -50,8 +50,8 @@ int main() {
 
 		// Handle plus/minus keys
 		if(btnState & BUTTON_MASK_RIGHT) {
-			if(volts != ATOMIZER_MAX_VOLTS) {
-				volts++;
+			if(volts < ATOMIZER_MAX_VOLTS) {
+				volts += 10;
 			}
 
 			// Set voltage
@@ -60,8 +60,8 @@ int main() {
 			Timer_DelayMs(50);
 		}
 		if(btnState & BUTTON_MASK_LEFT) {
-			if(volts != 0) {
-				volts--;
+			if(volts >= 10) {
+				volts -= 10;
 			}
 
 			// Set voltage
@@ -83,7 +83,7 @@ int main() {
 
 		// Display info
 		sprintf(buf, "Voltage:\n%d.%02dV\n%s\n\nBattery:\n%d%%\n%s",
-			volts / 100, volts % 100,
+			volts / 1000, volts % 1000 / 10,
 			Atomizer_IsOn() ? "FIRING" : "",
 			battPerc,
 			Battery_IsCharging() ? "CHARGING" : "");

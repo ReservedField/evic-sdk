@@ -242,7 +242,7 @@ void Atomizer_Init() {
 	PWM_SET_CMR(PWM0, ATOMIZER_PWMCH_BOOST, 0);
 
 	Atomizer_targetVolts = 0;
-	Atomizer_curCmr = 10;
+	Atomizer_curCmr = 0;
 	Atomizer_curState = POWEROFF;
 
 	// Setup 5kHz timer for negative feedback cycle
@@ -256,7 +256,7 @@ void Atomizer_SetOutputVoltage(uint16_t volts) {
 		volts = ATOMIZER_MAX_VOLTS;
 	}
 
-	Atomizer_targetVolts = volts;
+	Atomizer_targetVolts = volts / 10;
 }
 
 void Atomizer_Control(uint8_t powerOn) {

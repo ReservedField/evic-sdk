@@ -21,9 +21,9 @@
 #define EVICSDK_ATOMIZER_H
 
 /**
- * Maximum output voltage, in 100ths of a Volt.
+ * Maximum output voltage, in millivolts.
  */
-#define ATOMIZER_MAX_VOLTS 900
+#define ATOMIZER_MAX_VOLTS 9000
 
 /**
  * Initializes the atomizer library.
@@ -35,8 +35,11 @@ void Atomizer_Init();
  * Sets the atomizer output voltage.
  * This can always be called, the atomizer doesn't need
  * to be powered on.
+ * While the voltage is expressed in mV, the actual precision
+ * is to 1/100 of a Volt. Millivolt units are used for uniformity
+ * between SDK functions.
  *
- * @param volts Output voltage, in 100ths of a Volt.
+ * @param volts Output voltage, in millivolts.
  */
 void Atomizer_SetOutputVoltage(uint16_t volts);
 

@@ -102,6 +102,13 @@ bool Display_IsFlipped();
 void Display_Flip();
 
 /**
+ * Sets whether the display colors are inverted.
+ *
+ * @param invert True for inverted display, false for normal display.
+ */
+void Display_SetInverted(bool invert);
+
+/**
  * Sends the framebuffer to the controller and updates the display.
  */
 void Display_Update();

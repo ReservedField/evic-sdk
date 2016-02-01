@@ -50,6 +50,15 @@ void Display_SSD_Flip() {
 	}
 }
 
+void Display_SSD_SetInverted(bool invert) {
+	if(Display_GetType() == DISPLAY_SSD1327) {
+		Display_SSD1327_SetInverted(invert);
+	}
+	else {
+		Display_SSD1306_SetInverted(invert);
+	}
+}
+
 void Display_SSD_Update(const uint8_t *framebuf) {
 	if(Display_GetType() == DISPLAY_SSD1327) {
 		Display_SSD1327_Update(framebuf);

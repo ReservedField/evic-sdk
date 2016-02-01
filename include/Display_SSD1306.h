@@ -22,6 +22,7 @@
 #define EVICSDK_DISPLAY_SSD1306_H
 
 #include <stdint.h>
+#include <stdbool.h>
 
 /*
  * Display controller commands.
@@ -30,6 +31,7 @@
 #define SSD1306_SET_REMAP          0xA1
 #define SSD1306_OUTPUT_GDDRAM      0xA4
 #define SSD1306_NORMAL_DISPLAY     0xA6
+#define SSD1306_INVERTED_DISPLAY   0xA7
 #define SSD1306_PAGE_START_ADDRESS 0xB0
 #define SSD1306_SET_COM_NORMAL     0xC0
 #define SSD1306_SET_COM_REMAP      0xC8
@@ -60,5 +62,12 @@ void Display_SSD1306_Update(const uint8_t *framebuf);
  * An update must be issued afterwards.
  */
 void Display_SSD1306_Flip();
+
+/**
+ * Sets whether the display colors are inverted.
+ *
+ * @param invert True for inverted display, false for normal display.
+ */
+void Display_SSD1306_SetInverted(bool invert);
 
 #endif

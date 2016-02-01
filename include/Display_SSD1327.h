@@ -22,6 +22,7 @@
 #define EVICSDK_DISPLAY_SSD1327_H
 
 #include <stdint.h>
+#include <stdbool.h>
 
 /*
  * Display controller commands.
@@ -32,6 +33,7 @@
 #define SSD1327_SET_START_LINE       0xA1
 #define SSD1327_SET_OFFSET           0xA2
 #define SSD1327_NORMAL_DISPLAY       0xA4
+#define SSD1327_INVERTED_DISPLAY     0xA7
 #define SSD1327_FUNC_SELECT_A        0xAB
 #define SSD1327_SET_PHASE_LENGTH     0xB1
 #define SSD1327_SET_CLOCK_DIV        0xB3
@@ -57,5 +59,12 @@ void Display_SSD1327_Update(const uint8_t *framebuf);
  * Flips the display according to the display orientation value in data flash.
  */
 void Display_SSD1327_Flip();
+
+/**
+ * Sets whether the display colors are inverted.
+ *
+ * @param invert True for inverted display, false for normal display.
+ */
+void Display_SSD1327_SetInverted(bool invert);
 
 #endif

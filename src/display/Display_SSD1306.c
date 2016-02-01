@@ -74,3 +74,7 @@ void Display_SSD1306_Flip() {
 	Display_SSD_SendCommand(flipped ? 0x20 : 0x00);
 	Display_SSD_SendCommand(flipped ? SSD1306_SET_NOREMAP : SSD1306_SET_REMAP);
 }
+
+void Display_SSD1306_SetInverted(bool invert) {
+	Display_SSD_SendCommand(invert ? SSD1306_INVERTED_DISPLAY : SSD1306_NORMAL_DISPLAY);
+}

@@ -22,6 +22,7 @@
 #define EVICSDK_DISPLAY_SSD_H
 
 #include <stdint.h>
+#include <stdbool.h>
 
 /**
  * Commands shared by the SSDxxxx display controllers.
@@ -53,6 +54,13 @@ void Display_SSD_SetOn(uint8_t isOn);
  * An update must be issued afterwards.
  */
 void Display_SSD_Flip();
+
+/**
+ * Sets whether the display colors are inverted.
+ *
+ * @param invert True for inverted display, false for normal display.
+ */
+void Display_SSD_SetInverted(bool invert);
 
 /**
  * Sends the framebuffer to the controller and updates the display.

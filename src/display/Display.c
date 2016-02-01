@@ -111,6 +111,10 @@ void Display_Flip() {
 	Display_SSD_SetOn(1);
 }
 
+void Display_SetInverted(bool invert) {
+	Display_SSD_SetInverted(invert);
+}
+
 void Display_Update() {
 	Display_SSD_Update(Display_framebuf);
 }

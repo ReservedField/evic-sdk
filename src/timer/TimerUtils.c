@@ -107,5 +107,5 @@ void Timer_DelayMs(uint32_t delay) {
 		CLK_SysTickDelay(233000);
 	}
 
-	CLK_SysTickDelay(delayRem);
+	CLK_SysTickDelay(delayRem * 1000);
 }

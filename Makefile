@@ -19,6 +19,7 @@ OBJS := $(NUVOSDK)/Device/Nuvoton/M451Series/Source/system_M451Series.o \
 	$(NUVOSDK)/StdDriver/src/timer.o \
 	$(NUVOSDK)/StdDriver/src/usbd.o \
 	$(NUVOSDK)/StdDriver/src/eadc.o \
+	$(NUVOSDK)/StdDriver/src/pwm.o \
 	src/startup/init.o \
 	src/dataflash/Dataflash.o \
 	src/display/Display_SSD.o \
@@ -30,7 +31,8 @@ OBJS := $(NUVOSDK)/Device/Nuvoton/M451Series/Source/system_M451Series.o \
 	src/button/Button.o \
 	src/usb/USB_VirtualCOM.o \
 	src/adc/ADC.o \
-	src/battery/Battery.o
+	src/battery/Battery.o \
+	src/atomizer/Atomizer.o
 
 AEABI_OBJS := src/aeabi/aeabi_memset-thumb2.o \
 	src/aeabi/aeabi_memclr.o

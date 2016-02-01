@@ -24,9 +24,9 @@
  * \file
  * ADC library.
  * There are 4 modules used in the eVic:
- * 0x01: voltage?
- * 0x02: resistance?
- * 0x0E: ?
+ * 0x01: atomizer voltage
+ * 0x02: atomizer current
+ * 0x0E: temperature
  * 0x12: battery voltage (through 1/2 voltage divider).
  */
 

@@ -22,6 +22,7 @@
 #include <Display.h>
 #include <Button.h>
 #include <ADC.h>
+#include <Atomizer.h>
 
 /**
  * PLL clock: 72MHz.
@@ -68,6 +69,10 @@ void SYS_Init() {
 	CLK_EnableModuleClock(TMR2_MODULE);
 	CLK_EnableModuleClock(TMR3_MODULE);
 
+	// PWM clock: PCLK0
+	CLK_SetModuleClock(PWM0_MODULE, CLK_CLKSEL2_PWM0SEL_PCLK0, 0);
+	CLK_EnableModuleClock(PWM0_MODULE);
+
 	// USBD clock
 	CLK_SetModuleClock(USBD_MODULE, 0, CLK_CLKDIV0_USB(3));
 	CLK_EnableModuleClock(USBD_MODULE);
@@ -92,6 +97,7 @@ void SYS_Init() {
 	Display_SetupSPI();
 	Button_Init();
 	ADC_Init();
+	Atomizer_Init();
 
 	// Initialize display
 	Display_Init();

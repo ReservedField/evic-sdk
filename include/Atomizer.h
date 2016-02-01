@@ -17,44 +17,41 @@
  * Copyright (C) 2016 ReservedField
  */
 
-#ifndef EVICSDK_ADC_H
-#define EVICSDK_ADC_H
+#ifndef EVICSDK_ATOMIZER_H
+#define EVICSDK_ATOMIZER_H
 
 /**
- * ADC reference voltage, in millivolts.
+ * Maximum output voltage, in 100ths of a Volt.
  */
-#define ADC_VREF 2560
+#define ATOMIZER_MAX_VOLTS 900
 
 /**
- * Denominator for scale calculations.
- * The ADC is 12 bits, range is 0 - 4095.
- */
-#define ADC_DENOMINATOR 4096
-
-/**
- * Atomizer voltage module.
- */
-#define ADC_MODULE_VATM 0x01
-
-/**
- * Battery voltage module.
- * The battery voltage is read through a 1/2 voltage divider.
- */
-#define ADC_MODULE_VBAT 0x12
-
-/**
- * Initializes the ADC.
+ * Initializes the atomizer library.
  * System control registers must be unlocked.
  */
-void ADC_Init();
+void Atomizer_Init();
 
 /**
- * Reads a value from the ADC.
+ * Sets the atomizer output voltage.
+ * This can always be called, the atomizer doesn't need
+ * to be powered on.
  *
- * @param moduleNum One of AVC_MODULE_*.
- *
- * @return ADC conversion result.
+ * @param volts Output voltage, in 100ths of a Volt.
  */
-uint16_t ADC_Read(uint32_t moduleNum);
+void Atomizer_SetOutputVoltage(uint16_t volts);
+
+/**
+ * Powers the atomizer on or off.
+ *
+ * @param powerOn True to power the atomizer on, false to power it off.
+ */
+void Atomizer_Control(uint8_t powerOn);
+
+/**
+ * Checks whether the atomizer is powered on.
+ *
+ * @return True if the atomizer is powered on, false otherwise.
+ */
+uint8_t Atomizer_IsOn();
 
 #endif

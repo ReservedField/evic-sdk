@@ -30,7 +30,10 @@
 
 void Battery_Init() {
 	// Setup presence pin
+	// Debounce: 1024 LIRC clocks
 	GPIO_SetMode(PD, BIT7, GPIO_MODE_INPUT);
+	GPIO_SET_DEBOUNCE_TIME(GPIO_DBCTL_DBCLKSRC_LIRC, GPIO_DBCTL_DBCLKSEL_1024);
+	GPIO_ENABLE_DEBOUNCE(PD, BIT7);
 }
 
 uint8_t Battery_IsPresent() {

@@ -24,10 +24,11 @@
 #include <Atomizer.h>
 #include <Button.h>
 #include <TimerUtils.h>
+#include <Battery.h>
 
 int main() {
 	char buf[100];
-	uint16_t volts;
+	uint16_t volts, battVolts;
 	uint8_t btnState;
 
 	// Let's start with 3.00V as the initial value
@@ -69,8 +70,20 @@ int main() {
 			Timer_DelayMs(50);
 		}
 
+		// Get battery voltage
+		if(Battery_IsPresent()) {
+			battVolts = Battery_GetVoltage() / 10;
+		}
+		else {
+			battVolts = 0;
+		}
+
 		// Display info
-		sprintf(buf, "Voltage:\n%d.%02dV\n%s", volts / 100, volts % 100, Atomizer_IsOn() ? "FIRING" : "");
+		sprintf(buf, "Voltage:\n%d.%02dV\n%s\n\nBattery:\n%d.%02dV\n%s",
+			volts / 100, volts % 100,
+			Atomizer_IsOn() ? "FIRING" : "",
+			battVolts / 100, battVolts % 100,
+			Battery_IsCharging() ? "CHARGING" : "");
 		Display_Clear();
 		Display_PutText(0, 0, buf, FONT_DEJAVU_8PT);
 		Display_Update();

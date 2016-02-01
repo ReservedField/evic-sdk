@@ -136,10 +136,10 @@ static void Atomizer_ConfigureConverters(uint8_t enableBuck, uint8_t enableBoost
 
 /**
  * Negative feedback iteration to keep the DC/DC converters stable.
- * The extra unused parameter allows to use this as a callback.
+ * Takes parameters an an ADC callback.
  * This is an internal function.
  */
-static void Atomizer_NegativeFeedback(uint32_t unused) {
+static void Atomizer_NegativeFeedback(uint16_t adcValue, uint32_t unused) {
 	uint16_t curVolts;
 
 	if(Atomizer_curState == POWEROFF) {
@@ -147,11 +147,8 @@ static void Atomizer_NegativeFeedback(uint32_t unused) {
 		return;
 	}
 
-	// Read current voltage from ADC
-	// TODO: reading ADC is slow, shouldn't be in an interrupt handler.
-	//       Timer callback should initiate an ADC conversion, then
-	//       negative feedback should be done inside ADC interrupt.
-	curVolts = (ADC_Read(ADC_MODULE_VATM) * 1109) >> 12;
+	// Calculate current voltage
+	curVolts = (adcValue * 1109) >> 12;
 	if(curVolts == Atomizer_targetVolts) {
 		// Target reached, nothing to do
 		return;
@@ -203,6 +200,23 @@ static void Atomizer_NegativeFeedback(uint32_t unused) {
 	PWM_SET_CMR(PWM0, Atomizer_curState == POWERON_BUCK ? ATOMIZER_PWMCH_BUCK : ATOMIZER_PWMCH_BOOST, Atomizer_curCmr);
 }
 
+extern uint8_t ADC_ReadAsyncEx(uint32_t moduleNum, ADC_Callback_t callback, uint32_t callbackData, uint8_t useReserved);
+
+/**
+ * Timer callback for DC/DC negative feedback loop.
+ * This is an internal function.
+ */
+static void Atomizer_TimerCallback(uint32_t unused) {
+	if(Atomizer_curState == POWEROFF) {
+		// Powered off, nothing to do
+		return;
+	}
+
+	// Schedule conversion (on reserved slot, if needed)
+	// We don't care if it fails, we'll call it again
+	ADC_ReadAsyncEx(ADC_MODULE_VATM, Atomizer_NegativeFeedback, 0, 1);
+}
+
 void Atomizer_Init() {
 	// Setup control pins
 	PC1 = 0;
@@ -234,7 +248,7 @@ void Atomizer_Init() {
 	// Setup 5kHz timer for negative feedback cycle
 	// This function should run during system init, so
 	// the user hasn't had time to create timers yet.
-	Timer_CreateTimer(5000, 1, Atomizer_NegativeFeedback, 0);
+	Timer_CreateTimer(5000, 1, Atomizer_TimerCallback, 0);
 }
 
 void Atomizer_SetOutputVoltage(uint16_t volts) {

@@ -40,6 +40,11 @@
 #define ATOMIZER_PWMCH_BUCK  0
 #define ATOMIZER_PWMCH_BOOST 2
 
+/* Macros to convert ADC values */
+#define ATOMIZER_ADC_VOLTAGE(x) ((11090 * x) / ADC_DENOMINATOR)
+#define ATOMIZER_ADC_RESISTANCE(voltsX, resX) ((1300 * Atomizer_shuntRes / 100 * voltsX) / (3 * resX))
+#define ATOMIZER_ADC_CURRENT(x) ((ADC_VREF * x * 1000) / ADC_DENOMINATOR / Atomizer_shuntRes)
+
 /**
  * Type for storing converters state.
  */
@@ -59,7 +64,7 @@ typedef enum {
 } Atomizer_ConverterState_t;
 
 /**
- * Target voltage, in 100ths of a Volt.
+ * Target voltage, in mV.
  */
 static volatile uint16_t Atomizer_targetVolts = 0;
 
@@ -74,7 +79,7 @@ static volatile uint16_t Atomizer_curCmr = 10;
 static volatile Atomizer_ConverterState_t Atomizer_curState = POWEROFF;
 
 /**
- * Shunt resistor value.
+ * Shunt resistor value, in mOhm.
  * Depends on hardware version.
  */
 static uint8_t Atomizer_shuntRes;
@@ -156,7 +161,7 @@ static void Atomizer_NegativeFeedback(uint16_t adcValue, uint32_t unused) {
 	}
 
 	// Calculate current voltage
-	curVolts = (adcValue * 1109) >> 12;
+	curVolts = ATOMIZER_ADC_VOLTAGE(adcValue);
 	if(curVolts == Atomizer_targetVolts) {
 		// Target reached, nothing to do
 		return;
@@ -291,7 +296,7 @@ void Atomizer_SetOutputVoltage(uint16_t volts) {
 		volts = ATOMIZER_MAX_VOLTS;
 	}
 
-	Atomizer_targetVolts = volts / 10;
+	Atomizer_targetVolts = volts;
 }
 
 void Atomizer_Control(uint8_t powerOn) {
@@ -317,16 +322,16 @@ uint8_t Atomizer_IsOn() {
 	return Atomizer_curState != POWEROFF;
 }
 
-uint16_t Atomizer_ReadResistance() {
+void Atomizer_ReadInfo(Atomizer_Info_t *info) {
 	uint32_t vSum, rSum;
-	uint16_t savedTargetVolts = 0, res;
+	uint16_t savedTargetVolts = 0;
 	uint8_t wasOff = 0, numSamples, i;
 
 	if(Atomizer_curState == POWEROFF) {
 		// Power on at 1.00V for measurement
 		wasOff = 1;
 		savedTargetVolts = Atomizer_targetVolts;
-		Atomizer_targetVolts = 1000;
+		Atomizer_SetOutputVoltage(1000);
 		Atomizer_Control(1);
 		Timer_DelayMs(2);
 	}
@@ -345,14 +350,17 @@ uint16_t Atomizer_ReadResistance() {
 		rSum = 1;
 	}
 
-	// Calculate resistance
-	res = (1300 * Atomizer_shuntRes / 100 * vSum) / (3 * rSum);
+	info->resistance = ATOMIZER_ADC_RESISTANCE(vSum, rSum);
 
 	if(wasOff) {
+		info->voltage = info->current = 0;
+
 		// Power off and restore previous target voltage
 		Atomizer_Control(0);
-		Atomizer_targetVolts = savedTargetVolts;
+		Atomizer_SetOutputVoltage(savedTargetVolts);
 	}
-
-	return res;
+	else {
+		info->voltage = ATOMIZER_ADC_VOLTAGE(vSum);
+		info->current = ATOMIZER_ADC_CURRENT(rSum);
+	}
 }

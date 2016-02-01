@@ -27,6 +27,24 @@
 #define ATOMIZER_MAX_VOLTS 9000
 
 /**
+ * Structure to hold atomizer info.
+ */
+typedef struct {
+	/**
+	 * Output voltage in mV, measured at the atomizer.
+	 */
+	uint16_t voltage;
+	/**
+	 * Atomizer resistance, in mOhm.
+	 */
+	uint16_t resistance;
+	/**
+	 * Output current in mA, measured at the atomizer.
+	 */
+	uint32_t current;
+} Atomizer_Info_t;
+
+/**
  * Initializes the atomizer library.
  * System control registers must be unlocked.
  */
@@ -59,14 +77,14 @@ void Atomizer_Control(uint8_t powerOn);
 uint8_t Atomizer_IsOn();
 
 /**
- * Reads the atomizer resistance.
+ * Reads the atomizer info.
  * If the atomizer is powered off, this powers it on for a
  * few milliseconds at a very low voltage, in order to
- * measure its resistance. Because of this, avoid continually
+ * measure its parameters. Because of this, avoid continually
  * calling it while not firing.
  *
- * @return Atomizer resistance, in milliohms.
+ * @param info Info structure to fill.
  */
-uint16_t Atomizer_ReadResistance();
+void Atomizer_ReadInfo(Atomizer_Info_t *info);
 
 #endif

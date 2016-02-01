@@ -37,17 +37,18 @@ uint16_t wattsToVolts(uint32_t watts, uint16_t res) {
 
 int main() {
 	char buf[100];
-	uint16_t volts, newVolts, battVolts, res;
+	uint16_t volts, newVolts, battVolts;
 	uint32_t watts;
 	uint8_t btnState, battPerc;
+	Atomizer_Info_t atomInfo;
 
-	// Measure initial resistance
-	res = Atomizer_ReadResistance();
+	// Initial measure
+	Atomizer_ReadInfo(&atomInfo);
 
 	// Let's start with 10.0W as the initial value
 	// We keep watts as mW
 	watts = 10000;
-	volts = wattsToVolts(watts, res);
+	volts = wattsToVolts(watts, atomInfo.resistance);
 	Atomizer_SetOutputVoltage(volts);
 
 	while(1) {
@@ -65,7 +66,7 @@ int main() {
 
 		// Handle plus/minus keys
 		if(btnState & BUTTON_MASK_RIGHT) {
-			newVolts = wattsToVolts(watts + 100, res);
+			newVolts = wattsToVolts(watts + 100, atomInfo.resistance);
 
 			if(newVolts <= ATOMIZER_MAX_VOLTS) {
 				watts += 100;
@@ -79,7 +80,7 @@ int main() {
 		}
 		if(btnState & BUTTON_MASK_LEFT && watts >= 100) {
 			watts -= 100;
-			volts = wattsToVolts(watts, res);
+			volts = wattsToVolts(watts, atomInfo.resistance);
 
 			// Set voltage
 			Atomizer_SetOutputVoltage(volts);
@@ -88,13 +89,13 @@ int main() {
 		}
 
 		if(Atomizer_IsOn()) {
-			// Update resistance while firing
-			res = Atomizer_ReadResistance();
+			// Update info while firing
+			Atomizer_ReadInfo(&atomInfo);
 
 			// Update output voltage to correct res variations
 			// We only do 10mV steps, otherwise a flake res reading
 			// can make it plummet to zero and stop.
-			newVolts = wattsToVolts(watts, res);
+			newVolts = wattsToVolts(watts, atomInfo.resistance);
 			if(newVolts != volts) {
 				if(newVolts < volts && volts >= 10) {
 					volts -= 10;
@@ -119,10 +120,11 @@ int main() {
 		battPerc = Battery_VoltageToPercent(battVolts);
 
 		// Display info
-		sprintf(buf, "Power:\n%lu.%01luW\nV: %d.%02dV\nR: %d.%02do\n%s\n\nBattery:\n%d%%\n%s",
+		sprintf(buf, "Power:\n%lu.%01luW\nV: %d.%02dV\nR: %d.%02do\nI: %lu.%02luA\n%s\n\nBattery:\n%d%%\n%s",
 			watts / 1000, watts % 1000 / 100,
-			volts / 1000, volts % 1000 / 10,
-			res / 1000, res % 1000 / 10,
+			atomInfo.voltage / 1000, atomInfo.voltage % 1000 / 10,
+			atomInfo.resistance / 1000, atomInfo.resistance % 1000 / 10,
+			atomInfo.current / 1000, atomInfo.current % 1000 / 10,
 			Atomizer_IsOn() ? "FIRING" : "",
 			battPerc,
 			Battery_IsCharging() ? "CHARGING" : "");

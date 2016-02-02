@@ -23,6 +23,7 @@
  */
 
 #include <string.h>
+#include <stdlib.h>
 #include <M451Series.h>
 #include <USB_VirtualCOM.h>
 #include <USB.h>
@@ -267,24 +268,89 @@ typedef struct {
 #define USB_VirtualCOM_LineCoding_t_SIZE 7
 
 /**
+ * Structure for TX transfer queue element.
+ */
+typedef struct USB_VirtualCOM_TxTransfer {
+	/**< Pointer to next transfer, or NULL if this is the last one. */
+	struct USB_VirtualCOM_TxTransfer *next;
+	/**< Data buffer size. */
+	uint32_t size;
+	/**< Number of bytes transferred so far. */
+	uint32_t txSize;
+	/**< Data buffer (variable length). */
+	uint8_t buffer[];
+} USB_VirtualCOM_TxTransfer_t;
+
+/**
+ * Structure for TX transfer queue.
+ */
+typedef struct {
+	/**< First element (or NULL if list is empty). */
+	USB_VirtualCOM_TxTransfer_t *head;
+	/**< Last element (or NULL if list is empty). */
+	USB_VirtualCOM_TxTransfer_t *tail;
+} USB_VirtualCOM_TxQueue_t;
+
+/**
  * Line coding data.
  * This is ignored, but stored for GET_LINE_CODE.
  * Default values: 115200 bauds, 1 stop bit, no parity, 8 data bits.
  */
-static USB_VirtualCOM_LineCoding_t lineCoding = {115200, 0, 0, 8};
+static USB_VirtualCOM_LineCoding_t USB_VirtualCOM_lineCoding = {115200, 0, 0, 8};
 
 /**
- * True when USB is ready for a device-to-host packet.
+ * Tx transfer queue.
  */
-static volatile uint8_t USB_VirtualCOM_canTx = 0;
+static volatile USB_VirtualCOM_TxQueue_t USB_VirtualCOM_txQueue;
+
+/**
+ * True when the host is ready for a bulk in, but no data
+ * was available last time the handler was called.
+ */
+static volatile uint8_t USB_VirtualCOM_bulkInWaiting;
 
 /**
  * Handler for bulk IN transfers.
  * This is an internal function.
  */
 static void USB_VirtualCOM_HandleBulkIn() {
-	// TODO: implement > 63 byte transfers
-	USB_VirtualCOM_canTx = 1;
+	USB_VirtualCOM_TxTransfer_t *transfer;
+	uint32_t partialSize;
+
+	// We are inside an interrupt, no need to worry about race conditions
+	// This will be 0 only when a packet is actually transferred
+	USB_VirtualCOM_bulkInWaiting = 1;
+
+	transfer = USB_VirtualCOM_txQueue.head;
+	if(transfer == NULL) {
+		// Nothing to do
+		return;
+	}
+
+	if(transfer->txSize == transfer->size) {
+		if(transfer->size % USB_VCOM_BULK_IN_MAX_PKT_SIZE == 0) {
+			// Buffer has been transferred, but size is a multiple of USB_VCOM_BULK_IN_MAX_PKT_SIZE
+			// Send a zero packet
+			USBD_SET_PAYLOAD_LEN(USB_VCOM_BULK_IN_EP, 0);
+			USB_VirtualCOM_bulkInWaiting = 0;
+		}
+
+		// Remove transfer from queue
+		USB_VirtualCOM_txQueue.head = transfer->next;
+		if(USB_VirtualCOM_txQueue.tail == transfer) {
+			USB_VirtualCOM_txQueue.tail = NULL;
+		}
+		free(transfer);
+	}
+	else {
+		// Transfer buffer, one packet at a time
+		partialSize = Minimum(transfer->size - transfer->txSize, USB_VCOM_BULK_IN_MAX_PKT_SIZE);
+		USBD_MemCopy((uint8_t *) (USBD_BUF_BASE + USB_VCOM_BULK_IN_BUF_BASE), transfer->buffer + transfer->txSize, partialSize);
+		USBD_SET_PAYLOAD_LEN(USB_VCOM_BULK_IN_EP, partialSize);
+
+		transfer->txSize += partialSize;
+		USB_VirtualCOM_bulkInWaiting = 0;
+	}
 }
 
 /**
@@ -377,7 +443,7 @@ static void USB_VirtualCOM_HandleClassRequest() {
 				if(setupPacket.wIndex == USB_VCOM_INDEX) {
 					// Copy line coding data to USB buffer
 					USBD_MemCopy((uint8_t *) (USBD_BUF_BASE + USB_VCOM_CTRL_IN_BUF_BASE),
-						(uint8_t *) &lineCoding, USB_VirtualCOM_LineCoding_t_SIZE);
+						(uint8_t *) &USB_VirtualCOM_lineCoding, USB_VirtualCOM_LineCoding_t_SIZE);
 				}
 
 				// Data stage
@@ -406,7 +472,7 @@ static void USB_VirtualCOM_HandleClassRequest() {
 			case USB_VCOM_REQ_SET_LINE_CODE:
 				if(setupPacket.wIndex == USB_VCOM_INDEX) {
 					// Prepare for line coding copy
-					USBD_PrepareCtrlOut((uint8_t *) &lineCoding, USB_VirtualCOM_LineCoding_t_SIZE);
+					USBD_PrepareCtrlOut((uint8_t *) &USB_VirtualCOM_lineCoding, USB_VirtualCOM_LineCoding_t_SIZE);
 				}
 
 				// Status stage
@@ -423,6 +489,10 @@ static void USB_VirtualCOM_HandleClassRequest() {
 }
 
 void USB_VirtualCOM_Init() {
+	// Initialize state
+	USB_VirtualCOM_txQueue.head = USB_VirtualCOM_txQueue.tail = NULL;
+	USB_VirtualCOM_bulkInWaiting = 1;
+
 	// Open USB
 	USBD_Open(&USB_VirtualCOM_UsbdInfo, USB_VirtualCOM_HandleClassRequest, NULL);
 
@@ -453,21 +523,42 @@ void USB_VirtualCOM_Init() {
 
 	// Enable USB interrupt
 	NVIC_EnableIRQ(USBD_IRQn);
-
-	USB_VirtualCOM_canTx = 1;
 }
 
 void USB_VirtualCOM_Send(const uint8_t *buf, uint32_t size) {
-	// Wait for USB to be ready
-	while(!USB_VirtualCOM_canTx);
-	USB_VirtualCOM_canTx = 0;
+	USB_VirtualCOM_TxTransfer_t *transfer;
 
-	// TODO: support > 63 byte transfers
-	size = Minimum(size, USB_VCOM_BULK_IN_MAX_PKT_SIZE - 1);
+	// Allocate memory for transfer + buffer
+	transfer = (USB_VirtualCOM_TxTransfer_t *) malloc(sizeof(USB_VirtualCOM_TxTransfer_t) + size);
+	if(transfer == NULL) {
+		return;
+	}
 
-	// Transfer buffer
-	USBD_MemCopy((uint8_t *) (USBD_BUF_BASE + USB_VCOM_BULK_IN_BUF_BASE), (uint8_t *) buf, size);
-	USBD_SET_PAYLOAD_LEN(USB_VCOM_BULK_IN_EP, size);
+	// Fill in transfer data
+	transfer->next = NULL;
+	transfer->size = size;
+	transfer->txSize = 0;
+	memcpy(transfer->buffer, buf, size);
+
+	// Enter critical section
+	__set_PRIMASK(1);
+
+	// Append transfer to queue
+	if(USB_VirtualCOM_txQueue.head == NULL) {
+		USB_VirtualCOM_txQueue.head = USB_VirtualCOM_txQueue.tail = transfer;
+	}
+	else {
+		USB_VirtualCOM_txQueue.tail->next = transfer;
+		USB_VirtualCOM_txQueue.tail = transfer;
+	}
+
+	if(USB_VirtualCOM_bulkInWaiting) {
+		// Transfer first packet right away
+		USB_VirtualCOM_HandleBulkIn();
+	}
+
+	// Exit critical section
+	__set_PRIMASK(0);
 }
 
 void USB_VirtualCOM_SendString(const char *str) {

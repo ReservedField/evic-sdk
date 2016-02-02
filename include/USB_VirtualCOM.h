@@ -39,7 +39,6 @@ void USB_VirtualCOM_Send(const uint8_t *buf, uint32_t size);
 
 /**
  * Sends a string over the USB virtual COM port.
- * TODO: maximum supported length is 63 bytes.
  *
  * @param str String to send.
  */

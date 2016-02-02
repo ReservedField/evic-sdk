@@ -41,9 +41,19 @@
 #define ATOMIZER_PWMCH_BOOST 2
 
 /* Macros to convert ADC values */
-#define ATOMIZER_ADC_VOLTAGE(x) ((11090 * x) / ADC_DENOMINATOR)
-#define ATOMIZER_ADC_RESISTANCE(voltsX, currX) ((1300 * Atomizer_shuntRes / 100 * voltsX) / (3 * currX))
-#define ATOMIZER_ADC_CURRENT(x) ((ADC_VREF * x * 100) / ADC_DENOMINATOR * 10 / Atomizer_shuntRes)
+// Read voltage is x * ADC_VREF / ADC_DENOMINATOR.
+// This is 3/13 of actual voltage, so we multiply by 13/3.
+#define ATOMIZER_ADC_VOLTAGE(x) (13L * (x) * ADC_VREF / 3L / ADC_DENOMINATOR)
+// Voltage drop on shunt (10x gain) is x * ADC_VREF / ADC_DENOMINATOR.
+// Current is Vdrop / R, units are in mV/mOhm, R has 10x gain too (10ths of mOhm).
+// So current will be in A. We multiply by 1000 to get mA.
+// Multiplication has been broken in 100 * 10 to avoid overflows.
+#define ATOMIZER_ADC_CURRENT(x) (100L * (x) * ADC_VREF / Atomizer_shuntRes * 10L / ADC_DENOMINATOR)
+// Resistance is V / I. Since it will be in Ohms, we multiply by 1000 to get mOhms.
+// This macro is provided to get better precision when taking multiple V and I samples.
+// If the number of samples is the same, it will simplify, giving better precision than averaging.
+// 1000 * ATOMIZER_ADC_VOLTAGE(voltsX) / ATOMIZER_ADC_VOLTAGE(currX) simplifies to this expression.
+#define ATOMIZER_ADC_RESISTANCE(voltsX, currX) (13L * (voltsX) * Atomizer_shuntRes / 3L / (currX))
 
 /**
  * Type for storing converters state.
@@ -79,7 +89,7 @@ static volatile uint16_t Atomizer_curCmr = 10;
 static volatile Atomizer_ConverterState_t Atomizer_curState = POWEROFF;
 
 /**
- * Shunt resistor value, in mOhm.
+ * Shunt resistor value, in 10ths of a mOhm.
  * Depends on hardware version.
  */
 static uint8_t Atomizer_shuntRes;

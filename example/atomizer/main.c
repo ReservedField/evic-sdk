@@ -93,19 +93,23 @@ int main() {
 			// Update info while firing
 			Atomizer_ReadInfo(&atomInfo);
 
-			// Update output voltage to correct res variations
+			// Update output voltage to correct res variations:
 			// If the new voltage is lower, we only correct it in
 			// 10mV steps, otherwise a flake res reading might
 			// make the voltage plummet to zero and stop.
-			// If the new voltage is higher, we immediately set
-			// it, so that the atomizer hits harder.
+			// If the new voltage is higher, we push it up by 100mV
+			// to make it hit harder on TC coils, but still keep it
+			// under control.
 			newVolts = wattsToVolts(watts, atomInfo.resistance);
 			if(newVolts != volts) {
 				if(newVolts < volts && volts >= 10) {
 					volts -= 10;
 				}
-				else if(newVolts > volts && newVolts <= ATOMIZER_MAX_VOLTS) {
-					volts = newVolts;
+				else if(newVolts > volts) {
+					volts += 100;
+					if(volts > ATOMIZER_MAX_VOLTS) {
+						volts = ATOMIZER_MAX_VOLTS;
+					}
 				}
 
 				Atomizer_SetOutputVoltage(volts);

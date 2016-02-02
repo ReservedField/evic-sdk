@@ -33,11 +33,15 @@
 
 /**
  * Atomizer voltage module.
+ * This is 3/13 of actual voltage.
  */
 #define ADC_MODULE_VATM 0x01
 
 /**
  * Atomizer current shunt module.
+ * This is read from the shunt through a INA199A2 100V/V
+ * current shunt monitor, followed by a 1/10 divider.
+ * Thus the net gain is 10.
  */
 #define ADC_MODULE_CURS  0x02
 

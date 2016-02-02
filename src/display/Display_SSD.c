@@ -17,6 +17,7 @@
  * Copyright (C) 2016 ReservedField
  * Copyright (C) 2016 Jussi Timperi
  */
+
 #include <M451Series.h>
 #include <TimerUtils.h>
 #include <Display.h>
@@ -69,21 +70,13 @@ void Display_SSD_Update(const uint8_t *framebuf) {
 }
 
 void Display_SSD_Init() {
-
-	// Reset display controller
-	// TODO: figure out PA.1 and PC.4
-	PA1 = 1;
-	PC4 = 1;
-	Timer_DelayUs(1000);
-	DISPLAY_SSD_RESET = 0;
-	Timer_DelayUs(1000);
-	DISPLAY_SSD_RESET = 1;
-	Timer_DelayUs(1000);
-
+	// Power on and initialize controller
 	if(Display_GetType() == DISPLAY_SSD1327) {
+		Display_SSD1327_PowerOn();
 		Display_SSD1327_SendInitCmds();
 	}
 	else {
+		Display_SSD1306_PowerOn();
 		Display_SSD1306_SendInitCmds();
 	}
 

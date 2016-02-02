@@ -46,6 +46,11 @@
 #define SSD1306_NUM_PAGES 0x10
 
 /**
+ * Performs the controller power-on sequence.
+ */
+void Display_SSD1306_PowerOn();
+
+/**
  * Sends the initialization commands to the controller.
  */
 void Display_SSD1306_SendInitCmds();

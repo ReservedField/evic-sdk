@@ -22,6 +22,7 @@
 #include <Display_SSD.h>
 #include <Display_SSD1327.h>
 #include <Display.h>
+#include <TimerUtils.h>
 
 // Value for pixel ON
 #define GRAYHIGH 0xF0
@@ -49,6 +50,17 @@ static uint8_t Display_SSD1327_initCmds[] = {
 	SSD1327_SET_VCOMH,            0x07,
 	SSD1327_FUNC_SELECT_B,        0x02
 };
+
+void Display_SSD1327_PowerOn() {
+	DISPLAY_SSD_VDD = 1;
+	Timer_DelayUs(1000);
+	DISPLAY_SSD_RESET = 0;
+	Timer_DelayUs(10000);
+	DISPLAY_SSD_RESET = 1;
+	Timer_DelayUs(1000);
+	DISPLAY_SSD_VCC = 1;
+	Timer_DelayUs(1000);
+}
 
 void Display_SSD1327_SendInitCmds() {
 	Display_SSD_Write(0, Display_SSD1327_initCmds, sizeof(Display_SSD1327_initCmds));

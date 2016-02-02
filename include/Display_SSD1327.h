@@ -44,6 +44,11 @@
 #define SSD1327_SET_COMMAND_LOCK     0xFD
 
 /**
+ * Performs the controller power-on sequence.
+ */
+void Display_SSD1327_PowerOn();
+
+/**
  * Sends the initialization commands to the controller.
  */
 void Display_SSD1327_SendInitCmds();

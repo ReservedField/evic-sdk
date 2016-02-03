@@ -30,7 +30,6 @@ void USB_VirtualCOM_Init();
 
 /**
  * Sends data over the USB virtual COM port.
- * TODO: maximum supported size is 63 bytes.
  *
  * @param buf  Data buffer.
  * @param size Number of bytes to send.
@@ -43,5 +42,24 @@ void USB_VirtualCOM_Send(const uint8_t *buf, uint32_t size);
  * @param str String to send.
  */
 void USB_VirtualCOM_SendString(const char *str);
+
+/**
+ * Gets the number of received bytes available for reading.
+ *
+ * @return Number of available bytes.
+ */
+uint16_t USB_VirtualCOM_GetAvailableSize();
+
+/**
+ * Reads received data from the USB virtual COM port.
+ * If the asked read size exceeds the available data size,
+ * it will be reduced.
+ *
+ * @param buf  Destination buffer.
+ * @param size Number of bytes to read.
+ *
+ * @return Number of bytes actually read.
+ */
+uint16_t USB_VirtualCOM_Read(uint8_t *buf, uint16_t size);
 
 #endif

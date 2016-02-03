@@ -166,6 +166,3 @@ the driver. An example can be found in the Nuvoton SDK, under
 An example on how to use the port is given in `example/usbdebug`. You can communicate with it
 using your favorite serial port terminal. All the line coding parameters (baud rate, parity, 
 stop bits, data bits) are ignored, so you don't need to worry about them.
-
-There are a few caveats, which will be fixed soon:
-- Host-to-device communication is not implemented yet (you can't receive data).

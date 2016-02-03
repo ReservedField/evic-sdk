@@ -82,6 +82,9 @@
 /* Virtual COM index */
 #define USB_VCOM_INDEX 0
 
+/* RX buffer size */
+#define USB_VCOM_RX_BUF_SIZE 128
+
 /**
  * USB device descriptor.
  */
@@ -292,6 +295,20 @@ typedef struct {
 } USB_VirtualCOM_TxQueue_t;
 
 /**
+ * Structure for RX ring buffer.
+ */
+typedef struct {
+	/**< Current reading position. */
+	uint16_t readIndex;
+	/**< Current writing position. */
+	uint16_t writeIndex;
+	/**< Number of used bytes in the buffer. */
+	uint16_t dataSize;
+	/**< Ring buffer. */
+	uint8_t buffer[USB_VCOM_RX_BUF_SIZE];
+} USB_VirtualCOM_RxBuffer_t;
+
+/**
  * Line coding data.
  * This is ignored, but stored for GET_LINE_CODE.
  * Default values: 115200 bauds, 1 stop bit, no parity, 8 data bits.
@@ -299,7 +316,7 @@ typedef struct {
 static USB_VirtualCOM_LineCoding_t USB_VirtualCOM_lineCoding = {115200, 0, 0, 8};
 
 /**
- * Tx transfer queue.
+ * TX transfer queue.
  */
 static volatile USB_VirtualCOM_TxQueue_t USB_VirtualCOM_txQueue;
 
@@ -308,6 +325,83 @@ static volatile USB_VirtualCOM_TxQueue_t USB_VirtualCOM_txQueue;
  * was available last time the handler was called.
  */
 static volatile uint8_t USB_VirtualCOM_bulkInWaiting;
+
+/**
+ * RX ring buffer.
+ */
+static volatile USB_VirtualCOM_RxBuffer_t USB_VirtualCOM_rxBuffer;
+
+/**
+ * Write data to the RX ring buffer.
+ * If the data size exceeds current buffer capacity, excess
+ * data will be discarded.
+ * This is an internal function.
+ *
+ * @param src  Source buffer.
+ * @param size Data size.
+ */
+static void USB_VirtualCOM_RxBuffer_Write(uint8_t *src, uint16_t size) {
+	uint16_t copySize1, copySize2;
+
+	// Discard overflowing data
+	size = Minimum(USB_VCOM_RX_BUF_SIZE - USB_VirtualCOM_rxBuffer.dataSize, size);
+
+	// Copy data to write index up to buffer end
+	copySize1 = Minimum(USB_VCOM_RX_BUF_SIZE - USB_VirtualCOM_rxBuffer.writeIndex, size);
+	if(copySize1 == 0) {
+		return;
+	}
+	USBD_MemCopy((uint8_t *) (USB_VirtualCOM_rxBuffer.buffer + USB_VirtualCOM_rxBuffer.writeIndex),
+		src, copySize1);
+
+	// Copy data (if any) to buffer start
+	if(copySize1 != size) {
+		copySize2 = size - copySize1;
+		USBD_MemCopy((uint8_t *) USB_VirtualCOM_rxBuffer.buffer, src + copySize1, copySize2);
+	}
+
+	// Update index and used size
+	USB_VirtualCOM_rxBuffer.writeIndex = (USB_VirtualCOM_rxBuffer.writeIndex + size) % USB_VCOM_RX_BUF_SIZE;
+	USB_VirtualCOM_rxBuffer.dataSize += size;
+}
+
+/**
+ * Reads data from the RX ring buffer.
+ * If the data size exceeds currently available bytes, it will
+ * be reduced.
+ * This is an internal function.
+ *
+ * @param dst  Destination buffer.
+ * @param size Data size.
+ *
+ * @return Number of bytes actually read.
+ */
+static uint16_t USB_VirtualCOM_RxBuffer_Read(uint8_t *dst, uint16_t size) {
+	uint16_t copySize1, copySize2;
+
+	// Do not read more than is available
+	size = Minimum(USB_VirtualCOM_rxBuffer.dataSize, size);
+
+	// Copy data from read index up to buffer end
+	copySize1 = Minimum(USB_VCOM_RX_BUF_SIZE - USB_VirtualCOM_rxBuffer.readIndex, size);
+	if(copySize1 == 0) {
+		return 0;
+	}
+	USBD_MemCopy(dst,
+		(uint8_t *) (USB_VirtualCOM_rxBuffer.buffer + USB_VirtualCOM_rxBuffer.readIndex), copySize1);
+
+	// Copy data (if any) from buffer start
+	if(copySize1 != size) {
+		copySize2 = size - copySize1;
+		USBD_MemCopy(dst + copySize1, (uint8_t *) USB_VirtualCOM_rxBuffer.buffer, copySize2);
+	}
+
+	// Update index and used size
+	USB_VirtualCOM_rxBuffer.readIndex = (USB_VirtualCOM_rxBuffer.readIndex + size) % USB_VCOM_RX_BUF_SIZE;
+	USB_VirtualCOM_rxBuffer.dataSize -= size;
+
+	return size;
+}
 
 /**
  * Handler for bulk IN transfers.
@@ -358,7 +452,14 @@ static void USB_VirtualCOM_HandleBulkIn() {
  * This is an internal function.
  */
 static void USB_VirtualCOM_HandleBulkOut() {
-	// TODO: implement host-to-device transfers
+	uint16_t packetSize;
+
+	// Copy data from USB packet to RX ring buffer
+	packetSize = USBD_GET_PAYLOAD_LEN(USB_VCOM_BULK_OUT_EP);
+	USB_VirtualCOM_RxBuffer_Write((uint8_t *) (USBD_BUF_BASE + USB_VCOM_BULK_OUT_BUF_BASE), packetSize);
+
+	// Ready for next bulk OUT
+	USBD_SET_PAYLOAD_LEN(USB_VCOM_BULK_OUT_EP, USB_VCOM_BULK_OUT_MAX_PKT_SIZE);
 }
 
 /**
@@ -492,6 +593,8 @@ void USB_VirtualCOM_Init() {
 	// Initialize state
 	USB_VirtualCOM_txQueue.head = USB_VirtualCOM_txQueue.tail = NULL;
 	USB_VirtualCOM_bulkInWaiting = 1;
+	USB_VirtualCOM_rxBuffer.readIndex = USB_VirtualCOM_rxBuffer.writeIndex = 0;
+	USB_VirtualCOM_rxBuffer.dataSize = 0;
 
 	// Open USB
 	USBD_Open(&USB_VirtualCOM_UsbdInfo, USB_VirtualCOM_HandleClassRequest, NULL);
@@ -563,6 +666,21 @@ void USB_VirtualCOM_Send(const uint8_t *buf, uint32_t size) {
 
 void USB_VirtualCOM_SendString(const char *str) {
 	USB_VirtualCOM_Send((uint8_t *) str, strlen(str));
+}
+
+uint16_t USB_VirtualCOM_GetAvailableSize() {
+	return USB_VirtualCOM_rxBuffer.dataSize;
+}
+
+uint16_t USB_VirtualCOM_Read(uint8_t *buf, uint16_t size) {
+	uint16_t readSize;
+
+	// Read in critical section
+	__set_PRIMASK(1);
+	readSize = USB_VirtualCOM_RxBuffer_Read(buf, size);
+	__set_PRIMASK(0);
+
+	return readSize;
 }
 
 /**

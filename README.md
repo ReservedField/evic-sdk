@@ -38,7 +38,8 @@ Follow those instructions to get python-evic to work on Cygwin:
    binutils
    gcc-core
    gcc-g++
-   python
+   python3
+   python3-setuptools
    libhidapi0
    libhidapi-devel
    libusb1.0
@@ -54,14 +55,14 @@ Follow those instructions to get python-evic to work on Cygwin:
    tar -zxvf hidapi-0.7.99.post12.tar.gz
    patch -s -p0 < 16E7UdNF
    cd hidapi-0.7.99.post12
-   python setup.py install
+   python3 setup.py install
    ```
 3. Download and install python-evic:
    
    ```
    git clone https://github.com/Ban3/python-evic
    cd python-evic
-   python setup.py install
+   python3 setup.py install
    ```
 
 Installation

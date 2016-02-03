@@ -49,7 +49,7 @@ for x in range(width):
 		imgBits.append(imgPixels[x, y] // 0xFF)
 if args.invert:
 	imgBits.invert()
-imgBytes = imgBits.tobytes()
+imgBytes = imgBits.tobytes() if hasattr(imgBits, 'tobytes') else imgBits.tostring()
 
 # Print image to stderr
 # Grab this from the bit array to check the conversion

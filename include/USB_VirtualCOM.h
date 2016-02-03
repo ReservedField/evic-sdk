@@ -23,6 +23,15 @@
 #include <M451Series.h>
 
 /**
+ * Function pointer type for USB receive callbacks.
+ * Callbacks will be invoked from an interrupt handler,
+ * so they should be as fast as possible. You'll typically
+ * want to just set a flag and return, and then act on that
+ * flag from you main application loop.
+ */
+typedef void (*USB_VirtualCOM_RxCallback_t)();
+
+/**
  * Initializes the USB virtual COM port.
  * System control registers must be unlocked.
  */
@@ -61,5 +70,14 @@ uint16_t USB_VirtualCOM_GetAvailableSize();
  * @return Number of bytes actually read.
  */
 uint16_t USB_VirtualCOM_Read(uint8_t *buf, uint16_t size);
+
+/**
+ * Sets a callback that will be invoked whenever new data is received
+ * on the USB virtual COM port.
+ * If a callback was previously set, it will be replaced.
+ *
+ * @param callbackPtr Callback function pointer, or NULL to disable.
+ */
+void USB_VirtualCOM_SetRxCallback(USB_VirtualCOM_RxCallback_t callbackPtr);
 
 #endif

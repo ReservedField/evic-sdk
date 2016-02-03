@@ -15,55 +15,63 @@
 # You should have received a copy of the GNU General Public License
 # along with eVic SDK.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright (C) 2015 ReservedField
+# Copyright (C) 2015-2016 ReservedField
+
+# Depends on PIL and bitarray.
+# On Cygwin PIL is python-imaging.
+# Bitarray can be obtained via pip:
+#    pip install bitarray
 
 import sys
+import argparse
 from PIL import Image
+from bitarray import bitarray
 
-# Check arguments
-if len(sys.argv) != 2:
-	print("Usage:", sys.argv[0], "<input file>")
-	exit(1)
+# Parse command-line arguments
+parser = argparse.ArgumentParser(description='Convert images to eVic SDK bitmap format.')
+parser.add_argument('bitmapName', metavar='name', type=str, help='C bitmap name')
+parser.add_argument('fileName', metavar='file', type=str, help='input file name')
+parser.add_argument('--invert', dest='invert', action='store_const',
+	const=True, default=False, help='invert image colors')
+args = parser.parse_args()
 
 # Open image and convert to greyscale, then to pure B/W
-img = Image.open(sys.argv[1])
+img = Image.open(args.fileName)
 img = img.convert('L')
 img = img.point(lambda x: 0 if x < 32 else 255, '1')
-
-# Slice the image into 8-pixel pages
-pages = []
 width, height = img.size
-for i in range((height + 7) // 8):
-	lowerBound = (i + 1) * 8
-	if lowerBound > height:
-		lowerBound = height
 
-	cropBox = (0, i * 8, width, lowerBound)
-	page = img.crop(cropBox)
-	pages.append(page)
+# Convert to column-major, 8 pixels/byte, topmost = LSB
+imgPixels = img.load()
+imgBits = bitarray(endian='little')
+for x in range(width):
+	for y in range(height):
+		imgBits.append(imgPixels[x, y] // 0xFF)
+if args.invert:
+	imgBits.invert()
+imgBytes = imgBits.tobytes()
 
-# Calulate image data
-imgBytes = []
-for page in reversed(pages):
-	pagePixels = page.load()
-	for x in reversed(range(width)):
-		curByte = 0
-		for y in range(page.size[1]):
-			curByte = (curByte << 1) | (pagePixels[x, y] // 0xFF)
-		imgBytes.append(curByte);
+# Print image to stderr
+# Grab this from the bit array to check the conversion
+for y in range(height):
+	for x in range(width):
+		sys.stderr.write('#' if imgBits[x * height + y] == 1 else ' ')
+	sys.stderr.write('\n')
 
 # Output C header
-print("uint8_t bitmap[] = {")
-lines = [imgBytes[i:i+8] for i in range(0, len(imgBytes), 8)]
-for i, line in enumerate(lines):
-	text = "\t"
-	for byte in line:
-		text += "0x%02X, " % byte
-	if i == len(lines) - 1:
-		text = text[:-2]
-	else:
-		text = text[:-1]
-	print(text)
-print("};")
-print("int bitmapWidth  = %d;" % width)
-print("int bitmapHeight = %d;" % height)
+print(('#include <stdint.h>\n\n'
+       '#ifndef {0}_H\n'
+       '#define {0}_H\n\n'
+       'uint8_t {1}[] = {{')
+       .format(args.bitmapName.upper(), args.bitmapName))
+byteLines = [imgBytes[i:i+8] for i in range(0, len(imgBytes), 8)]
+for idx, line in enumerate(byteLines):
+	lineStr = '\t' + ', '.join(['0x{:02X}'.format(ord(b)) for b in line])
+	if idx != len(byteLines) - 1:
+		lineStr += ','
+	print(lineStr)
+print(('}};\n\n'
+	   'int {0}_width  = {1};\n'
+	   'int {0}_height = {2};\n\n'
+	   '#endif'
+	   .format(args.bitmapName, width, height)))

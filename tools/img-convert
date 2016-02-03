@@ -73,5 +73,5 @@ for idx, line in enumerate(byteLines):
 print(('}};\n\n'
 	   'int {0}_width  = {1};\n'
 	   'int {0}_height = {2};\n\n'
-	   '#endif'
-	   .format(args.bitmapName, width, height)))
+	   '#endif')
+	   .format(args.bitmapName, width, height))

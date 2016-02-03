@@ -223,7 +223,6 @@ void Display_PutPixels(int x, int y, const uint8_t *bitmap, int w, int h) {
 		Display_BitCopy(&Display_framebuf[(x + curX) * (DISPLAY_HEIGHT / 8) + startRow],
 			&bitmap[curX * colSize], y % 8, h);
 	}
-
 }
 
 void Display_PutText(int x, int y, const char *txt, const Font_Info_t *font) {
@@ -235,8 +234,9 @@ void Display_PutText(int x, int y, const char *txt, const Font_Info_t *font) {
 	for(i = 0; i < strlen(txt); i++) {
 		// Handle newlines
 		if(txt[i] == '\n') {
-			Display_PutText(x, y + font->height, &txt[i + 1], font);
-			break;
+			curX = x;
+			y += font->height;
+			continue;
 		}
 
 		// Handle spaces
@@ -245,7 +245,7 @@ void Display_PutText(int x, int y, const char *txt, const Font_Info_t *font) {
 			continue;
 		}
 
-		// Sanity check
+		// Skip unknown characters
 		if(txt[i] < font->startChar || txt[i] > font->endChar) {
 			continue;
 		}

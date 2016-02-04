@@ -35,12 +35,12 @@ void timerCallback(uint32_t counterIndex) {
 int main() {
 	char buf[100];
 
-	// Setup three periodic timers: 1Hz, 10Hz, 1kHz
+	// Setup three periodic timers: 0.2Hz (5s period), 1Hz, 100Hz
 	// All of them use the same callback
 	// They are distinguished by the optional parameter
-	Timer_CreateTimer(1, 1, timerCallback, 0);
-	Timer_CreateTimer(10, 1, timerCallback, 1);
-	Timer_CreateTimer(1000, 1, timerCallback, 2);
+	Timer_CreateTimeout(5000, 1, timerCallback, 0);
+	Timer_CreateTimer(1, 1, timerCallback, 1);
+	Timer_CreateTimer(100, 1, timerCallback, 2);
 
 	while(1) {
 		sprintf(buf, "Count 1:\n%lu\nCount 2:\n%lu\nCount 3:\n%lu",

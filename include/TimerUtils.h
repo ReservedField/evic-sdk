@@ -32,9 +32,13 @@
 typedef void (*Timer_Callback_t)(uint32_t);
 
 /**
- * Creates and starts a timer.
+ * Creates and starts a timer with a specified frequency.
  * There are three timer slots available to users.
  * For best accuracy, the frequency should be a divisor of 12MHz.
+ * If you need a frequency lower than 1Hz or more precise than 1Hz,
+ * look at Timer_CreateTimeout.
+ * Even if the timer is one-shot, the slot will only be freed when
+ * Timer_DeleteTimer is called.
  *
  * @param freq         Timer frequency, in Hz.
  * @param isPeriodic   True if the timer is periodic, false if one-shot.
@@ -45,6 +49,22 @@ typedef void (*Timer_Callback_t)(uint32_t);
  *         value if there are no timer slots available.
  */
 int8_t Timer_CreateTimer(uint32_t freq, uint8_t isPeriodic, Timer_Callback_t callback, uint32_t callbackData);
+
+/**
+ * Creates and starts a timer with a specified period.
+ * There are three timer slots available to users.
+ * Even if the timer is one-shot, the slot will only be freed when
+ * Timer_DeleteTimer is called.
+ *
+ * @param timeout      Timer period, in milliseconds.
+ * @param isPeriodic   True if the timer is periodic, false if one-shot.
+ * @param callback     Timeout callback function.
+ * @param callbackData Optional argument to pass to the callback function.
+ *
+ * @return A positive index for the newly created timer, or a negative
+ *         value if there are no timer slots available.
+ */
+int8_t Timer_CreateTimeout(uint16_t timeout, uint8_t isPeriodic, Timer_Callback_t callback, uint32_t callbackData);
 
 /**
  * Stops and deletes a timer.

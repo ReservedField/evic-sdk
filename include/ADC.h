@@ -39,9 +39,8 @@
 
 /**
  * Atomizer current shunt module.
- * This is read from the shunt through a INA199A2 100V/V
- * current shunt monitor, followed by a 1/10 divider.
- * Thus the net gain is 10.
+ * This is read from the shunt through a INA199A2 current
+ * shunt monitor (100V/V gain).
  */
 #define ADC_MODULE_CURS  0x02
 

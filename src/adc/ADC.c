@@ -153,7 +153,7 @@ void ADC_Init() {
 	EADC_SetInternalSampleTime(EADC, 6);
 
 	// Enable interrupts
-	for(i = 0;  i < 4; i++) {
+	for(i = 0; i < 4; i++) {
 		EADC_ENABLE_INT(EADC, 1 << i);
 		NVIC_EnableIRQ(irqNum[i]);
 	}

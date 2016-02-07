@@ -58,7 +58,8 @@ OBJCOPY := arm-none-eabi-objcopy
 
 BINDIR := bin
 
-INCDIRS := -I$(NUVOSDK)/CMSIS/Include \
+INCDIRS := -I$(ARMGCC)/arm-none-eabi/include \
+	-I$(NUVOSDK)/CMSIS/Include \
 	-I$(NUVOSDK)/Device/Nuvoton/M451Series/Include \
 	-I$(NUVOSDK)/StdDriver/inc \
 	-I$(EVICSDK)/include

@@ -89,7 +89,8 @@ AS := arm-none-eabi-as
 AR := arm-none-eabi-ar
 OBJCOPY := arm-none-eabi-objcopy
 
-INCDIRS := -I$(NUVOSDK)/CMSIS/Include \
+INCDIRS := -I$(ARMGCC)/arm-none-eabi/include \
+	-I$(NUVOSDK)/CMSIS/Include \
 	-I$(NUVOSDK)/Device/Nuvoton/M451Series/Include \
 	-I$(NUVOSDK)/StdDriver/inc \
 	-Iinclude

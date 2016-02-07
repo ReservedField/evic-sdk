@@ -32,7 +32,7 @@
  * Modified:
  *     Set vertical re-map for dealing with the framebuffer format.
 */
-static uint8_t Display_SSD1327_initCmds[] = {
+static const uint8_t Display_SSD1327_initCmds[] = {
 	SSD_DISPLAY_OFF,
 	SSD1327_SET_REMAP,            0x44,
 	SSD1327_SET_START_LINE,       0x00,

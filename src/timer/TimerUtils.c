@@ -57,12 +57,12 @@ static volatile uint8_t Timer_info;
 /**
  * Lookup table for timer pointers.
  */
-static TIMER_T *Timer_TimerPtr[] = {TIMER0, TIMER1, TIMER2, TIMER3};
+static TIMER_T * const Timer_TimerPtr[] = {TIMER0, TIMER1, TIMER2, TIMER3};
 
 /**
  * Lookup table for timer IRQ numbers.
  */
-static IRQn_Type Timer_IrqNum[] = {TMR0_IRQn, TMR1_IRQn, TMR2_IRQn, TMR3_IRQn};
+static const IRQn_Type Timer_IrqNum[] = {TMR0_IRQn, TMR1_IRQn, TMR2_IRQn, TMR3_IRQn};
 
 /**
  * Convenience macro to define timer IRQ handlers.

@@ -24,7 +24,7 @@
 #include <Display.h>
 #include <TimerUtils.h>
 
-static uint8_t Display_SSD1306_initCmds[] = {
+static const uint8_t Display_SSD1306_initCmds[] = {
 	SSD_DISPLAY_OFF,
 	SSD_SET_MULTIPLEX_RATIO, 0x3F,
 	SSD1306_SET_CLOCK_DIV,   0xF1,

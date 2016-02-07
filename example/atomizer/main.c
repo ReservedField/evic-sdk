@@ -40,7 +40,7 @@ int main() {
 	char buf[100];
 	uint16_t volts, newVolts, battVolts;
 	uint32_t watts;
-	uint8_t btnState, battPerc;
+	uint8_t btnState, battPerc, boardTemp;
 	Atomizer_Info_t atomInfo;
 
 	// Initial measure
@@ -116,23 +116,20 @@ int main() {
 			}
 		}
 
-		// Get battery voltage
-		if(Battery_IsPresent()) {
-			battVolts = Battery_GetVoltage();
-		}
-		else {
-			battVolts = 0;
-		}
-
-		// Calculate battery charge
+		// Get battery voltage and charge
+		battVolts = Battery_IsPresent() ? Battery_GetVoltage() : 0;
 		battPerc = Battery_VoltageToPercent(battVolts);
 
+		// Get board temperature
+		boardTemp = Atomizer_ReadBoardTemp();
+
 		// Display info
-		sprintf(buf, "Power:\n%lu.%01luW\nV:%2d.%02dV\nR:%2d.%02do\nI:%2lu.%02luA\n%s\n\nBattery:\n%d%%\n%s",
+		sprintf(buf, "P:%3lu.%luW\nV:%2d.%02dV\nR:%2d.%02do\nI:%2lu.%02luA\nT:%5dC\n%s\n\nBattery:\n%d%%\n%s",
 			watts / 1000, watts % 1000 / 100,
 			atomInfo.voltage / 1000, atomInfo.voltage % 1000 / 10,
 			atomInfo.resistance / 1000, atomInfo.resistance % 1000 / 10,
 			atomInfo.current / 1000, atomInfo.current % 1000 / 10,
+			boardTemp,
 			Atomizer_IsOn() ? "FIRING" : "",
 			battPerc,
 			Battery_IsCharging() ? "CHARGING" : "");

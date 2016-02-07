@@ -23,13 +23,13 @@
 /**
  * ADC reference voltage, in millivolts.
  */
-#define ADC_VREF 2560
+#define ADC_VREF 2560L
 
 /**
  * Denominator for scale calculations.
  * The ADC is 12 bits, range is 0 - 4095.
  */
-#define ADC_DENOMINATOR 4096
+#define ADC_DENOMINATOR 4096L
 
 /**
  * Atomizer voltage module.
@@ -42,7 +42,17 @@
  * This is read from the shunt through a INA199A2 current
  * shunt monitor (100V/V gain).
  */
-#define ADC_MODULE_CURS  0x02
+#define ADC_MODULE_CURS 0x02
+
+/**
+ * Board temperature sensor.
+ * This is probably the DC/DC converter temperature.
+ * The sensor is a 10Kohm (@ 25°C) NTC thermistor, beta = 4066.
+ * Input circuit as follows:
+ * 3.3V---|20Kohm|---o---|Thermistor|---GND
+ *                   |---|ADC input|
+ */
+#define ADC_MODULE_TEMP 0x0E
 
 /**
  * Battery voltage module.

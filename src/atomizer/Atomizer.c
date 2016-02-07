@@ -43,17 +43,29 @@
 /* Macros to convert ADC values */
 // Read voltage is x * ADC_VREF / ADC_DENOMINATOR.
 // This is 3/13 of actual voltage, so we multiply by 13/3.
+// Maximum result size: 14 bits.
 #define ATOMIZER_ADC_VOLTAGE(x) (13L * (x) * ADC_VREF / 3L / ADC_DENOMINATOR)
 // Voltage drop on shunt (100x gain) is x * ADC_VREF / ADC_DENOMINATOR.
 // Current is Vdrop / R, units are in mV/mOhm, R has 100x gain too (100ths of mOhm).
 // So current will be in A. We multiply by 1000 to get mA.
-// Multiplication has been broken in 100 * 10 to avoid overflows.
+// Multiplication has been broken into 100 * 10 to avoid overflows.
+// Maximum result size: 15 bits.
 #define ATOMIZER_ADC_CURRENT(x) (100L * (x) * ADC_VREF / Atomizer_shuntRes * 10L / ADC_DENOMINATOR)
 // Resistance is V / I. Since it will be in Ohms, we multiply by 1000 to get mOhms.
 // This macro is provided to get better precision when taking multiple V and I samples.
 // If the number of samples is the same, it will simplify, giving better precision than averaging.
-// 1000 * ATOMIZER_ADC_VOLTAGE(voltsX) / ATOMIZER_ADC_VOLTAGE(currX) simplifies to this expression.
+// 1000 * ATOMIZER_ADC_VOLTAGE(voltsX) / ATOMIZER_ADC_CURRENT(currX) simplifies to this expression.
+// Maximum result size: 22 bits.
 #define ATOMIZER_ADC_RESISTANCE(voltsX, currX) (13L * (voltsX) * Atomizer_shuntRes / 3L / (currX))
+// The thermistor is read through a voltage divider supplied by 3.3V.
+// The thermistor is on the low side, a 20K resistor is on the high side.
+// R = V * 20000 / (3.3 - V)
+// V = ADC_VREF * x / ADC_DENOMINATOR
+// Simplified expression: R = 20000 * ADC_VREF * x / (3300 * ADC_DENOMINATOR - ADC_VREF * x)
+// The nominator overflows, leaving us with at most 100ohms accuracy when breaking into 2000 * 100.
+// To get 1ohm accuracy, and to save a multiplication, ADC_VREF and ADC_DENOMINATOR are hardcoded.
+// Maximum result size: 17 bits.
+#define ATOMIZER_ADC_THERMRES(x) (20000L * (x) / (5280L - (x)))
 
 /**
  * Type for storing converters state.
@@ -81,7 +93,7 @@ static volatile uint16_t Atomizer_targetVolts = 0;
 /**
  * Current duty cycle.
  */
-static volatile uint16_t Atomizer_curCmr = 10;
+static volatile uint16_t Atomizer_curCmr = 0;
 
 /**
  * Current converters state.
@@ -93,6 +105,17 @@ static volatile Atomizer_ConverterState_t Atomizer_curState = POWEROFF;
  * Depends on hardware version.
  */
 static uint8_t Atomizer_shuntRes;
+
+/**
+ * Thermistor resistance to board temperature lookup table.
+ * boardTempTable[i] maps the 5°C range starting at 5*i °C.
+ * Linear interpolation is done inside the range.
+ */
+static const uint16_t Atomizer_boardTempTable[21] = {
+	34800, 26670, 20620, 16070, 12630, 10000, 7976,
+	 6407,  5182,  4218,  3455,  2847,  2360, 1967,
+	 1648,  1388,  1175,   999,   853,   732,  630
+};
 
 /**
  * Configures a PWM channel.
@@ -373,4 +396,36 @@ void Atomizer_ReadInfo(Atomizer_Info_t *info) {
 		info->voltage = ATOMIZER_ADC_VOLTAGE(vSum);
 		info->current = ATOMIZER_ADC_CURRENT(iSum);
 	}
+}
+
+uint8_t Atomizer_ReadBoardTemp() {
+	uint8_t i;
+	uint16_t thermAdcSum, lowerBound, higherBound;
+	uint32_t thermRes;
+
+	// Sample and average thermistor resistance
+	// A power-of-2 sample count is better for
+	// optimization. 16 is also the biggest number
+	// of samples that will fit in a uint16_t.
+	thermAdcSum = 0;
+	for(i = 0; i < 16; i++) {
+		thermAdcSum += ADC_Read(ADC_MODULE_TEMP);
+	}
+	thermRes = ATOMIZER_ADC_THERMRES(thermAdcSum / 16);
+
+	// Handle corner cases
+	if(thermRes >= Atomizer_boardTempTable[0]) {
+		return 0;
+	}
+	else if(thermRes <= Atomizer_boardTempTable[20]) {
+		return 99;
+	}
+
+	// Look up lower resistance bound (higher temperature bound)
+	for(i = 1; i < 20 && thermRes < Atomizer_boardTempTable[i]; i++);
+
+	// Interpolate
+	lowerBound = Atomizer_boardTempTable[i];
+	higherBound = Atomizer_boardTempTable[i - 1];
+	return 5 * (i - 1) + (thermRes - lowerBound) * 5 / (higherBound - lowerBound);
 }

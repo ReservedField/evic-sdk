@@ -87,4 +87,12 @@ uint8_t Atomizer_IsOn();
  */
 void Atomizer_ReadInfo(Atomizer_Info_t *info);
 
+/**
+ * Reads the DC/DC converter temperature.
+ *
+ * @return DC/DC converter temperature, in °C.
+ *         Range is 0 - 99 °C.
+ */
+uint8_t Atomizer_ReadBoardTemp();
+
 #endif

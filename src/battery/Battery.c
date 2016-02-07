@@ -30,7 +30,7 @@
 
 /**
  * Battery mV voltage to percent lookup table.
- * batteryTable[i] maps the 10% range starting at 10*i%.
+ * percentTable[i] maps the 10% range starting at 10*i%.
  * Linear interpolation is done inside the range.
  */
 static const uint16_t Battery_percentTable[11] = {
@@ -72,7 +72,7 @@ uint8_t Battery_VoltageToPercent(uint16_t volts) {
 	}
 
 	// Look up higher bound
-	for(i = 1; i < 11 && volts > Battery_percentTable[i]; i++);
+	for(i = 1; i < 10 && volts > Battery_percentTable[i]; i++);
 
 	// Interpolate
 	lowerBound = Battery_percentTable[i - 1];

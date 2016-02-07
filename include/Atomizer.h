@@ -41,7 +41,7 @@ typedef struct {
 	/**
 	 * Output current in mA, measured at the atomizer.
 	 */
-	uint32_t current;
+	uint16_t current;
 } Atomizer_Info_t;
 
 /**

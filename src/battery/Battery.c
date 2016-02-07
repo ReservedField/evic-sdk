@@ -56,7 +56,7 @@ uint8_t Battery_IsCharging() {
 uint16_t Battery_GetVoltage() {
 	// Double the voltage to compensate for the divider
 	uint16_t adcValue = ADC_Read(ADC_MODULE_VBAT);
-	return adcValue * 2 * ADC_VREF / ADC_DENOMINATOR;
+	return adcValue * 2L * ADC_VREF / ADC_DENOMINATOR;
 }
 
 uint8_t Battery_VoltageToPercent(uint16_t volts) {

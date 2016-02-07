@@ -48,22 +48,24 @@
 // Voltage drop on shunt (100x gain) is x * ADC_VREF / ADC_DENOMINATOR.
 // Current is Vdrop / R, units are in mV/mOhm, R has 100x gain too (100ths of mOhm).
 // So current will be in A. We multiply by 1000 to get mA.
-// Multiplication has been broken into 100 * 10 to avoid overflows.
+// Simplified expression: I = 1000 * x * ADC_VREF / Atomizer_shuntRes / ADC_DENOMINATOR
+// To avoid overflows, get better precision and save a division, ADC_VREF and ADC_DENOMINATOR are hardcoded.
 // Maximum result size: 15 bits.
-#define ATOMIZER_ADC_CURRENT(x) (100L * (x) * ADC_VREF / Atomizer_shuntRes * 10L / ADC_DENOMINATOR)
+#define ATOMIZER_ADC_CURRENT(x) (625L * (x) / Atomizer_shuntRes)
 // Resistance is V / I. Since it will be in Ohms, we multiply by 1000 to get mOhms.
 // This macro is provided to get better precision when taking multiple V and I samples.
 // If the number of samples is the same, it will simplify, giving better precision than averaging.
 // 1000 * ATOMIZER_ADC_VOLTAGE(voltsX) / ATOMIZER_ADC_CURRENT(currX) simplifies to this expression.
+// Current is forced to 1 if zero to avoid division by zero.
 // Maximum result size: 22 bits.
-#define ATOMIZER_ADC_RESISTANCE(voltsX, currX) (13L * (voltsX) * Atomizer_shuntRes / 3L / (currX))
+#define ATOMIZER_ADC_RESISTANCE(voltsX, currX) (13L * (voltsX) * Atomizer_shuntRes / 3L / ((currX) == 0 ? 1 : (currX)))
 // The thermistor is read through a voltage divider supplied by 3.3V.
 // The thermistor is on the low side, a 20K resistor is on the high side.
 // R = V * 20000 / (3.3 - V)
 // V = ADC_VREF * x / ADC_DENOMINATOR
 // Simplified expression: R = 20000 * ADC_VREF * x / (3300 * ADC_DENOMINATOR - ADC_VREF * x)
 // The nominator overflows, leaving us with at most 100ohms accuracy when breaking into 2000 * 100.
-// To get 1ohm accuracy, and to save a multiplication, ADC_VREF and ADC_DENOMINATOR are hardcoded.
+// To get 1ohm accuracy and save a multiplication, ADC_VREF and ADC_DENOMINATOR are hardcoded.
 // Maximum result size: 17 bits.
 #define ATOMIZER_ADC_THERMRES(x) (20000L * (x) / (5280L - (x)))
 
@@ -377,10 +379,6 @@ void Atomizer_ReadInfo(Atomizer_Info_t *info) {
 		iSum += ADC_Read(ADC_MODULE_CURS);
 		Timer_DelayUs(10);
 		vSum += ADC_Read(ADC_MODULE_VATM);
-	}
-
-	if(iSum == 0) {
-		iSum = 1;
 	}
 
 	info->resistance = ATOMIZER_ADC_RESISTANCE(vSum, iSum);

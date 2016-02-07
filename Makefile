@@ -94,7 +94,7 @@ INCDIRS := -I$(NUVOSDK)/CMSIS/Include \
 	-I$(NUVOSDK)/StdDriver/inc \
 	-Iinclude
 
-CFLAGS += -Wall -mcpu=$(CPU) -mthumb -Os
+CFLAGS += -Wall -mcpu=$(CPU) -mthumb -Os -fdata-sections -ffunction-sections
 CFLAGS += $(INCDIRS)
 
 ASFLAGS := -mcpu=$(CPU)

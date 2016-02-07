@@ -89,13 +89,12 @@ AS := arm-none-eabi-as
 AR := arm-none-eabi-ar
 OBJCOPY := arm-none-eabi-objcopy
 
-INCDIRS := -I$(ARMGCC)/arm-none-eabi/include \
-	-I$(NUVOSDK)/CMSIS/Include \
+INCDIRS := -I$(NUVOSDK)/CMSIS/Include \
 	-I$(NUVOSDK)/Device/Nuvoton/M451Series/Include \
 	-I$(NUVOSDK)/StdDriver/inc \
 	-Iinclude
 
-CFLAGS += -Wall -mcpu=$(CPU) -mthumb -Os
+CFLAGS += -Wall -mcpu=$(CPU) -mthumb -Os -fdata-sections -ffunction-sections
 CFLAGS += $(INCDIRS)
 
 ASFLAGS := -mcpu=$(CPU)

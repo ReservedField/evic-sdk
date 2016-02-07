@@ -58,8 +58,7 @@ OBJCOPY := arm-none-eabi-objcopy
 
 BINDIR := bin
 
-INCDIRS := -I$(ARMGCC)/arm-none-eabi/include \
-	-I$(NUVOSDK)/CMSIS/Include \
+INCDIRS := -I$(NUVOSDK)/CMSIS/Include \
 	-I$(NUVOSDK)/Device/Nuvoton/M451Series/Include \
 	-I$(NUVOSDK)/StdDriver/inc \
 	-I$(EVICSDK)/include
@@ -73,14 +72,14 @@ LIBDIRS := -L$(ARMGCC)/arm-none-eabi/lib \
 
 LIBS := -levicsdk
 
-CFLAGS += -Wall -mcpu=$(CPU) -mthumb -Os
+CFLAGS += -Wall -mcpu=$(CPU) -mthumb -Os -fdata-sections -ffunction-sections
 CFLAGS += $(INCDIRS)
 
 ASFLAGS += -mcpu=$(CPU)
 
 LDFLAGS += $(LIBDIRS)
 LDFLAGS += $(LIBS)
-LDFLAGS += -nostdlib -nostartfiles -T$(LDSCRIPT)
+LDFLAGS += -nostdlib -nostartfiles -T$(LDSCRIPT) --gc-sections
 
 all: env_check $(TARGET).bin
 

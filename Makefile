@@ -20,6 +20,7 @@ OBJS := $(NUVOSDK)/Device/Nuvoton/M451Series/Source/system_M451Series.o \
 	$(NUVOSDK)/StdDriver/src/usbd.o \
 	$(NUVOSDK)/StdDriver/src/eadc.o \
 	$(NUVOSDK)/StdDriver/src/pwm.o \
+	src/startup/initfini.o \
 	src/startup/sbrk.o \
 	src/startup/init.o \
 	src/dataflash/Dataflash.o \

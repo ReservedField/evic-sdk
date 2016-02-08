@@ -21,6 +21,10 @@
 #ifndef EVICSDK_ATOMIZER_H
 #define EVICSDK_ATOMIZER_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * Maximum output voltage, in millivolts.
  */
@@ -94,5 +98,9 @@ void Atomizer_ReadInfo(Atomizer_Info_t *info);
  *         Range is 0 - 99 °C.
  */
 uint8_t Atomizer_ReadBoardTemp();
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

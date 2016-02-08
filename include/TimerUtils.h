@@ -20,6 +20,10 @@
 #ifndef EVICSDK_TIMERUTILS_H
 #define EVICSDK_TIMERUTILS_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * Function pointer type for timer callbacks.
  * It accepts a user-defined argument. If more than 4 bytes
@@ -86,5 +90,9 @@ void Timer_DelayUs(uint32_t delay);
  * @param delay Delay in milliseconds.
  */
 void Timer_DelayMs(uint32_t delay);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

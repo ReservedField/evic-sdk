@@ -175,12 +175,15 @@ While the SDK does a fairly good job of abstracting the low-level details, you s
 remember that you're coding on an embedded platform. A few tips that might be useful:
 
 - You should declare all variables shared between your main code and callbacks/interrupt
-  handlers as `volatile`;
+  handlers as `volatile`.
 - Try to minimize dynamic memory allocation: all memory not used by data or stack is assigned
-  to heap, but RAM is only 32kB;
+  to heap, but RAM is only 32kB.
 - Declare constant data (such as lookup tables) as `const`: the compiler will place it in
-  the ROM, reducing RAM usage;
+  the ROM, reducing RAM usage.
 - Prefer `siprintf` over `sprintf`, as it produces much smaller binaries by stripping out the
   floating point printing routines. Of course `siprintf` doesn't support floating point numbers,
   so if you need to print them and cannot use a fixed-point representation you'll have to live
   with the increased binary size.
+- C++ is supported, just name your C++ files with `.cpp` extensions. The C++ standard library is
+  NOT (yet?) supported. It's really bulky and it hardly fits in the ROM/RAM space we have.
+  Exception handling and RTTI are disabled.

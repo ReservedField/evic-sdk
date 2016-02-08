@@ -22,6 +22,10 @@
 
 #include <stdint.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * This structure describes a single character's display information.
  */
@@ -64,6 +68,10 @@ typedef struct {
 	 * Font bitmap.
 	 */
 	const uint8_t *data;
-} Font_Info_t;	
+} Font_Info_t;
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

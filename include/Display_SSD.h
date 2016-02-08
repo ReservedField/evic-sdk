@@ -25,6 +25,10 @@
 #include <stdbool.h>
 #include <M451Series.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * Commands shared by the SSDxxxx display controllers.
  */
@@ -101,5 +105,9 @@ void Display_SSD_Write(uint8_t isData, const uint8_t *buf, uint32_t len);
  * @param cmd Command.
  */
 void Display_SSD_SendCommand(uint8_t cmd);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

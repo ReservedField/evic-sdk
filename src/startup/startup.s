@@ -189,8 +189,16 @@ BSS_Zero_Check:
 	MOVS  R1, #0
 	STR   R1, [R0]
 
+	@ Call __libc_init_array
+	LDR   R0, =__libc_init_array
+	BLX   R0
+
 	@ Call main
 	LDR   R0, =main
+	BLX   R0
+
+	@ Call __libc_fini_array
+	LDR   R0, =__libc_fini_array
 	BLX   R0
 
 	@ Trap the CPU in a infinite loop

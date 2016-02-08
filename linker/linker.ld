@@ -20,7 +20,19 @@ SECTIONS {
 		*(.text*)
 
 		KEEP(*(.init))
+		. = ALIGN(4);
+		__preinit_array_start = .;
+		KEEP(*(.preinit_array))
+		__preinit_array_end = .;
+		__init_array_start = .;
+		KEEP(*(.init_array))
+		__init_array_end = .;
+
 		KEEP(*(.fini))
+		. = ALIGN(4);
+		__fini_array_start = .;
+		KEEP(*(.fini_array))
+		__fini_array_end = .;
 
 		/* .ctors */
 		*crtbegin.o(.ctors)

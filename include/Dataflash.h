@@ -21,6 +21,10 @@
 #ifndef EVICSDK_DATAFLASH_H
 #define EVICSDK_DATAFLASH_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * Status flag.
  */
@@ -64,5 +68,9 @@ extern Dataflash_Info_t Dataflash_info;
  * System control registers must be unlocked.
  */
 void Dataflash_Init();
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

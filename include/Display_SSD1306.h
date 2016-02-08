@@ -24,6 +24,10 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /*
  * Display controller commands.
  */
@@ -74,5 +78,9 @@ void Display_SSD1306_Flip();
  * @param invert True for inverted display, false for normal display.
  */
 void Display_SSD1306_SetInverted(bool invert);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

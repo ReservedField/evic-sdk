@@ -2,6 +2,7 @@
 # TARGET
 # OBJS
 # CFLAGS
+# CPPFLAGS
 # ASFLAGS
 # LDFLAGS
 
@@ -73,6 +74,8 @@ LIBDIRS := -L$(ARMGCC)/arm-none-eabi/lib \
 CFLAGS += -Wall -mcpu=$(CPU) -mthumb -Os -fdata-sections -ffunction-sections
 CFLAGS += $(INCDIRS)
 
+CPPFLAGS += -fno-exceptions -fno-rtti
+
 ASFLAGS += -mcpu=$(CPU)
 
 LDFLAGS += $(LIBDIRS)
@@ -82,6 +85,9 @@ all: env_check $(TARGET).bin
 
 %.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@
+
+%.o: %.cpp
+	$(CC) $(CFLAGS) $(CPPFLAGS) -c $< -o $@
 
 %.o: %.s
 	$(AS) $(ASFLAGS) -o $@ $<

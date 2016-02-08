@@ -17,33 +17,6 @@
  * Copyright (C) 2016 ReservedField
  */
 
-#ifndef EVICSDK_USB_H
-#define EVICSDK_USB_H
-
-#include <M451Series.h>
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-/**
- * USB setup packet structure.
- */
-typedef struct {
-	/** Characteristics of request. */
-	uint8_t bmRequestType;
-	/** Specific request. */
-	uint8_t bRequest;
-	/** Request-specific value. */
-	uint16_t wValue;
-	/** Request-specific index/offset. */
-	uint16_t wIndex;
-	/** Number of bytes to transfer. */
-	uint16_t wLength;
-} USB_SetupPacket_t;
-
-#ifdef __cplusplus
-}
-#endif
-
-#endif
+// Dummy _init and _fini functions for __libc_init/fini_array.
+__attribute__ ((section (".init"))) void _init() {}
+__attribute__ ((section (".fini"))) void _fini() {}

@@ -20,6 +20,10 @@
 #ifndef EVICSDK_BUTTON_H
 #define EVICSDK_BUTTON_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * Fire button mask.
  */
@@ -47,5 +51,9 @@ void Button_Init();
  * @return Button state.
  */
 uint8_t Button_GetState();
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

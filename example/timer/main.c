@@ -43,7 +43,7 @@ int main() {
 	Timer_CreateTimer(100, 1, timerCallback, 2);
 
 	while(1) {
-		sprintf(buf, "Count 1:\n%lu\nCount 2:\n%lu\nCount 3:\n%lu",
+		siprintf(buf, "Count 1:\n%lu\nCount 2:\n%lu\nCount 3:\n%lu",
 			timerCounter[0], timerCounter[1], timerCounter[2]);
 
 		Display_Clear();

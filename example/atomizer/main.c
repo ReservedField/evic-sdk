@@ -124,7 +124,7 @@ int main() {
 		boardTemp = Atomizer_ReadBoardTemp();
 
 		// Display info
-		sprintf(buf, "P:%3lu.%luW\nV:%2d.%02dV\nR:%2d.%02do\nI:%2d.%02dA\nT:%5dC\n%s\n\nBattery:\n%d%%\n%s",
+		siprintf(buf, "P:%3lu.%luW\nV:%2d.%02dV\nR:%2d.%02do\nI:%2d.%02dA\nT:%5dC\n%s\n\nBattery:\n%d%%\n%s",
 			watts / 1000, watts % 1000 / 100,
 			atomInfo.voltage / 1000, atomInfo.voltage % 1000 / 10,
 			atomInfo.resistance / 1000, atomInfo.resistance % 1000 / 10,

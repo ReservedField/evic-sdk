@@ -167,3 +167,20 @@ the driver. An example can be found in the Nuvoton SDK, under
 An example on how to use the port is given in `example/usbdebug`. You can communicate with it
 using your favorite serial port terminal. All the line coding parameters (baud rate, parity, 
 stop bits, data bits) are ignored, so you don't need to worry about them.
+
+Coding guidelines
+-----------------
+
+While the SDK does a fairly good job of abstracting the low-level details, you still need to
+remember that you're coding on an embedded platform. A few tips that might be useful:
+
+- You should declare all variables shared between your main code and callbacks/interrupt
+  handlers as `volatile`;
+- Try to minimize dynamic memory allocation: all memory not used by data or stack is assigned
+  to heap, but RAM is only 32kB;
+- Declare constant data (such as lookup tables) as `const`: the compiler will place it in
+  the ROM, reducing RAM usage;
+- Prefer `siprintf` over `sprintf`, as it produces much smaller binaries by stripping out the
+  floating point printing routines. Of course `siprintf` doesn't support floating point numbers,
+  so if you need to print them and cannot use a fixed-point representation you'll have to live
+  with the increased binary size.

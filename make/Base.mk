@@ -19,7 +19,6 @@ NUVOSDK = $(EVICSDK)/nuvoton-sdk/Library
 # Force OBJS immediate expansion, since we'll be
 # changing EVICSDK later.
 OBJS := $(OBJS)
-OBJS += $(EVICSDK)/src/startup/startup.o
 
 CPU := cortex-m4
 

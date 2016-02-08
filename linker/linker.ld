@@ -5,6 +5,7 @@ MEMORY {
 }
 
 /* Library configurations */
+INPUT(libevicsdk_crt0.o)
 GROUP(
 	armv7e-m/libgcc.a
 	armv7e-m/libc.a
@@ -49,6 +50,9 @@ SECTIONS {
 
 		*(.rodata*)
 
+		KEEP(*(.evicsdk_tag))
+		KEEP(*(.verify))
+
 		KEEP(*(.eh_frame*))
 	} > ROM
 
@@ -78,8 +82,6 @@ SECTIONS {
 		. = ALIGN(4);
 		KEEP(*(SORT(.fini_array.*)))
 		KEEP(*(.fini_array))
-
-		*(.verify)
 
 		. = ALIGN(4);
 		Data_End_RAM = .;

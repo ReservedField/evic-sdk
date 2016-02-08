@@ -23,19 +23,6 @@ Stack_Limit:
 	.global Stack_Top
 Stack_Top:
 
-	.section .heap
-	.align 3
-.ifndef Heap_Size
-	.equ    Heap_Size, 0xC00
-	.global Heap_Size
-.endif
-	.global Heap_Base
-Heap_Base:
-.if Heap_Size
-	.space Heap_Size
-.endif
-Heap_Limit:
-
 	@ Define an ISR vector entry (thumb mode)
 	.macro ISR_ENTRY name
 	.word \name + 1

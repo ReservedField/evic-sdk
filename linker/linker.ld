@@ -9,7 +9,7 @@ GROUP(
 	armv7e-m/libgcc.a
 	armv7e-m/libc.a
 	armv7e-m/libm.a
-	armv7e-m/libnosys.a
+	libevicsdk.a
 )
 
 ENTRY(Reset_Handler)
@@ -77,6 +77,7 @@ SECTIONS {
 	Data_Size = Data_End_RAM - Data_Start_RAM;
 
 	.bss : {
+		. = ALIGN(4);
 		BSS_Start = .;
 		*(.bss*)
 		*(COMMON)
@@ -84,15 +85,11 @@ SECTIONS {
 		BSS_End = .;
 	} > RAM
 
-	BSS_Size = . - BSS_Start;
-	
-	.heap : {
-		end = .;
-		*(.heap*)
-		Heap_Limit = .;
-	} > RAM
+	BSS_Size = BSS_End - BSS_Start;
 
 	.stack : {
+		/* Stack must be 8-byte aligned for double local vars */
+		. = ALIGN(8);
 		*(.stack)
 	} > RAM
 
@@ -100,6 +97,10 @@ SECTIONS {
 	Stack_Top = ORIGIN(RAM) + LENGTH(RAM);
 	Stack_Limit = Stack_Top - SIZEOF(.stack);
 
+	/* Fill all unused RAM with heap */
+	Heap_Start = BSS_End;
+	Heap_Limit = Stack_Limit;
+
 	/* Check for RAM overflow */
-	ASSERT(Stack_Limit >= Heap_Limit, "RAM overflowed with stack")
+	ASSERT(Stack_Limit > Heap_Start, "RAM overflowed with stack")
 }

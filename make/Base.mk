@@ -70,15 +70,12 @@ LIBDIRS := -L$(ARMGCC)/arm-none-eabi/lib \
 	-L$(ARMGCC)/lib/gcc/arm-none-eabi/$(shell arm-none-eabi-gcc -v 2>&1 | grep '^gcc version' | awk '{print $$3}') \
 	-L$(EVICSDK)/lib
 
-LIBS := -levicsdk
-
 CFLAGS += -Wall -mcpu=$(CPU) -mthumb -Os -fdata-sections -ffunction-sections
 CFLAGS += $(INCDIRS)
 
 ASFLAGS += -mcpu=$(CPU)
 
 LDFLAGS += $(LIBDIRS)
-LDFLAGS += $(LIBS)
 LDFLAGS += -nostdlib -nostartfiles -T$(LDSCRIPT) --gc-sections
 
 all: env_check $(TARGET).bin

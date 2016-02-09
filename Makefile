@@ -1,4 +1,5 @@
 TARGET := libevicsdk
+TARGET_CRT0 := $(TARGET)_crt0
 
 # We make the following assumptions on Windows:
 # arm-none-eabi gcc and binutils are compiled for Windows,
@@ -20,6 +21,8 @@ OBJS := $(NUVOSDK)/Device/Nuvoton/M451Series/Source/system_M451Series.o \
 	$(NUVOSDK)/StdDriver/src/usbd.o \
 	$(NUVOSDK)/StdDriver/src/eadc.o \
 	$(NUVOSDK)/StdDriver/src/pwm.o \
+	src/startup/initfini.o \
+	src/startup/sbrk.o \
 	src/startup/init.o \
 	src/dataflash/Dataflash.o \
 	src/display/Display_SSD.o \
@@ -33,6 +36,10 @@ OBJS := $(NUVOSDK)/Device/Nuvoton/M451Series/Source/system_M451Series.o \
 	src/adc/ADC.o \
 	src/battery/Battery.o \
 	src/atomizer/Atomizer.o
+
+TAGNAME := src/startup/evicsdk_tag
+OBJS_CRT0 := src/startup/startup.o \
+	$(TAGNAME).o
 
 AEABI_OBJS := src/aeabi/aeabi_memset-thumb2.o \
 	src/aeabi/aeabi_memclr.o
@@ -79,13 +86,20 @@ ifneq ($(ARMGCC),)
 
 	ifdef NEED_FIXPATH
 		OBJS_FIXPATH := $(shell cygpath -w $(OBJS))
+		OBJS_CRT0_FIXPATH := $(shell cygpath -w $(OBJS_CRT0))
 		EVICSDK := $(shell cygpath -w $(EVICSDK))
 	else
 		OBJS_FIXPATH := $(OBJS)
 	endif
 endif
 
+SDKTAG := $(shell git describe --abbrev --dirty --always --tags 2> /dev/null)
+ifeq ($(SDKTAG),)
+	SDKTAG := unknown
+endif
+
 AS := arm-none-eabi-as
+LD := arm-none-eabi-ld
 AR := arm-none-eabi-ar
 OBJCOPY := arm-none-eabi-objcopy
 
@@ -100,7 +114,7 @@ CFLAGS += $(INCDIRS)
 
 ASFLAGS := -mcpu=$(CPU)
 
-all: env_check $(TARGET).a
+all: env_check gen_tag $(TARGET_CRT0).o $(TARGET).a
 
 %.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@
@@ -112,11 +126,15 @@ $(TARGET).a: $(OBJS_FIXPATH)
 	mkdir -p $(OUTDIR)
 	$(AR) -rv $(OUTDIR)/$(TARGET).a $(OBJS_FIXPATH)
 
+$(TARGET_CRT0).o: $(OBJS_CRT0_FIXPATH)
+	mkdir -p $(OUTDIR)
+	$(LD) -r $(OBJS_CRT0_FIXPATH) -o $(OUTDIR)/$(TARGET_CRT0).o
+
 docs:
 	doxygen
 
 clean:
-	rm -rf $(OBJS) $(AEABI_OBJS) $(OUTDIR)/$(TARGET).a $(OUTDIR) $(DOCDIR)
+	rm -rf $(OBJS) $(OBJS_CRT0) $(AEABI_OBJS) $(OUTDIR)/$(TARGET).a $(OUTDIR)/$(TARGET_CRT0).o $(OUTDIR) $(DOCDIR)
 
 env_check:
 ifeq ($(ARMGCC),)
@@ -126,4 +144,8 @@ ifneq ($(AEABI_ERROR),)
 	$(error Your libc is exporting only part of __aeabi symbols)
 endif
 
-.PHONY: all clean docs env_check
+gen_tag:
+	@rm -f $(TAGNAME).s $(TAGNAME).o
+	@printf '.section .evicsdk_tag\n.asciz "evic-sdk-$(SDKTAG)"\n' > $(TAGNAME).s
+
+.PHONY: all clean docs env_check gen_tag

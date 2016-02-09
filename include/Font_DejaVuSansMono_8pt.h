@@ -23,6 +23,10 @@
 #include <stdint.h>
 #include <Font_Data.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * Character bitmaps for DejaVu Sans Mono 8pt.
  */
@@ -37,5 +41,9 @@ extern const Font_CharInfo_t Font_DejaVuSansMono_8pt_Descriptors[];
  * Font information for DejaVu Sans Mono 8pt.
  */
 extern const Font_Info_t Font_DejaVuSansMono_8pt_FontInfo;
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

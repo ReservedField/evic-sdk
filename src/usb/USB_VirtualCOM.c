@@ -414,6 +414,20 @@ static uint16_t USB_VirtualCOM_RxBuffer_Read(uint8_t *dst, uint16_t size) {
 }
 
 /**
+ * Copies a packet to the bulk IN buffer and sets the payload length.
+ * USB_VirtualCOM_bulkInWaiting will be set to false.
+ * This is an internal function.
+ *
+ * @param buffer Source buffer.
+ * @param size   Packet size. Must be <= USB_VCOM_BULK_IN_MAX_PKT_SIZE.
+ */
+static void USB_VirtualCOM_SendBulkInPayload(const uint8_t *buffer, uint32_t size) {
+	USB_VirtualCOM_bulkInWaiting = 0;
+	USBD_MemCopy((uint8_t *) (USBD_BUF_BASE + USB_VCOM_BULK_IN_BUF_BASE), (uint8_t *) buffer, size);
+	USBD_SET_PAYLOAD_LEN(USB_VCOM_BULK_IN_EP, size);
+}
+
+/**
  * Handler for bulk IN transfers.
  * This is an internal function.
  */
@@ -449,11 +463,8 @@ static void USB_VirtualCOM_HandleBulkIn() {
 	else {
 		// Transfer buffer, one packet at a time
 		partialSize = Minimum(transfer->size - transfer->txSize, USB_VCOM_BULK_IN_MAX_PKT_SIZE);
-		USBD_MemCopy((uint8_t *) (USBD_BUF_BASE + USB_VCOM_BULK_IN_BUF_BASE), transfer->buffer + transfer->txSize, partialSize);
-		USBD_SET_PAYLOAD_LEN(USB_VCOM_BULK_IN_EP, partialSize);
-
+		USB_VirtualCOM_SendBulkInPayload(transfer->buffer + transfer->txSize, partialSize);
 		transfer->txSize += partialSize;
-		USB_VirtualCOM_bulkInWaiting = 0;
 	}
 }
 
@@ -646,10 +657,38 @@ void USB_VirtualCOM_Init() {
 
 void USB_VirtualCOM_Send(const uint8_t *buf, uint32_t size) {
 	USB_VirtualCOM_TxTransfer_t *transfer;
+	uint32_t partialSize;
+
+	if(size == 0) {
+		return;
+	}
+
+	// Enter critical section
+	__set_PRIMASK(1);
+
+	partialSize = 0;
+	if(USB_VirtualCOM_bulkInWaiting) {
+		// Transfer first packet right away
+		// If size is a multiple of USB_VCOM_BULK_IN_MAX_PKT_SIZE it will stay that way
+		partialSize = Minimum(size, USB_VCOM_BULK_IN_MAX_PKT_SIZE);
+		USB_VirtualCOM_SendBulkInPayload(buf, partialSize);
+		buf += partialSize;
+		size -= partialSize;
+	}
+
+	if(partialSize != 0 && partialSize < USB_VCOM_BULK_IN_MAX_PKT_SIZE) {
+		// We already transferred the whole packet
+		__set_PRIMASK(0);
+		return;
+	}
 
 	// Allocate memory for transfer + buffer
+	// If the buffer was exactly USB_VCOM_BULK_IN_MAX_PKT_SIZE bytes and
+	// it has already been transferred, the transfer info still needs to be
+	// allocated for the bulk IN handler to send the zero packet.
 	transfer = (USB_VirtualCOM_TxTransfer_t *) malloc(sizeof(USB_VirtualCOM_TxTransfer_t) + size);
 	if(transfer == NULL) {
+		__set_PRIMASK(0);
 		return;
 	}
 
@@ -657,10 +696,9 @@ void USB_VirtualCOM_Send(const uint8_t *buf, uint32_t size) {
 	transfer->next = NULL;
 	transfer->size = size;
 	transfer->txSize = 0;
-	memcpy(transfer->buffer, buf, size);
-
-	// Enter critical section
-	__set_PRIMASK(1);
+	if(size != 0) {
+		memcpy(transfer->buffer, buf, size);
+	}
 
 	// Append transfer to queue
 	if(USB_VirtualCOM_txQueue.head == NULL) {
@@ -669,11 +707,6 @@ void USB_VirtualCOM_Send(const uint8_t *buf, uint32_t size) {
 	else {
 		USB_VirtualCOM_txQueue.tail->next = transfer;
 		USB_VirtualCOM_txQueue.tail = transfer;
-	}
-
-	if(USB_VirtualCOM_bulkInWaiting) {
-		// Transfer first packet right away
-		USB_VirtualCOM_HandleBulkIn();
 	}
 
 	// Exit critical section

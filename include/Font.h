@@ -23,6 +23,14 @@
 #include <Font_Data.h>
 #include <Font_DejaVuSansMono_8pt.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #define FONT_DEJAVU_8PT (&Font_DejaVuSansMono_8pt_FontInfo)
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

@@ -17,33 +17,23 @@
  * Copyright (C) 2016 ReservedField
  */
 
-#ifndef EVICSDK_USB_H
-#define EVICSDK_USB_H
+#include <errno.h>
 
-#include <M451Series.h>
+void *_sbrk(int incr) {
+	// Defined by linker script
+	extern char Heap_Start;
+	extern char Heap_Limit;
+	// Current heap end pointer
+	static char *heapEnd = &Heap_Start;
+	char *prevHeapEnd;
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+	if(heapEnd + incr > &Heap_Limit) {
+		errno = ENOMEM;
+		return (void *) -1;
+	}
 
-/**
- * USB setup packet structure.
- */
-typedef struct {
-	/** Characteristics of request. */
-	uint8_t bmRequestType;
-	/** Specific request. */
-	uint8_t bRequest;
-	/** Request-specific value. */
-	uint16_t wValue;
-	/** Request-specific index/offset. */
-	uint16_t wIndex;
-	/** Number of bytes to transfer. */
-	uint16_t wLength;
-} USB_SetupPacket_t;
+	prevHeapEnd = heapEnd;
+	heapEnd += incr;
 
-#ifdef __cplusplus
+	return prevHeapEnd;
 }
-#endif
-
-#endif

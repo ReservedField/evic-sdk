@@ -2,6 +2,7 @@
 # TARGET
 # OBJS
 # CFLAGS
+# CPPFLAGS
 # ASFLAGS
 # LDFLAGS
 
@@ -18,7 +19,6 @@ NUVOSDK = $(EVICSDK)/nuvoton-sdk/Library
 # Force OBJS immediate expansion, since we'll be
 # changing EVICSDK later.
 OBJS := $(OBJS)
-OBJS += $(EVICSDK)/src/startup/startup.o
 
 CPU := cortex-m4
 
@@ -71,21 +71,23 @@ LIBDIRS := -L$(ARMGCC)/arm-none-eabi/lib \
 	-L$(ARMGCC)/lib/gcc/arm-none-eabi/$(shell arm-none-eabi-gcc -v 2>&1 | grep '^gcc version' | awk '{print $$3}') \
 	-L$(EVICSDK)/lib
 
-LIBS := -levicsdk
-
 CFLAGS += -Wall -mcpu=$(CPU) -mthumb -Os -fdata-sections -ffunction-sections
 CFLAGS += $(INCDIRS)
+
+CPPFLAGS += -fno-exceptions -fno-rtti
 
 ASFLAGS += -mcpu=$(CPU)
 
 LDFLAGS += $(LIBDIRS)
-LDFLAGS += $(LIBS)
 LDFLAGS += -nostdlib -nostartfiles -T$(LDSCRIPT) --gc-sections
 
 all: env_check $(TARGET).bin
 
 %.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@
+
+%.o: %.cpp
+	$(CC) $(CFLAGS) $(CPPFLAGS) -c $< -o $@
 
 %.o: %.s
 	$(AS) $(ASFLAGS) -o $@ $<

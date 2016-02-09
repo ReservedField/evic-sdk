@@ -33,7 +33,7 @@ int main() {
 	hwVerMinor = Dataflash_info.hwVersion % 100;
 
 	// Build and blit text
-	sprintf(buffer, "Hw: %d.%02d\n%s\nFlip: %d\nBoot: %s",
+	siprintf(buffer, "Hw: %d.%02d\n%s\nFlip: %d\nBoot: %s",
 		hwVerMajor, hwVerMinor,
 		Display_GetType() == DISPLAY_SSD1327 ? "SSD1327" : "SSD1306",
 		Display_IsFlipped(),

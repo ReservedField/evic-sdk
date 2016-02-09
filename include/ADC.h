@@ -20,6 +20,10 @@
 #ifndef EVICSDK_ADC_H
 #define EVICSDK_ADC_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * ADC reference voltage, in millivolts.
  */
@@ -100,5 +104,9 @@ uint16_t ADC_Read(uint32_t moduleNum);
  *         conversion slots were available.
  */
 uint8_t ADC_ReadAsync(uint32_t moduleNum, ADC_Callback_t callback, uint32_t callbackData);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

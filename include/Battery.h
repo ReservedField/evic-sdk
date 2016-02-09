@@ -20,6 +20,10 @@
 #ifndef EVICSDK_BATTERY_H
 #define EVICSDK_BATTERY_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * Initializes the battery I/O.
  * System control registers must be unlocked.
@@ -58,5 +62,9 @@ uint16_t Battery_GetVoltage();
  * @return Battery charge percentage (0 - 100).
  */
 uint8_t Battery_VoltageToPercent(uint16_t volts);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

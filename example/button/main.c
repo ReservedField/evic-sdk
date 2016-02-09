@@ -30,7 +30,7 @@ int main() {
 	while(1) {
 		// Build state report
 		state = Button_GetState();
-		sprintf(buf, "Mask: %02X\n\nFire: %d\nRight: %d\nLeft: %d",
+		siprintf(buf, "Mask: %02X\n\nFire: %d\nRight: %d\nLeft: %d",
 			state,
 			(state & BUTTON_MASK_FIRE) ? 1 : 0,
 			(state & BUTTON_MASK_RIGHT) ? 1 : 0,

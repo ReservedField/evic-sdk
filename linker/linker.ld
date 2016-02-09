@@ -5,11 +5,12 @@ MEMORY {
 }
 
 /* Library configurations */
+INPUT(libevicsdk_crt0.o)
 GROUP(
 	armv7e-m/libgcc.a
 	armv7e-m/libc.a
 	armv7e-m/libm.a
-	armv7e-m/libnosys.a
+	libevicsdk.a
 )
 
 ENTRY(Reset_Handler)
@@ -21,6 +22,17 @@ SECTIONS {
 
 		KEEP(*(.init))
 		KEEP(*(.fini))
+
+		. = ALIGN(4);
+		__preinit_array_start = .;
+		KEEP(*(.preinit_array))
+		__preinit_array_end = .;
+		__init_array_start = .;
+		KEEP(*(.init_array))
+		__init_array_end = .;
+		__fini_array_start = .;
+		KEEP(*(.fini_array))
+		__fini_array_end = .;
 
 		/* .ctors */
 		*crtbegin.o(.ctors)
@@ -37,6 +49,9 @@ SECTIONS {
 		*(.dtors)
 
 		*(.rodata*)
+
+		KEEP(*(.evicsdk_tag))
+		KEEP(*(.verify))
 
 		KEEP(*(.eh_frame*))
 	} > ROM
@@ -68,8 +83,6 @@ SECTIONS {
 		KEEP(*(SORT(.fini_array.*)))
 		KEEP(*(.fini_array))
 
-		*(.verify)
-
 		. = ALIGN(4);
 		Data_End_RAM = .;
 	} > RAM
@@ -77,6 +90,7 @@ SECTIONS {
 	Data_Size = Data_End_RAM - Data_Start_RAM;
 
 	.bss : {
+		. = ALIGN(4);
 		BSS_Start = .;
 		*(.bss*)
 		*(COMMON)
@@ -84,15 +98,11 @@ SECTIONS {
 		BSS_End = .;
 	} > RAM
 
-	BSS_Size = . - BSS_Start;
-	
-	.heap : {
-		end = .;
-		*(.heap*)
-		Heap_Limit = .;
-	} > RAM
+	BSS_Size = BSS_End - BSS_Start;
 
 	.stack : {
+		/* Stack must be 8-byte aligned for double local vars */
+		. = ALIGN(8);
 		*(.stack)
 	} > RAM
 
@@ -100,6 +110,10 @@ SECTIONS {
 	Stack_Top = ORIGIN(RAM) + LENGTH(RAM);
 	Stack_Limit = Stack_Top - SIZEOF(.stack);
 
+	/* Fill all unused RAM with heap */
+	Heap_Start = BSS_End;
+	Heap_Limit = Stack_Limit;
+
 	/* Check for RAM overflow */
-	ASSERT(Stack_Limit >= Heap_Limit, "RAM overflowed with stack")
+	ASSERT(Stack_Limit > Heap_Start, "RAM overflowed with stack")
 }

@@ -37,13 +37,13 @@ int main() {
 			// Calculate percent
 			battPerc = Battery_VoltageToPercent(battVolt);
 
-			sprintf(buf, "Voltage:\n%d.%03d V\nCharge:\n%d%%\n%s",
+			siprintf(buf, "Voltage:\n%d.%03d V\nCharge:\n%d%%\n%s",
 				battVolt / 1000, battVolt % 1000,
 				battPerc,
 				Battery_IsCharging() ? "CHARGING" : "");
 		}
 		else {
-			sprintf(buf, "No batt");
+			siprintf(buf, "No batt");
 		}
 
 		// Clear and blit text

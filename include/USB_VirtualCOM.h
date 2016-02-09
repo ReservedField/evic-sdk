@@ -22,6 +22,10 @@
 
 #include <M451Series.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * Function pointer type for USB receive callbacks.
  * Callbacks will be invoked from an interrupt handler,
@@ -79,5 +83,9 @@ uint16_t USB_VirtualCOM_Read(uint8_t *buf, uint16_t size);
  * @param callbackPtr Callback function pointer, or NULL to disable.
  */
 void USB_VirtualCOM_SetRxCallback(USB_VirtualCOM_RxCallback_t callbackPtr);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

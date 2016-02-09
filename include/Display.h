@@ -35,6 +35,10 @@
 #include <stdbool.h>
 #include <Font.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * Display width, in pixels.
  */
@@ -138,5 +142,9 @@ void Display_PutPixels(int x, int y, const uint8_t *bitmap, int w, int h);
  * @param font Font to use.
  */
 void Display_PutText(int x, int y, const char *txt, const Font_Info_t *font);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

@@ -2,6 +2,7 @@
 /example/**/bin/
 /lib/
 /nuvoton-sdk/Library/
+/src/startup/evicsdk_tag.s
 
 *.o
 *.a

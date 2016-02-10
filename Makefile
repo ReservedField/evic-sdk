@@ -90,6 +90,7 @@ ifneq ($(ARMGCC),)
 		EVICSDK := $(shell cygpath -w $(EVICSDK))
 	else
 		OBJS_FIXPATH := $(OBJS)
+		OBJS_CRT0_FIXPATH := $(OBJS_CRT0)
 	endif
 endif
 

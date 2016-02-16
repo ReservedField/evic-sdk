@@ -190,11 +190,11 @@ static void Atomizer_ConfigureConverters(uint8_t enableBuck, uint8_t enableBoost
 static void Atomizer_NegativeFeedback(uint32_t unused) {
 	uint16_t adcValue, curVolts;
 
-	// Update ADC cache for voltage without blocking.
+	// Update ADC cache without blocking.
 	// This loop always runs (until this point), even when
 	// the atomizer is not powered on. Let's exploit it to
 	// keep good values in the cache for when we power it up.
-	ADC_UpdateCache((uint8_t []) {ADC_MODULE_VATM}, 1, 0);
+	ADC_UpdateCache((uint8_t []) {ADC_MODULE_VATM, ADC_MODULE_CURS}, 2, 0);
 
 	if(Atomizer_curState == POWEROFF) {
 		// Powered off, nothing to do
@@ -349,41 +349,41 @@ uint8_t Atomizer_IsOn() {
 
 void Atomizer_ReadInfo(Atomizer_Info_t *info) {
 	uint32_t vSum, iSum;
-	uint16_t savedTargetVolts = 0;
-	uint8_t wasOff = 0, numSamples, i;
+	uint16_t savedTargetVolts;
+	uint8_t i;
 
 	if(Atomizer_curState == POWEROFF) {
 		// Power on at 1.00V for measurement
-		wasOff = 1;
 		savedTargetVolts = Atomizer_targetVolts;
 		Atomizer_SetOutputVoltage(1000);
 		Atomizer_Control(1);
 		Timer_DelayMs(2);
-	}
 
-	// Sample V and I
-	vSum = iSum = 0;
-	numSamples = wasOff ? 50 : 1;
-	for(i = 0; i < numSamples; i++) {
-		Timer_DelayUs(10);
-		iSum += ADC_Read(ADC_MODULE_CURS);
-		Timer_DelayUs(10);
-		vSum += ADC_Read(ADC_MODULE_VATM);
-	}
-
-	info->resistance = ATOMIZER_ADC_RESISTANCE(vSum, iSum);
-
-	if(wasOff) {
-		info->voltage = info->current = 0;
+		// Sample and average V and I
+		vSum = iSum = 0;
+		for(i = 0; i < 50; i++) {
+			Timer_DelayUs(10);
+			iSum += ADC_Read(ADC_MODULE_CURS);
+			Timer_DelayUs(10);
+			vSum += ADC_Read(ADC_MODULE_VATM);
+		}
 
 		// Power off and restore previous target voltage
 		Atomizer_Control(0);
 		Atomizer_SetOutputVoltage(savedTargetVolts);
+
+		info->voltage = info->current = 0;
 	}
 	else {
+		// Use cached V and I
+		vSum = ADC_GetCachedResult(ADC_MODULE_VATM);
+		iSum = ADC_GetCachedResult(ADC_MODULE_CURS);
+
 		info->voltage = ATOMIZER_ADC_VOLTAGE(vSum);
 		info->current = ATOMIZER_ADC_CURRENT(iSum);
 	}
+
+	info->resistance = ATOMIZER_ADC_RESISTANCE(vSum, iSum);
 }
 
 uint8_t Atomizer_ReadBoardTemp() {

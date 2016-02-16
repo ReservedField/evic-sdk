@@ -65,45 +65,37 @@ extern "C" {
 #define ADC_MODULE_VBAT 0x12
 
 /**
- * Function pointer type for ADC callbacks.
- * The first argument is the ADC result.
- * The second argument is user-defined. If more than 4 bytes
- * are needed, a pointer can be stored and then casted.
- * Callbacks will be invoked from an interrupt handler,
- * so they should be as fast as possible. You'll typically
- * want to just set a flag and return, and then act on that
- * flag from you main application loop.
- */
-typedef void (*ADC_Callback_t)(uint16_t, uint32_t);
-
-/**
  * Initializes the ADC.
  * System control registers must be unlocked.
  */
 void ADC_Init();
 
 /**
- * Reads a value from the ADC.
+ * Updates the ADC cache for the specified modules.
+ *
+ * @param moduleNum  Array of module numbers (ADC_MODULE_*) to be updated.
+ * @param len        Length of the module numbers array.
+ * @param isBlocking True to wait until all conversions finish, false otherwise.
+ */
+void ADC_UpdateCache(const uint8_t moduleNum[], uint8_t len, uint8_t isBlocking);
+
+/**
+ * Gets a result from ADC cache.
+ *
+ * @param moduleNum One of ADC_MODULE_*.
+ *
+ * @return Cached ADC result.
+ */
+uint16_t ADC_GetCachedResult(uint8_t moduleNum);
+
+/**
+ * Reads a value from the ADC (blocking).
  *
  * @param moduleNum One of ADC_MODULE_*.
  *
  * @return ADC conversion result.
  */
-uint16_t ADC_Read(uint32_t moduleNum);
-
-/**
- * Performs an asynchronous read on the ADC, calling the callback on
- * completion.
- * There are three conversion slots available to users.
- *
- * @param moduleNum One of ADC_MODULE_*.
- * @param callback  ADC callback function.
- * @param callbackData Optional argument to pass to the callback function.
- *
- * @return True if the conversion was successfully scheduled, false if no
- *         conversion slots were available.
- */
-uint8_t ADC_ReadAsync(uint32_t moduleNum, ADC_Callback_t callback, uint32_t callbackData);
+uint16_t ADC_Read(uint8_t moduleNum);
 
 #ifdef __cplusplus
 }

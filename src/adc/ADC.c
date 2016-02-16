@@ -27,38 +27,32 @@
  * 0x01: atomizer voltage
  * 0x02: atomizer current
  * 0x0E: temperature
- * 0x12: battery voltage (through 1/2 voltage divider).
- * Interrupt 0 is reserved for SDK use.
+ * 0x12: battery voltage
+ * Interrupts 0-3 are assigned in that order.
  */
 
 /**
- * ADC callback pointers.
- * NULL when the interrupt is unused.
- */
-static volatile ADC_Callback_t ADC_callbackPtr[4] = {NULL};
-
-/**
- * ADC callback user-defined data.
- */
-static volatile uint32_t ADC_callbackData[4];
-
-/**
- * ADC sample module numbers.
+ * ADC sample module numbers for interrupts 0-3.
  * In Nuvoton SDK those are 32 bit ints, but 8 bits
  * is enough for us and saves memory.
  */
-static volatile uint8_t ADC_moduleNum[4];
+static const uint8_t ADC_moduleNum[4] = {
+	ADC_MODULE_VATM, ADC_MODULE_CURS,
+	ADC_MODULE_TEMP, ADC_MODULE_VBAT
+};
+
+/**
+ * Cached ADC conversion results for interrupts 0-3.
+ */
+static volatile uint16_t ADC_convResult[4] = {0};
 
 /**
  * Convenience macro to define ADC IRQ handlers.
- * We disable interrupts and clear flag before callback,
- * in case the user schedules another conversion.
  */
 #define ADC_DEFINE_IRQ_HANDLER(n) void ADC0 ## n ## _IRQHandler() { \
+	ADC_convResult[n] = EADC_GET_CONV_DATA(EADC, ADC_moduleNum[n]); \
 	EADC_DISABLE_SAMPLE_MODULE_INT(EADC, n, 1 << ADC_moduleNum[n]); \
 	EADC_CLR_INT_FLAG(EADC, 1 << n); \
-	ADC_callbackPtr[n](EADC_GET_CONV_DATA(EADC, ADC_moduleNum[n]), ADC_callbackData[n]); \
-	ADC_callbackPtr[n] = NULL; \
 }
 
 ADC_DEFINE_IRQ_HANDLER(0);
@@ -66,63 +60,55 @@ ADC_DEFINE_IRQ_HANDLER(1);
 ADC_DEFINE_IRQ_HANDLER(2);
 ADC_DEFINE_IRQ_HANDLER(3);
 
-/**
- * Default callback for synchronous ADC reads.
- * This is an internal function.
- *
- * @param result    Coversion result.
- * @param resultPtr Pointer to a int32_t variable where the result
- *                  will be stored.
- */
-static void ADC_SyncCallback(uint16_t result, uint32_t resultPtr) {
-	*((volatile int32_t *) resultPtr) = result;
-}
+void ADC_UpdateCache(const uint8_t moduleNum[], uint8_t len, uint8_t isBlocking) {
+	uint8_t i, j, finishFlag;
 
-/**
- * Extended version of ADC_ReadAsync.
- * This function is exported but reserved for SDK use, so
- * its prototype is not declared in the header file.
- *
- * @param moduleNum    ADC module number.
- * @param callback     ADC callback function.
- * @param callbackData Optional argument to pass to the callback function.
- * @param useReserved  True to use the reserved interrupt if no interrupts are available.
- *
- * @return True on success, false if no interrupts were available.
- */
-uint8_t ADC_ReadAsyncEx(uint32_t moduleNum, ADC_Callback_t callback, uint32_t callbackData, uint8_t useReserved) {
-	uint8_t i;
+	// Enter critical section
+	__set_PRIMASK(1);
 
-	// Find an unused interrupt
-	// Exclude interrupt 0, as it is reserved
-	for(i = 1; i < 4 && ADC_callbackPtr[i] != NULL; i++);
+	for(i = 0; i < len; i++) {
+		// Find interrupt number for module number
+		for(j = 0; j < 4 && moduleNum[i] != ADC_moduleNum[j]; j++);
 
-	if(i == 4) {
-		// All interrupts are in use
-		if(useReserved && ADC_callbackPtr[0] == NULL) {
-			// Use reserved interrupt
-			i = 0;
-		}
-		else {
-			return 0;
+		if(!(EADC_GET_PENDING_CONV(EADC) & (1 << moduleNum[i]))) {
+			// Configure module
+			EADC_ConfigSampleModule(EADC, moduleNum[i], EADC_SOFTWARE_TRIGGER, moduleNum[i]);
+
+			// Enable interrupt
+			EADC_CLR_INT_FLAG(EADC, 1 << j);
+			EADC_ENABLE_SAMPLE_MODULE_INT(EADC, j, 1 << moduleNum[i]);
+
+			// Start conversion
+			EADC_START_CONV(EADC, 1 << moduleNum[i]);
 		}
 	}
 
-	ADC_callbackPtr[i] = callback;
-	ADC_callbackData[i] = callbackData;
-	ADC_moduleNum[i] = moduleNum;
+	// Exit critical section
+	__set_PRIMASK(0);
 
-	// Configure module
-	EADC_ConfigSampleModule(EADC, moduleNum, EADC_SOFTWARE_TRIGGER, moduleNum);
+	if(isBlocking) {
+		// Wait for modules to finish
+		// Keep in mind they could be restarted by another concurrent
+		// call to ADC_UpdateCache while we're busy waiting.
+		finishFlag = 0;
+		while(finishFlag != (1 << len) - 1) {
+			for(i = 0; i < len; i++) {
+				if(!(EADC_GET_PENDING_CONV(EADC) & (1 << moduleNum[i]))) {
+					finishFlag |= 1 << i;
+				}
+			}
+		}
+	}
+}
 
-	// Enable interrupt
-	EADC_CLR_INT_FLAG(EADC, 1 << i);
-	EADC_ENABLE_SAMPLE_MODULE_INT(EADC, i, 1 << moduleNum);
+uint16_t ADC_GetCachedResult(uint8_t moduleNum) {
+	uint8_t i;
 
-	// Start conversion
-	EADC_START_CONV(EADC, 1 << moduleNum);
+	// Find interrupt number for module number
+	for(i = 0; i < 4 && moduleNum != ADC_moduleNum[i]; i++);
 
-	return 1;
+	// Atomic
+	return ADC_convResult[i];
 }
 
 void ADC_Init() {
@@ -159,18 +145,7 @@ void ADC_Init() {
 	}
 }
 
-uint16_t ADC_Read(uint32_t moduleNum) {
-	volatile int32_t result = -1;
-
-	// Keep trying until we get a slot
-	while(!ADC_ReadAsyncEx(moduleNum, ADC_SyncCallback, (uint32_t) &result, 0));
-
-	// Wait until conversion is complete
-	while(result == -1);
-
-	return result;
-}
-
-uint8_t ADC_ReadAsync(uint32_t moduleNum, ADC_Callback_t callback, uint32_t callbackData) {
-	return ADC_ReadAsyncEx(moduleNum, callback, callbackData, 0);
+uint16_t ADC_Read(uint8_t moduleNum) {
+	ADC_UpdateCache((uint8_t []) {moduleNum}, 1, 1);
+	return ADC_GetCachedResult(moduleNum);
 }

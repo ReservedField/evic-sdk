@@ -184,11 +184,17 @@ static void Atomizer_ConfigureConverters(uint8_t enableBuck, uint8_t enableBoost
 
 /**
  * Negative feedback iteration to keep the DC/DC converters stable.
- * Takes parameters an an ADC callback.
+ * Takes parameters as a timer callback.
  * This is an internal function.
  */
-static void Atomizer_NegativeFeedback(uint16_t adcValue, uint32_t unused) {
-	uint16_t curVolts;
+static void Atomizer_NegativeFeedback(uint32_t unused) {
+	uint16_t adcValue, curVolts;
+
+	// Update ADC cache for voltage without blocking.
+	// This loop always runs (until this point), even when
+	// the atomizer is not powered on. Let's exploit it to
+	// keep good values in the cache for when we power it up.
+	ADC_UpdateCache((uint8_t []) {ADC_MODULE_VATM}, 1, 0);
 
 	if(Atomizer_curState == POWEROFF) {
 		// Powered off, nothing to do
@@ -196,6 +202,7 @@ static void Atomizer_NegativeFeedback(uint16_t adcValue, uint32_t unused) {
 	}
 
 	// Calculate current voltage
+	adcValue = ADC_GetCachedResult(ADC_MODULE_VATM);
 	curVolts = ATOMIZER_ADC_VOLTAGE(adcValue);
 	if(curVolts == Atomizer_targetVolts) {
 		// Target reached, nothing to do
@@ -246,23 +253,6 @@ static void Atomizer_NegativeFeedback(uint16_t adcValue, uint32_t unused) {
 
 	// Set new duty cycle
 	PWM_SET_CMR(PWM0, Atomizer_curState == POWERON_BUCK ? ATOMIZER_PWMCH_BUCK : ATOMIZER_PWMCH_BOOST, Atomizer_curCmr);
-}
-
-extern uint8_t ADC_ReadAsyncEx(uint32_t moduleNum, ADC_Callback_t callback, uint32_t callbackData, uint8_t useReserved);
-
-/**
- * Timer callback for DC/DC negative feedback loop.
- * This is an internal function.
- */
-static void Atomizer_TimerCallback(uint32_t unused) {
-	if(Atomizer_curState == POWEROFF) {
-		// Powered off, nothing to do
-		return;
-	}
-
-	// Schedule conversion (on reserved slot, if needed)
-	// We don't care if it fails, we'll call it again
-	ADC_ReadAsyncEx(ADC_MODULE_VATM, Atomizer_NegativeFeedback, 0, 1);
 }
 
 void Atomizer_Init() {
@@ -323,7 +313,7 @@ void Atomizer_Init() {
 	// Setup 5kHz timer for negative feedback cycle
 	// This function should run during system init, so
 	// the user hasn't had time to create timers yet.
-	Timer_CreateTimer(5000, 1, Atomizer_TimerCallback, 0);
+	Timer_CreateTimer(5000, 1, Atomizer_NegativeFeedback, 0);
 }
 
 void Atomizer_SetOutputVoltage(uint16_t volts) {

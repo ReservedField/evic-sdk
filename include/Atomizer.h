@@ -40,6 +40,8 @@ typedef struct {
 	uint16_t voltage;
 	/**
 	 * Atomizer resistance, in mOhm.
+	 * If this is 0, an error occurred.
+	 * Check the atomizer error code.
 	 */
 	uint16_t resistance;
 	/**
@@ -47,6 +49,24 @@ typedef struct {
 	 */
 	uint16_t current;
 } Atomizer_Info_t;
+
+/**
+ * Atomizer error states.
+ */
+typedef enum {
+	/**
+	 * No error.
+	 */
+	OK,
+	/**
+	 * Atomizer is shorted.
+	 */
+	SHORT,
+	/**
+	 * Atomizer not present or large resistance.
+	 */
+	OPEN
+} Atomizer_Error_t;
 
 /**
  * Initializes the atomizer library.
@@ -59,8 +79,8 @@ void Atomizer_Init();
  * This can always be called, the atomizer doesn't need
  * to be powered on.
  * While the voltage is expressed in mV, the actual precision
- * is to 1/100 of a Volt. Millivolt units are used for uniformity
- * between SDK functions.
+ * is 10mV. Millivolt units are used for uniformity between SDK
+ * functions. Voltage will be rounded to the nearest 10mV.
  *
  * @param volts Output voltage, in millivolts.
  */
@@ -81,11 +101,17 @@ void Atomizer_Control(uint8_t powerOn);
 uint8_t Atomizer_IsOn();
 
 /**
+ * Gets the latest atomizer error.
+ *
+ * @return Atomizer error.
+ */
+Atomizer_Error_t Atomizer_GetError();
+
+/**
  * Reads the atomizer info.
- * If the atomizer is powered off, this powers it on for a
- * few milliseconds at a very low voltage, in order to
- * measure its parameters. Because of this, avoid continually
- * calling it while not firing.
+ * This may power up the atomizer for resistance
+ * measuring, depending on the situation. You can
+ * call this function often.
  *
  * @param info Info structure to fill.
  */

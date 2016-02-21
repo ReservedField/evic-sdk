@@ -37,7 +37,7 @@ uint16_t wattsToVolts(uint32_t watts, uint16_t res) {
 }
 
 int main() {
-	char buf[100];
+	char buf[100], *atomState;
 	uint16_t volts, newVolts, battVolts;
 	uint32_t watts;
 	uint8_t btnState, battPerc, boardTemp;
@@ -89,10 +89,10 @@ int main() {
 			Timer_DelayMs(25);
 		}
 
-		if(Atomizer_IsOn()) {
-			// Update info while firing
-			Atomizer_ReadInfo(&atomInfo);
+		// Update info
+		Atomizer_ReadInfo(&atomInfo);
 
+		if(Atomizer_IsOn()) {
 			// Update output voltage to correct res variations:
 			// If the new voltage is lower, we only correct it in
 			// 10mV steps, otherwise a flake res reading might
@@ -124,13 +124,24 @@ int main() {
 		boardTemp = Atomizer_ReadBoardTemp();
 
 		// Display info
+		switch(Atomizer_GetError()) {
+			case SHORT:
+				atomState = "SHORT";
+				break;
+			case OPEN:
+				atomState = "NO ATOM";
+				break;
+			default:
+				atomState = Atomizer_IsOn() ? "FIRING" : "";
+				break;
+		}
 		siprintf(buf, "P:%3lu.%luW\nV:%2d.%02dV\nR:%2d.%02do\nI:%2d.%02dA\nT:%5dC\n%s\n\nBattery:\n%d%%\n%s",
 			watts / 1000, watts % 1000 / 100,
 			atomInfo.voltage / 1000, atomInfo.voltage % 1000 / 10,
 			atomInfo.resistance / 1000, atomInfo.resistance % 1000 / 10,
 			atomInfo.current / 1000, atomInfo.current % 1000 / 10,
 			boardTemp,
-			Atomizer_IsOn() ? "FIRING" : "",
+			atomState,
 			battPerc,
 			Battery_IsCharging() ? "CHARGING" : "");
 		Display_Clear();

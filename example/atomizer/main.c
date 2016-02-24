@@ -37,13 +37,14 @@ uint16_t wattsToVolts(uint32_t watts, uint16_t res) {
 }
 
 int main() {
-	char buf[100], *atomState;
-	uint16_t volts, newVolts, battVolts;
+	char buf[100];
+	const char *atomState;
+	uint16_t volts, newVolts, battVolts, displayVolts;
 	uint32_t watts;
 	uint8_t btnState, battPerc, boardTemp;
 	Atomizer_Info_t atomInfo;
 
-	// Initial measure
+	// Initialize atomizer info
 	Atomizer_ReadInfo(&atomInfo);
 
 	// Let's start with 10.0W as the initial value
@@ -56,7 +57,8 @@ int main() {
 		btnState = Button_GetState();
 
 		// Handle fire button
-		if(!Atomizer_IsOn() && (btnState & BUTTON_MASK_FIRE)) {
+		if(!Atomizer_IsOn() && (btnState & BUTTON_MASK_FIRE) &&
+			atomInfo.resistance != 0 && Atomizer_GetError() == OK) {
 			// Power on
 			Atomizer_Control(1);
 		}
@@ -90,30 +92,32 @@ int main() {
 		}
 
 		// Update info
+		// If resistance is zero voltage will be zero
 		Atomizer_ReadInfo(&atomInfo);
+		newVolts = wattsToVolts(watts, atomInfo.resistance);
 
-		if(Atomizer_IsOn()) {
-			// Update output voltage to correct res variations:
-			// If the new voltage is lower, we only correct it in
-			// 10mV steps, otherwise a flake res reading might
-			// make the voltage plummet to zero and stop.
-			// If the new voltage is higher, we push it up by 100mV
-			// to make it hit harder on TC coils, but still keep it
-			// under control.
-			newVolts = wattsToVolts(watts, atomInfo.resistance);
-			if(newVolts != volts) {
-				if(newVolts < volts && volts >= 10) {
-					volts -= 10;
+		if(newVolts != volts) {
+			if(Atomizer_IsOn()) {
+				// Update output voltage to correct res variations:
+				// If the new voltage is lower, we only correct it in
+				// 10mV steps, otherwise a flake res reading might
+				// make the voltage plummet to zero and stop.
+				// If the new voltage is higher, we push it up by 100mV
+				// to make it hit harder on TC coils, but still keep it
+				// under control.
+				if(newVolts < volts) {
+					newVolts = volts - (volts >= 10 ? 10 : 0);
 				}
-				else if(newVolts > volts) {
-					volts += 100;
-					if(volts > ATOMIZER_MAX_VOLTS) {
-						volts = ATOMIZER_MAX_VOLTS;
-					}
+				else {
+					newVolts = volts + 100;
 				}
-
-				Atomizer_SetOutputVoltage(volts);
 			}
+
+			if(newVolts > ATOMIZER_MAX_VOLTS) {
+				newVolts = ATOMIZER_MAX_VOLTS;
+			}
+			volts = newVolts;
+			Atomizer_SetOutputVoltage(volts);
 		}
 
 		// Get battery voltage and charge
@@ -124,6 +128,7 @@ int main() {
 		boardTemp = Atomizer_ReadBoardTemp();
 
 		// Display info
+		displayVolts = Atomizer_IsOn() ? atomInfo.voltage : volts;
 		switch(Atomizer_GetError()) {
 			case SHORT:
 				atomState = "SHORT";
@@ -137,7 +142,7 @@ int main() {
 		}
 		siprintf(buf, "P:%3lu.%luW\nV:%2d.%02dV\nR:%2d.%02do\nI:%2d.%02dA\nT:%5dC\n%s\n\nBattery:\n%d%%\n%s",
 			watts / 1000, watts % 1000 / 100,
-			atomInfo.voltage / 1000, atomInfo.voltage % 1000 / 10,
+			displayVolts / 1000, displayVolts % 1000 / 10,
 			atomInfo.resistance / 1000, atomInfo.resistance % 1000 / 10,
 			atomInfo.current / 1000, atomInfo.current % 1000 / 10,
 			boardTemp,

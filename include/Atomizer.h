@@ -109,9 +109,9 @@ Atomizer_Error_t Atomizer_GetError();
 
 /**
  * Reads the atomizer info.
- * This may power up the atomizer for resistance
- * measuring, depending on the situation. You can
- * call this function often.
+ * This may power up the atomizer for resistance measuring,
+ * depending on the situation. Refresh rate is internally
+ * limited, so you can call this as often as you like.
  *
  * @param info Info structure to fill.
  */

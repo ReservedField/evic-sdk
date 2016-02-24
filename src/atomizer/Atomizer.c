@@ -56,7 +56,7 @@
 // Resistance is V / I. Since it will be in Ohms, we multiply by 1000 to get mOhms.
 // This macro is provided to get better precision when taking multiple V and I samples.
 // If the number of samples is the same, it will simplify, giving better precision than averaging.
-// 1000 * ATOMIZER_ADC_VOLTAGE(voltsX) / ATOMIZER_ADC_CURRENT(currX) simplifies to this expression.
+// 1000 * ATOMIZER_ADC_VOLTAGE(voltsX) * 10 / ATOMIZER_ADC_CURRENT(currX) simplifies to this expression.
 // Current is forced to 1 if zero to avoid division by zero.
 // Maximum result size: 22 bits.
 #define ATOMIZER_ADC_RESISTANCE(voltsX, currX) (13L * (voltsX) * Atomizer_shuntRes / 3L / ((currX) == 0 ? 1 : (currX)))
@@ -69,6 +69,26 @@
 // To get 1ohm accuracy and save a multiplication, ADC_VREF and ADC_DENOMINATOR are hardcoded.
 // Maximum result size: 17 bits.
 #define ATOMIZER_ADC_THERMRES(x) (20000L * (x) / (5280L - (x)))
+
+// Timer flags
+#define ATOMIZER_TMRFLAG_WARMUP (1 << 0)
+#define ATOMIZER_TMRFLAG_REFRESH (1 << 1)
+#define ATOMIZER_TIMER_WARMUP_RESET() do { __set_PRIMASK(1); \
+	Atomizer_timerCountWarmup = 0; \
+	Atomizer_timerFlag &= ~ATOMIZER_TMRFLAG_WARMUP; \
+	__set_PRIMASK(0); } while(0)
+#define ATOMIZER_TIMER_REFRESH_RESET() do { __set_PRIMASK(1); \
+	Atomizer_timerCountRefresh = 0; \
+	Atomizer_timerFlag &= ~ATOMIZER_TMRFLAG_REFRESH; \
+	__set_PRIMASK(0); } while(0)
+#define ATOMIZER_TIMER_RESET() do { __set_PRIMASK(1); \
+	Atomizer_timerCountWarmup = 0; \
+	Atomizer_timerCountRefresh = 0; \
+	Atomizer_timerFlag = 0; \
+	__set_PRIMASK(0); } while(0)
+
+// Busy wait for warmup or error
+#define ATOMIZER_WAIT_WARMUP() do {} while(!(Atomizer_timerFlag & ATOMIZER_TMRFLAG_WARMUP) && Atomizer_error == OK)
 
 /**
  * Type for storing converters state.
@@ -117,13 +137,38 @@ static volatile Atomizer_Error_t Atomizer_error;
 /**
  * Initial atomizer resistance, in mOhm.
  * If an atomizer error occurs, this is set to zero.
+ * Will be reset to zero on atomizer error.
  */
 static volatile uint16_t Atomizer_baseRes;
 
 /**
- * Counter for timing.
+ * Temporary resistance reading, in mOhm.
+ * Zero if not waiting for resistance stabilization.
+ * Will be reset to zero on atomizer error.
  */
-static volatile uint16_t Atomizer_timerCount;
+static volatile uint16_t Atomizer_tempRes;
+
+/**
+ * Target voltage for resistance stabilization, in 10mV units.
+ */
+static volatile uint16_t Atomizer_tempTargetVolts;
+
+/**
+ * Warmup timer counter. Each tick is 40us.
+ * Counts up to 51 (2ms) and stops.
+ */
+static volatile uint8_t Atomizer_timerCountWarmup;
+
+/**
+ * Refresh timer counter. Each tick is 40us.
+ * Counts up to 5000 (200ms) and stops.
+ */
+static volatile uint16_t Atomizer_timerCountRefresh;
+
+/**
+ * Bitwise combination of ATOMIZER_TMRFLAG_*.
+ */
+static volatile uint8_t Atomizer_timerFlag;
 
 /**
  * Thermistor resistance to board temperature lookup table.
@@ -172,12 +217,19 @@ static void Atomizer_ConfigurePWMChannel(uint8_t channel, uint8_t enable) {
 
 /**
  * Configures the DC/DC converters.
+ * Set the PWM duty cycle BEFORE calling this.
  * This is an internal function.
  *
  * @param enableBuck  True to enable the buck converter, false to disable it.
  * @param enableBoost True to enable the boost converter, false to disable it.
  */
 static void Atomizer_ConfigureConverters(uint8_t enableBuck, uint8_t enableBoost) {
+	// Set PC.1 and PC.3 low (if off) BEFORE PWM configuration
+	if(!enableBuck && !enableBoost) {
+		PC1 = 0;
+		PC3 = 0;
+	}
+
 	// FIRST power off
 	if(!enableBuck) {
 		Atomizer_ConfigurePWMChannel(ATOMIZER_PWMCH_BUCK, 0);
@@ -188,15 +240,15 @@ static void Atomizer_ConfigureConverters(uint8_t enableBuck, uint8_t enableBoost
 
 	// THEN power on
 	if(enableBuck) {
+		PC3 = 1;
 		Atomizer_ConfigurePWMChannel(ATOMIZER_PWMCH_BUCK, 1);
+		PC1 = 1;
 	}
 	if(enableBoost) {
+		PC1 = 1;
 		Atomizer_ConfigurePWMChannel(ATOMIZER_PWMCH_BOOST, 1);
+		PC3 = 1;
 	}
-
-	// If a converter is enabled, PC.1 and PC.3 are set high
-	// Otherwise, they are set low
-	PC1 = PC3 = (enableBuck || enableBoost) ? 1 : 0;
 }
 
 /**
@@ -207,6 +259,7 @@ static void Atomizer_ConfigureConverters(uint8_t enableBuck, uint8_t enableBoost
 static void Atomizer_NegativeFeedback(uint32_t unused) {
 	uint16_t adcVoltage, adcCurrent, curVolts;
 	uint32_t resistance;
+	Atomizer_ConverterState_t nextState;
 
 	// Update ADC cache without blocking.
 	// This loop always runs (until this point), even when
@@ -214,30 +267,42 @@ static void Atomizer_NegativeFeedback(uint32_t unused) {
 	// keep good values in the cache for when we power it up.
 	ADC_UpdateCache((uint8_t []) {ADC_MODULE_VATM, ADC_MODULE_CURS}, 2, 0);
 
-	Atomizer_timerCount++;
+	if(Atomizer_timerCountRefresh != 5000) {
+		Atomizer_timerCountRefresh++;
+	}
+	else {
+		Atomizer_timerFlag |= ATOMIZER_TMRFLAG_REFRESH;
+	}
 
 	if(Atomizer_curState == POWEROFF) {
-		// Powered off, nothing to do
 		return;
+	}
+
+	if(Atomizer_timerCountWarmup != 51) {
+		Atomizer_timerCountWarmup++;
+	}
+	else {
+		Atomizer_timerFlag |= ATOMIZER_TMRFLAG_WARMUP;
 	}
 
 	// Get ADC readings
 	adcVoltage = ADC_GetCachedResult(ADC_MODULE_VATM);
 	adcCurrent = ADC_GetCachedResult(ADC_MODULE_CURS);
 
-	// Check resistance
-	resistance = ATOMIZER_ADC_RESISTANCE(adcVoltage, adcCurrent);
-	if(resistance >= 5 && resistance < 50) {
-		Atomizer_error = SHORT;
-	}
-	else if(resistance > 5000) {
-		Atomizer_error = OPEN;
-	}
-	else {
-		Atomizer_error = OK;
+	Atomizer_error = OK;
+	if(Atomizer_timerCountWarmup > 25) {
+		// Start checking resistance after 1ms
+		resistance = ATOMIZER_ADC_RESISTANCE(adcVoltage, adcCurrent);
+		if(resistance >= 5 && resistance < 40) {
+			Atomizer_error = SHORT;
+		}
+		else if(resistance > 50000) {
+			Atomizer_error = OPEN;
+		}
 	}
 	if(Atomizer_error != OK) {
 		Atomizer_baseRes = 0;
+		Atomizer_tempRes = 0;
 		Atomizer_Control(0);
 		return;
 	}
@@ -248,12 +313,13 @@ static void Atomizer_NegativeFeedback(uint32_t unused) {
 		return;
 	}
 
+	nextState = Atomizer_curState;
+
 	if(curVolts < Atomizer_targetVolts) {
 		if(Atomizer_curState == POWERON_BUCK) {
 			if(Atomizer_curCmr == 479) {
 				// Reached maximum for buck, switch to boost
-				Atomizer_curState = POWERON_BOOST;
-				Atomizer_ConfigureConverters(0, 1);
+				nextState = POWERON_BOOST;
 			}
 			else {
 				// In buck mode, increased duty cycle = increased voltage
@@ -270,8 +336,7 @@ static void Atomizer_NegativeFeedback(uint32_t unused) {
 		if(Atomizer_curState == POWERON_BOOST) {
 			if(Atomizer_curCmr == 479) {
 				// Reached minimum for boost, switch to buck
-				Atomizer_curState = POWERON_BUCK;
-				Atomizer_ConfigureConverters(1, 0);
+				nextState = POWERON_BUCK;
 			}
 			else {
 				// In boost mode, increased duty cycle = decreased voltage
@@ -292,6 +357,13 @@ static void Atomizer_NegativeFeedback(uint32_t unused) {
 
 	// Set new duty cycle
 	PWM_SET_CMR(PWM0, Atomizer_curState == POWERON_BUCK ? ATOMIZER_PWMCH_BUCK : ATOMIZER_PWMCH_BOOST, Atomizer_curCmr);
+
+	// If needed, update state and reconfigure converters
+	// Ensures duty cycle is set before reconfiguration
+	if(nextState != Atomizer_curState) {
+		Atomizer_curState = nextState;
+		Atomizer_ConfigureConverters(nextState == POWERON_BUCK, nextState == POWERON_BOOST);
+	}
 }
 
 void Atomizer_Init() {
@@ -350,12 +422,13 @@ void Atomizer_Init() {
 	Atomizer_curState = POWEROFF;
 	Atomizer_error = OK;
 	Atomizer_baseRes = 0;
-	Atomizer_timerCount = 0;
+	Atomizer_tempRes = 0;
+	ATOMIZER_TIMER_RESET();
 
-	// Setup 5kHz timer for negative feedback cycle
+	// Setup 25kHz timer for negative feedback cycle
 	// This function should run during system init, so
 	// the user hasn't had time to create timers yet.
-	Timer_CreateTimer(5000, 1, Atomizer_NegativeFeedback, 0);
+	Timer_CreateTimer(25000, 1, Atomizer_NegativeFeedback, 0);
 }
 
 void Atomizer_SetOutputVoltage(uint16_t volts) {
@@ -367,6 +440,11 @@ void Atomizer_SetOutputVoltage(uint16_t volts) {
 }
 
 void Atomizer_Control(uint8_t powerOn) {
+	if(Atomizer_error == SHORT) {
+		// Lock atomizer after short
+		return;
+	}
+
 	if((!powerOn && Atomizer_curState == POWEROFF) || (powerOn && Atomizer_curState != POWEROFF)) {
 		// Nothing to do
 		return;
@@ -374,9 +452,11 @@ void Atomizer_Control(uint8_t powerOn) {
 
 	if(powerOn) {
 		// Start from buck with duty cycle 10
+		Atomizer_error = OK;
 		Atomizer_curCmr = 10;
-		Atomizer_ConfigureConverters(1, 0);
 		PWM_SET_CMR(PWM0, ATOMIZER_PWMCH_BUCK, Atomizer_curCmr);
+		Atomizer_ConfigureConverters(1, 0);
+		ATOMIZER_TIMER_WARMUP_RESET();
 		Atomizer_curState = POWERON_BUCK;
 	}
 	else {
@@ -390,14 +470,15 @@ uint8_t Atomizer_IsOn() {
 }
 
 Atomizer_Error_t Atomizer_GetError() {
-	return Atomizer_error;
+	// Mask OK code while resistance is stabilizing
+	return Atomizer_error == OK && Atomizer_tempRes != 0 ? OPEN : Atomizer_error;
 }
 
 /**
  * Samples the atomizer info.
  * This is an internal function.
  *
- * @param targetVolts Target volts for sampling (if not firing).
+ * @param targetVolts Target volts for sampling (if not firing), in mV.
  * @param voltage     Pointer to store voltage (0 on error).
  * @param current     Pointer to store current (0 on error).
  * @param resistance  Pointer to store resistance (0 on error).
@@ -407,25 +488,29 @@ static void Atomizer_Sample(uint16_t targetVolts, uint16_t *voltage, uint16_t *c
 	uint16_t savedTargetVolts;
 	uint8_t i;
 
+	vSum = 0;
+	iSum = 0;
+
 	if(Atomizer_curState == POWEROFF) {
 		// Power on atomizer for measurement
 		savedTargetVolts = Atomizer_targetVolts;
-		Atomizer_targetVolts = targetVolts;
+		Atomizer_SetOutputVoltage(targetVolts);
 		Atomizer_Control(1);
-		Timer_DelayMs(2);
+		ATOMIZER_WAIT_WARMUP();
 
-		// Sample and average V and I
-		vSum = iSum = 0;
-		for(i = 0; i < 50; i++) {
-			Timer_DelayUs(10);
-			vSum += ADC_Read(ADC_MODULE_VATM);
-			Timer_DelayUs(10);
-			iSum += ADC_Read(ADC_MODULE_CURS);
+		if(Atomizer_error == OK) {
+			// Sample and average V and I
+			for(i = 0; i < 50; i++) {
+				Timer_DelayUs(10);
+				vSum += ADC_Read(ADC_MODULE_VATM);
+				Timer_DelayUs(10);
+				iSum += ADC_Read(ADC_MODULE_CURS);
+			}
 		}
 
 		// Power off and restore target voltage
 		Atomizer_Control(0);
-		Atomizer_targetVolts = savedTargetVolts;
+		Atomizer_SetOutputVoltage(savedTargetVolts);
 
 		*voltage = 0;
 		*current = 0;
@@ -435,7 +520,7 @@ static void Atomizer_Sample(uint16_t targetVolts, uint16_t *voltage, uint16_t *c
 		vSum = ADC_GetCachedResult(ADC_MODULE_VATM);
 		iSum = ADC_GetCachedResult(ADC_MODULE_CURS);
 
-		*voltage = ATOMIZER_ADC_VOLTAGE(vSum);
+		*voltage = ATOMIZER_ADC_VOLTAGE(vSum) * 10;
 		*current = ATOMIZER_ADC_CURRENT(iSum);
 	}
 
@@ -447,7 +532,7 @@ static void Atomizer_Sample(uint16_t targetVolts, uint16_t *voltage, uint16_t *c
 	// The feedback cycle has more relaxed limits,
 	// so we re-check the resistance.
 	adcRes = ATOMIZER_ADC_RESISTANCE(vSum, iSum);
-	if(adcRes < 50) {
+	if(adcRes >= 5 && adcRes < 50) {
 		Atomizer_error = SHORT;
 	}
 	else if(adcRes > 3500) {
@@ -455,14 +540,14 @@ static void Atomizer_Sample(uint16_t targetVolts, uint16_t *voltage, uint16_t *c
 	}
 	else {
 		*resistance = adcRes;
-		if(Atomizer_curState == POWEROFF) {
-			Atomizer_baseRes = adcRes;
-		}
 		return;
 	}
 
+	// Check failed: behave like an atomizer error
 	Atomizer_Control(0);
 	Atomizer_baseRes = 0;
+	Atomizer_tempRes = 0;
+
 	*voltage = 0;
 	*current = 0;
 	*resistance = 0;
@@ -470,42 +555,66 @@ static void Atomizer_Sample(uint16_t targetVolts, uint16_t *voltage, uint16_t *c
 	return;
 }
 
-void Atomizer_ReadInfo(Atomizer_Info_t *info) {
-	uint16_t targetVolts, savedTargetVolts;
+/**
+ * Refreshes the atomizer, taking care to update Atomizer_baseRes.
+ * Do NOT call this while firing.
+ * This is an internal function.
+ */
+static void Atomizer_Refresh() {
+	uint16_t voltage, current, resistance, targetVolts;
 
-	// Try to use saved resistance
-	if(Atomizer_curState == POWEROFF && Atomizer_baseRes != 0) {
-		if(Atomizer_timerCount >= 1000) {
-			// Every 200ms, let's check if the atomizer is still OK
-			Atomizer_timerCount = 0;
-			savedTargetVolts = Atomizer_targetVolts;
-			Atomizer_targetVolts = 30;
-			Atomizer_Control(1);
-			Timer_DelayMs(2);
-			Atomizer_Control(0);
-			Atomizer_targetVolts = savedTargetVolts;
+	if(Atomizer_tempRes == 0) {
+		// Use a 300mV test voltage for refresh
+		targetVolts = Atomizer_targetVolts;
+		Atomizer_SetOutputVoltage(300);
+		Atomizer_Control(1);
+		ATOMIZER_WAIT_WARMUP();
+		Atomizer_Control(0);
+		Atomizer_SetOutputVoltage(targetVolts);
+
+		if(Atomizer_baseRes != 0 || Atomizer_error != OK) {
+			return;
+		}
+	}
+
+	// If tempRes == 0, then the atomizer has just been connected,
+	// so we start sampling it at 1.00V.
+	// Otherwise, we use the previously calculated target voltage.
+	targetVolts = Atomizer_tempRes == 0 ? 100 : Atomizer_tempTargetVolts;
+	Atomizer_Sample(targetVolts, &voltage, &current, &resistance);
+	if(Atomizer_error != OK) {
+		return;
+	}
+
+	// Calculate test voltage for 1.5% target error.
+	Atomizer_tempTargetVolts = (resistance * 49L / 30L + 744L) / 10L;
+
+	// Only update baseRes when resistance has stabilized.
+	// This is needed because resistance fluctuates while screwing
+	// in the 510 connector.
+	if(Atomizer_tempRes == 0 || Atomizer_tempRes != resistance) {
+		Atomizer_tempRes = resistance;
+	}
+	else {
+		Atomizer_tempRes = 0;
+		Atomizer_baseRes = resistance;
+	}
+}
+
+void Atomizer_ReadInfo(Atomizer_Info_t *info) {
+	if(Atomizer_curState == POWEROFF) {
+		// Lock atomizer after short
+		if(Atomizer_error != SHORT && (Atomizer_timerFlag & ATOMIZER_TMRFLAG_REFRESH)) {
+			ATOMIZER_TIMER_REFRESH_RESET();
+			Atomizer_Refresh();
 		}
 
 		info->voltage = 0;
 		info->current = 0;
 		info->resistance = Atomizer_baseRes;
-		return;
 	}
-
-	// Sample info (@ 1.00V if not firing)
-	Atomizer_Sample(100, &info->voltage, &info->current, &info->resistance);
-	if(Atomizer_error != OK) {
-		return;
-	}
-
-	if(Atomizer_curState == POWEROFF) {
-		// Calculate test voltage for 1.5% target error
-		targetVolts = (info->resistance * 49L / 30L + 744L) / 10L;
-		if(targetVolts <= 100) {
-			return;
-		}
-
-		Atomizer_Sample(targetVolts, &info->voltage, &info->current, &info->resistance);
+	else {
+		Atomizer_Sample(0, &info->voltage, &info->current, &info->resistance);
 	}
 }
 

@@ -90,6 +90,10 @@
 // Busy wait for warmup or error
 #define ATOMIZER_WAIT_WARMUP() do {} while(!(Atomizer_timerFlag & ATOMIZER_TMRFLAG_WARMUP) && Atomizer_error == OK)
 
+// True when abs(a - b) > bound
+// Works for unsigned types
+#define ATOMIZER_DIFF_NOT_BOUND(a, b, bound) (((a) < (b) && (b) - (a) > (bound)) || ((a) > (b) && (a) - (b) > (bound)))
+
 /**
  * Type for storing converters state.
  */
@@ -589,10 +593,10 @@ static void Atomizer_Refresh() {
 	// Calculate test voltage for 1.5% target error.
 	Atomizer_tempTargetVolts = (resistance * 49L / 30L + 744L) / 10L;
 
-	// Only update baseRes when resistance has stabilized.
+	// Only update baseRes when resistance has stabilized to +/- 5mOhm.
 	// This is needed because resistance fluctuates while screwing
 	// in the 510 connector.
-	if(Atomizer_tempRes == 0 || Atomizer_tempRes != resistance) {
+	if(Atomizer_tempRes == 0 || ATOMIZER_DIFF_NOT_BOUND(resistance, Atomizer_tempRes, 5)) {
 		Atomizer_tempRes = resistance;
 	}
 	else {

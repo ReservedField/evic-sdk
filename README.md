@@ -83,13 +83,16 @@ Installation
    ```
    echo "export EVICSDK=$(pwd)" >> $HOME/.bashrc
    ```
-   **On Windows**, you also need to point `ARMGCC` to your ARM toolchain install. Use a Cygwin-style
-   path. For example, if my toolchain is installed to `C:\arm-none-eabi-gcc`, I would add this
-   to my Cygwin `/home/username/.bashrc` file:
+   You also need to point `ARMGCC` to your ARM toolchain install. If your toolchain is installed to `/usr`
+   (as is usually the case on Linux) you don't need to set this variable since the SDK makefiles will
+   default it to `/usr`. **On Windows**, setting `ARMGCC` is **mandatory**. Use a Cygwin-style path.
+   For example, if my toolchain was installed to `C:\arm-none-eabi-gcc`, I would add this to my Cygwin
+   `/home/username/.bashrc` file:
    ```
    export ARMGCC=/cygdrive/C/arm-none-eabi-gcc
    ```
-   Make sure to restart your terminal to ensure variables are set before building.
+   Make sure to restart your terminal to ensure variables are set before building. Please note that all
+   paths do not include a trailing slash.
 
 4. Build the SDK:
    ```

@@ -28,14 +28,15 @@ endif
 
 ifeq ($(OS),Windows_NT)
 	# Always fix binutils path
-	ifdef ARMGCC
+	ifneq ($(ARMGCC),)
 		ARMGCC := $(shell cygpath -w $(ARMGCC))
 	endif
 
 	ifndef CC_IS_CLANG
 		NEED_FIXPATH := 1
 	endif
-else
+else ifeq ($(ARMGCC),)
+	# Allow override but default to /usr
 	ARMGCC := /usr
 endif
 

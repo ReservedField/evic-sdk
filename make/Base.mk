@@ -26,6 +26,12 @@ ifeq ($(shell $(CC) -v 2>&1 | grep -c "clang version"), 1)
 	CC_IS_CLANG := 1
 endif
 
+ifeq ($(ARMGCC),)
+	ARMGCC := $(shell cd $(shell arm-none-eabi-gcc --print-search-dir | grep 'libraries' | \
+		sed 's/[=$(if $(filter Windows_NT,$(OS)),;,:)]/\n/g' | \
+		grep -E '/arm-none-eabi/lib/?$$' | head -1)/../.. && pwd)
+endif
+
 ifeq ($(OS),Windows_NT)
 	# Always fix binutils path
 	ifneq ($(ARMGCC),)
@@ -35,9 +41,6 @@ ifeq ($(OS),Windows_NT)
 	ifndef CC_IS_CLANG
 		NEED_FIXPATH := 1
 	endif
-else ifeq ($(ARMGCC),)
-	# Allow override but default to /usr
-	ARMGCC := /usr
 endif
 
 ifdef CC_IS_CLANG

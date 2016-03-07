@@ -16,6 +16,12 @@ On Ubuntu, the following should be enough:
 gcc-arm-none-eabi
 libnewlib-arm-none-eabi
 ```
+On OSX you can use [brew](http://brew.sh/):
+```
+brew tap mpaw/arm-none-eabi
+brew update
+brew install gcc-arm-none-eabi
+```
 
 On Windows, first install the [precompiled ARM toolchain](https://launchpad.net/gcc-arm-embedded).
 Choose an installation path without spaces to avoid problems with

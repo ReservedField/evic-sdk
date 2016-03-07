@@ -10,3 +10,5 @@
 *.lst
 *.elf
 *.bin
+
+.DS_Store

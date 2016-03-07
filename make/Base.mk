@@ -27,9 +27,9 @@ ifeq ($(shell $(CC) -v 2>&1 | grep -c "clang version"), 1)
 endif
 
 ifeq ($(ARMGCC),)
-	ARMGCC := $(shell cd $(shell arm-none-eabi-gcc --print-search-dir | grep 'libraries' | \
-		sed 's/[=$(if $(filter Windows_NT,$(OS)),;,:)]/\n/g' | \
-		grep -E '/arm-none-eabi/lib/?$$' | head -1)/../.. && pwd)
+    ARMGCC := $(shell cd $(shell arm-none-eabi-gcc --print-search-dir | grep 'libraries' | \
+        tr '=$(if $(filter Windows_NT,$(OS)),;,:)' '\n' | \
+        grep -E '/arm-none-eabi/lib/?$$' | head -1)/../.. && pwd)
 endif
 
 ifeq ($(OS),Windows_NT)

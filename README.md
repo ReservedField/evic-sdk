@@ -25,7 +25,7 @@ brew install gcc-arm-none-eabi
 
 On Windows, first install the [precompiled ARM toolchain](https://launchpad.net/gcc-arm-embedded).
 Choose an installation path without spaces to avoid problems with
-the build process. Then, install [Cygwin](https://www.cygwin.com/)
+the build process. Then, install [Cygwin](https://www.cygwin.com/) (for a non-cygwin environment please refer to pr ReservedField#20)
 and add the following packages on top of the base install:
 ```
 make

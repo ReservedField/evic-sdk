@@ -8,11 +8,9 @@
 
 # We make the following assumptions on Windows:
 # arm-none-eabi gcc and binutils are compiled for Windows,
-# so they need path translation.
-# Clang is compiled for Cygwin (no path translation).
+# so if you are using Cygwin, we will need path translations
 # NUVOSDK must be lazily evaluated, so that we can later
-# change EVICSDK when building include and linker paths.
-# OBJS paths are Cygwin-style.
+# change EVICSDK when building include paths.
 
 NUVOSDK = $(EVICSDK)/nuvoton-sdk/Library
 
@@ -21,6 +19,16 @@ NUVOSDK = $(EVICSDK)/nuvoton-sdk/Library
 OBJS := $(OBJS)
 
 CPU := cortex-m4
+
+# We need to find out if on cygwin or not
+ifeq ($(OS),Windows_NT)
+	ifeq (, $(findstring cygwin, $(shell gcc -dumpmachine)))
+		WIN_CYG := 0
+	else
+		WIN_CYG := 1
+	endif
+	
+endif
 
 ifeq ($(shell $(CC) -v 2>&1 | grep -c "clang version"), 1)
 	CC_IS_CLANG := 1
@@ -35,9 +43,13 @@ endif
 ifeq ($(OS),Windows_NT)
 	# Always fix binutils path
 	ifneq ($(ARMGCC),)
-		ARMGCC := $(shell cygpath -w $(ARMGCC))
+		# If using cygwin, use cygpath
+		ifeq ($(WIN_CYG),1)
+			ARMGCC := $(shell cygpath -w $(ARMGCC))
+		endif
+		
 	endif
-
+	
 	ifndef CC_IS_CLANG
 		NEED_FIXPATH := 1
 	endif
@@ -50,10 +62,14 @@ else
 endif
 
 ifdef NEED_FIXPATH
-	OBJS_FIXPATH := $(shell cygpath -w $(OBJS))
-	EVICSDK := $(shell cygpath -w $(EVICSDK))
-else
-	OBJS_FIXPATH := $(OBJS)
+		ifeq ($(WIN_CYG), 0)
+			OBJS_FIXPATH := $(OBJS)
+		else
+			OBJS_FIXPATH := $(shell cygpath -w $(OBJS))
+			EVICSDK := $(shell cygpath -w $(EVICSDK))
+		endif
+	else
+		OBJS_FIXPATH := $(OBJS)
 endif
 
 AS := arm-none-eabi-as
@@ -96,7 +112,7 @@ all: env_check $(TARGET).bin
 	$(AS) $(ASFLAGS) -o $@ $<
 
 $(TARGET).elf: $(OBJS_FIXPATH)
-	mkdir -p $(BINDIR)
+	test -d $(BINDIR) || mkdir $(BINDIR)
 	$(LD) $(OBJS_FIXPATH) $(LDFLAGS) -o $(BINDIR)/$(TARGET).elf
 
 $(TARGET)_unencrypted.bin: $(TARGET).elf

@@ -3,12 +3,12 @@ TARGET_CRT0 := $(TARGET)_crt0
 
 # We make the following assumptions on Windows:
 # arm-none-eabi gcc and binutils are compiled for Windows,
-# so they need path translation.
-# Clang is compiled for Cygwin (no path translation).
+# so if you are using Cygwin, we will need path translations
 # NUVOSDK must be lazily evaluated, so that we can later
 # change EVICSDK when building include paths.
-# We want to keep OBJS with Cygwin paths for clean target.
 
+# Small fix to bug where cygpath -w mistranslates paths with mixed slashes (/, \)
+EVICSDK := $(subst \,/,$(EVICSDK))
 NUVOSDK = $(EVICSDK)/nuvoton-sdk/Library
 
 OBJS := $(NUVOSDK)/Device/Nuvoton/M451Series/Source/system_M451Series.o \
@@ -49,22 +49,36 @@ DOCDIR := doc
 
 CPU := cortex-m4
 
+# We need to find out if on cygwin or not
+ifeq ($(OS),Windows_NT)
+	ifeq (, $(findstring cygwin, $(shell gcc -dumpmachine)))
+		WIN_CYG := 0
+	else
+		WIN_CYG := 1
+	endif
+	
+endif
+
 ifeq ($(shell $(CC) -v 2>&1 | grep -c "clang version"), 1)
 	CC_IS_CLANG := 1
 endif
 
 ifeq ($(ARMGCC),)
-    ARMGCC := $(shell cd $(shell arm-none-eabi-gcc --print-search-dir | grep 'libraries' | \
-        tr '=$(if $(filter Windows_NT,$(OS)),;,:)' '\n' | \
-        grep -E '/arm-none-eabi/lib/?$$' | head -1)/../.. && pwd)
+	ARMGCC := $(shell cd $(shell arm-none-eabi-gcc --print-search-dir | grep 'libraries' | \
+		tr '=$(if $(filter Windows_NT,$(OS)),;,:)' '\n' | \
+		grep -E '/arm-none-eabi/lib/?$$' | head -1)/../.. && pwd)
 endif
 
 ifeq ($(OS),Windows_NT)
 	# Always fix binutils path
 	ifneq ($(ARMGCC),)
-		ARMGCC := $(shell cygpath -w $(ARMGCC))
+		# If using cygwin, use cygpath
+		ifeq ($(WIN_CYG),1)
+			ARMGCC := $(shell cygpath -w $(ARMGCC))
+		endif
+		
 	endif
-
+	
 	ifndef CC_IS_CLANG
 		NEED_FIXPATH := 1
 	endif
@@ -87,18 +101,27 @@ ifneq ($(ARMGCC),)
 	else
 		CC := arm-none-eabi-gcc
 	endif
-
+	
 	ifdef NEED_FIXPATH
-		OBJS_FIXPATH := $(shell cygpath -w $(OBJS))
-		OBJS_CRT0_FIXPATH := $(shell cygpath -w $(OBJS_CRT0))
-		EVICSDK := $(shell cygpath -w $(EVICSDK))
+		ifeq ($(WIN_CYG), 0)
+			OBJS_FIXPATH := $(OBJS)
+			OBJS_CRT0_FIXPATH := $(OBJS_CRT0)
+		else
+			OBJS_FIXPATH := $(shell cygpath -w $(OBJS))
+			OBJS_CRT0_FIXPATH := $(shell cygpath -w $(OBJS_CRT0))
+			EVICSDK := $(shell cygpath -w $(EVICSDK))
+		endif
 	else
 		OBJS_FIXPATH := $(OBJS)
 		OBJS_CRT0_FIXPATH := $(OBJS_CRT0)
 	endif
 endif
 
-SDKTAG := $(shell git describe --abbrev --dirty --always --tags 2> /dev/null)
+ifeq ($(WIN_CYG),0)
+	SDKTAG := $(shell git describe --abbrev --dirty --always --tags 2> NUL ) # Fix for Windows w/o cygwin (NUL instead of /dev/null)
+else
+	SDKTAG := $(shell git describe --abbrev --dirty --always --tags 2> /dev/null ) 
+endif
 ifeq ($(SDKTAG),)
 	SDKTAG := unknown
 endif
@@ -123,15 +146,15 @@ all: env_check gen_tag $(TARGET_CRT0).o $(TARGET).a
 %.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
-%.o: %.s
+%.o: %.s 
 	$(AS) $(ASFLAGS) -o $@ $<
 
 $(TARGET).a: $(OBJS_FIXPATH)
-	mkdir -p $(OUTDIR)
+	test -d $(OUTDIR) || mkdir $(OUTDIR)
 	$(AR) -rv $(OUTDIR)/$(TARGET).a $(OBJS_FIXPATH)
 
 $(TARGET_CRT0).o: $(OBJS_CRT0_FIXPATH)
-	mkdir -p $(OUTDIR)
+	test -d $(OUTDIR) || mkdir $(OUTDIR)
 	$(LD) -r $(OBJS_CRT0_FIXPATH) -o $(OUTDIR)/$(TARGET_CRT0).o
 
 docs:
@@ -150,6 +173,11 @@ endif
 
 gen_tag:
 	@rm -f $(TAGNAME).s $(TAGNAME).o
-	@printf '.section .evicsdk_tag\n.asciz "evic-sdk-$(SDKTAG)"\n' > $(TAGNAME).s
+ifeq ($(WIN_CYG),0)
+		@printf ".section .evicsdk_tag\n.asciz \"evic-sdk-$(SDKTAG)\"\n" > $(TAGNAME).s
+else
+		@printf '.section .evicsdk_tag\n.asciz "evic-sdk-$(SDKTAG)"\n' > $(TAGNAME).s
+endif
+
 
 .PHONY: all clean docs env_check gen_tag

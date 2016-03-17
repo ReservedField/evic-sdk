@@ -66,7 +66,7 @@ print(('#include <stdint.h>\n\n'
        .format(args.bitmapName.upper(), args.bitmapName))
 byteLines = [imgBytes[i:i+8] for i in range(0, len(imgBytes), 8)]
 for idx, line in enumerate(byteLines):
-	lineStr = '\t' + ', '.join(['0x{:02X}'.format(ord(b)) for b in line])
+	lineStr = '\t' + ', '.join(['0x{:02X}'.format(b) for b in bytearray(line)])
 	if idx != len(byteLines) - 1:
 		lineStr += ','
 	print(lineStr)

@@ -33,6 +33,8 @@ SECTIONS {
 		__fini_array_start = .;
 		KEEP(*(.fini_array))
 		__fini_array_end = .;
+		KEEP(*(SORT(.init_array.*)))
+		KEEP(*(SORT(.fini_array.*)))
 
 		/* .ctors */
 		*crtbegin.o(.ctors)
@@ -48,10 +50,11 @@ SECTIONS {
 		*(SORT(.dtors.*))
 		*(.dtors)
 
-		*(.rodata*)
-
 		KEEP(*(.evicsdk_tag))
 		KEEP(*(.verify))
+
+		. = ALIGN(4);
+		*(.rodata*)
 
 		KEEP(*(.eh_frame*))
 	} > ROM
@@ -64,24 +67,13 @@ SECTIONS {
 		*(.ARM.exidx* .gnu.linkonce.armexidx.*)
 	} > ROM
 
+	. = ALIGN(4);
 	Data_Start_ROM = .;
-		
+
 	.data : AT (Data_Start_ROM) {
 		Data_Start_RAM = .;
 		*(vtable)
 		*(.data*)
-
-		. = ALIGN(4);
-		KEEP(*(.preinit_array))
-
-		. = ALIGN(4);
-		KEEP(*(SORT(.init_array.*)))
-		KEEP(*(.init_array))
-
-
-		. = ALIGN(4);
-		KEEP(*(SORT(.fini_array.*)))
-		KEEP(*(.fini_array))
 
 		. = ALIGN(4);
 		Data_End_RAM = .;

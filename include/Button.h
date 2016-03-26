@@ -38,6 +38,17 @@ extern "C" {
 #define BUTTON_MASK_LEFT  0x04
 
 /**
+ * Function pointer type for button callbacks.
+ * The current button state as returned by Button_GetState()
+ * is passed as the first argument.
+ * Callbacks will be invoked from an interrupt handler,
+ * so they should be as fast as possible. You'll typically
+ * want to just set a flag and return, and then act on that
+ * flag from you main application loop.
+ */
+typedef void (*Button_Callback_t)(uint8_t);
+
+/**
  * Initializes the buttons I/O.
  * System control registers must be unlocked.
  */
@@ -51,6 +62,26 @@ void Button_Init();
  * @return Button state.
  */
 uint8_t Button_GetState();
+
+/**
+ * Creates a button callback. It will be called every time the specified
+ * buttons change state. There are three callback slots available to users.
+ *
+ * @param callback Callback function.
+ * @param buttonMask Bitwise OR of BUTTON_MASK_* values to specify which
+ *                   buttons the callback should be notified of.
+ *
+ * @return A positive index if the callback was successfully created, or a
+ *         negative value if no callback slots are available.
+ */
+int8_t Button_CreateCallback(Button_Callback_t callback, uint8_t buttonMask);
+
+/**
+ * Deletes a callback.
+ *
+ * @param index Callback inde as returned by Button_CreateCallback().
+ */
+void Button_DeleteCallback(int8_t index);
 
 #ifdef __cplusplus
 }

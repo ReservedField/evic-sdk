@@ -23,18 +23,37 @@
 #include <Font.h>
 #include <Button.h>
 
+/**
+ * Counters, just to make our callbacks do something.
+ */
+volatile uint8_t counter[2] = {0};
+
+void fireCallback(uint8_t state) {
+	counter[0]++;
+}
+
+void rightLeftCallback(uint8_t state) {
+	counter[1]++;
+}
+
 int main() {
 	uint8_t state;
 	char buf[100];
 
+	// Create some button callbacks
+	// Both with a single button and with multiple buttons
+	Button_CreateCallback(fireCallback, BUTTON_MASK_FIRE);
+	Button_CreateCallback(rightLeftCallback, BUTTON_MASK_RIGHT | BUTTON_MASK_LEFT);
+
 	while(1) {
 		// Build state report
 		state = Button_GetState();
-		siprintf(buf, "Mask: %02X\n\nFire: %d\nRight: %d\nLeft: %d",
+		siprintf(buf, "Mask: %02X\n\nFire: %d\nRight: %d\nLeft: %d\n\nC0: %d\nC1: %d",
 			state,
 			(state & BUTTON_MASK_FIRE) ? 1 : 0,
 			(state & BUTTON_MASK_RIGHT) ? 1 : 0,
-			(state & BUTTON_MASK_LEFT) ? 1 : 0);
+			(state & BUTTON_MASK_LEFT) ? 1 : 0,
+			counter[0], counter[1]);
 
 		// Clear and blit text
 		Display_Clear();

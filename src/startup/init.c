@@ -20,6 +20,7 @@
 #include <M451Series.h>
 #include <Dataflash.h>
 #include <Display.h>
+#include <Battery.h>
 #include <Button.h>
 #include <ADC.h>
 #include <Atomizer.h>
@@ -93,8 +94,18 @@ void SYS_Init() {
 	// Initialize dataflash
 	Dataflash_Init();
 
+	// Setup debounce, used both by buttons and battery presence pin.
+	// Buttons only need 100us, while at least 200us is needed by
+	// battery presence. The original firmware uses 100ms for battery and
+	// timer-based debounce for buttons, but that's excessive.
+	// 200us will work fine for both. Button debounce isn't really noticeable
+	// up to 128 LIRC clock cycles, so this can be upped if battery presence
+	// is unstable.
+	GPIO_SET_DEBOUNCE_TIME(GPIO_DBCTL_DBCLKSRC_LIRC, GPIO_DBCTL_DBCLKSEL_2);
+
 	// Initialize I/O
 	Display_SetupSPI();
+	Battery_Init();
 	Button_Init();
 	ADC_Init();
 	Atomizer_Init();

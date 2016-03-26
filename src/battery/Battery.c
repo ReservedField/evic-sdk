@@ -37,16 +37,35 @@ static const uint16_t Battery_percentTable[11] = {
 	3100, 3300, 3420, 3500, 3580, 3630, 3680, 3790, 3890, 4000, 4100
 };
 
+/**
+ * True if battery is present, false otherwise.
+ */
+static volatile uint8_t Battery_isPresent;
+
+/**
+ * PD.7 interrupt handler. Needed to make use of debounce.
+ * Dirty hack: not an actual interrupt handler, but will be
+ * called for PD.7 by the real GPD interrupt handler that
+ * resides in the button library.
+ * This is an internal function.
+ */
+void GPD7_IRQHandler() {
+	Battery_isPresent = !PD7;
+}
+
 void Battery_Init() {
-	// Setup presence pin
-	// Debounce: 1024 LIRC clocks
+	// Setup presence pin with debounce
 	GPIO_SetMode(PD, BIT7, GPIO_MODE_INPUT);
-	GPIO_SET_DEBOUNCE_TIME(GPIO_DBCTL_DBCLKSRC_LIRC, GPIO_DBCTL_DBCLKSEL_1024);
 	GPIO_ENABLE_DEBOUNCE(PD, BIT7);
+
+	Battery_isPresent = !PD7;
+
+	// Leave NVIC enable to the button library
+	GPIO_EnableInt(PD, 7, GPIO_INT_BOTH_EDGE);
 }
 
 uint8_t Battery_IsPresent() {
-	return !PD7;
+	return Battery_isPresent;
 }
 
 uint8_t Battery_IsCharging() {

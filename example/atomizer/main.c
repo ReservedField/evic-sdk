@@ -136,6 +136,12 @@ int main() {
 			case OPEN:
 				atomState = "NO ATOM";
 				break;
+			case WEAK_BATT:
+				atomState = "WEAK BAT";
+				break;
+			case OVER_TEMP:
+				atomState = "TOO HOT";
+				break;
 			default:
 				atomState = Atomizer_IsOn() ? "FIRING" : "";
 				break;

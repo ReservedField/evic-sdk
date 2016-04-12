@@ -69,6 +69,11 @@
 // To get 1ohm accuracy and save a multiplication, ADC_VREF and ADC_DENOMINATOR are hardcoded.
 // Maximum result size: 17 bits.
 #define ATOMIZER_ADC_THERMRES(x) (20000L * (x) / (5280L - (x)))
+// Battery is weak when < 2.8V under load, i.e. ADC value < 2240.
+#define ATOMIZER_ADC_WEAKBATT(x) ((x) < 2240)
+// Board temperature limit is 70°C.
+// Simplified from: ATOMIZER_ADC_THERMRES(x) <= Atomizer_boardTempTable[14]
+#define ATOMIZER_ADC_OVERTEMP(x) (41L * (x) <= 16480L)
 
 // Timer flags
 #define ATOMIZER_TMRFLAG_WARMUP (1 << 0)
@@ -261,7 +266,7 @@ static void Atomizer_ConfigureConverters(uint8_t enableBuck, uint8_t enableBoost
  * This is an internal function.
  */
 static void Atomizer_NegativeFeedback(uint32_t unused) {
-	uint16_t adcVoltage, adcCurrent, curVolts;
+	uint16_t adcVoltage, adcCurrent, adcBattery, adcBoardTemp, curVolts;
 	uint32_t resistance;
 	Atomizer_ConverterState_t nextState;
 
@@ -269,7 +274,10 @@ static void Atomizer_NegativeFeedback(uint32_t unused) {
 	// This loop always runs (until this point), even when
 	// the atomizer is not powered on. Let's exploit it to
 	// keep good values in the cache for when we power it up.
-	ADC_UpdateCache((uint8_t []) {ADC_MODULE_VATM, ADC_MODULE_CURS}, 2, 0);
+	ADC_UpdateCache((uint8_t []) {
+		ADC_MODULE_VATM, ADC_MODULE_CURS,
+		ADC_MODULE_VBAT, ADC_MODULE_TEMP
+	}, 4, 0);
 
 	if(Atomizer_timerCountRefresh != 5000) {
 		Atomizer_timerCountRefresh++;
@@ -292,9 +300,17 @@ static void Atomizer_NegativeFeedback(uint32_t unused) {
 	// Get ADC readings
 	adcVoltage = ADC_GetCachedResult(ADC_MODULE_VATM);
 	adcCurrent = ADC_GetCachedResult(ADC_MODULE_CURS);
+	adcBattery = ADC_GetCachedResult(ADC_MODULE_VBAT);
+	adcBoardTemp = ADC_GetCachedResult(ADC_MODULE_TEMP);
 
 	Atomizer_error = OK;
-	if(Atomizer_timerCountWarmup > 25) {
+	if(ATOMIZER_ADC_OVERTEMP(adcBoardTemp)) {
+		Atomizer_error = OVER_TEMP;
+	}
+	else if(ATOMIZER_ADC_WEAKBATT(adcBattery)) {
+		Atomizer_error = WEAK_BATT;
+	}
+	else if(Atomizer_timerCountWarmup > 25) {
 		// Start checking resistance after 1ms
 		resistance = ATOMIZER_ADC_RESISTANCE(adcVoltage, adcCurrent);
 		if(resistance >= 5 && resistance < 40) {
@@ -360,10 +376,12 @@ static void Atomizer_NegativeFeedback(uint32_t unused) {
 	}
 
 	// Set new duty cycle
-	PWM_SET_CMR(PWM0, Atomizer_curState == POWERON_BUCK ? ATOMIZER_PWMCH_BUCK : ATOMIZER_PWMCH_BOOST, Atomizer_curCmr);
+	// nextState is used here because:
+	// If state didn't change, it'll be == Atomizer_curState
+	// If state changed, duty cycle on the new channel must be set before reconfiguration
+	PWM_SET_CMR(PWM0, nextState == POWERON_BUCK ? ATOMIZER_PWMCH_BUCK : ATOMIZER_PWMCH_BOOST, Atomizer_curCmr);
 
 	// If needed, update state and reconfigure converters
-	// Ensures duty cycle is set before reconfiguration
 	if(nextState != Atomizer_curState) {
 		Atomizer_curState = nextState;
 		Atomizer_ConfigureConverters(nextState == POWERON_BUCK, nextState == POWERON_BOOST);

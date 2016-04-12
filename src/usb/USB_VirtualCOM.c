@@ -338,6 +338,11 @@ static volatile USB_VirtualCOM_RxBuffer_t USB_VirtualCOM_rxBuffer;
 static volatile USB_VirtualCOM_RxCallback_t USB_VirtualCOM_rxCallbackPtr;
 
 /**
+ * True if send mode is asynchronous, false if synchronous.
+ */
+static uint8_t USB_VirtualCOM_isAsync;
+
+/**
  * Write data to the RX ring buffer.
  * If the data size exceeds current buffer capacity, excess
  * data will be discarded.
@@ -418,12 +423,14 @@ static uint16_t USB_VirtualCOM_RxBuffer_Read(uint8_t *dst, uint16_t size) {
  * USB_VirtualCOM_bulkInWaiting will be set to false.
  * This is an internal function.
  *
- * @param buffer Source buffer.
+ * @param buffer Source buffer (can be NULL for zero-length packets).
  * @param size   Packet size. Must be <= USB_VCOM_BULK_IN_MAX_PKT_SIZE.
  */
 static void USB_VirtualCOM_SendBulkInPayload(const uint8_t *buffer, uint32_t size) {
 	USB_VirtualCOM_bulkInWaiting = 0;
-	USBD_MemCopy((uint8_t *) (USBD_BUF_BASE + USB_VCOM_BULK_IN_BUF_BASE), (uint8_t *) buffer, size);
+	if(buffer != NULL && size != 0) {
+		USBD_MemCopy((uint8_t *) (USBD_BUF_BASE + USB_VCOM_BULK_IN_BUF_BASE), (uint8_t *) buffer, size);
+	}
 	USBD_SET_PAYLOAD_LEN(USB_VCOM_BULK_IN_EP, size);
 }
 
@@ -449,8 +456,7 @@ static void USB_VirtualCOM_HandleBulkIn() {
 		if(transfer->size % USB_VCOM_BULK_IN_MAX_PKT_SIZE == 0) {
 			// Buffer has been transferred, but size is a multiple of USB_VCOM_BULK_IN_MAX_PKT_SIZE
 			// Send a zero packet
-			USBD_SET_PAYLOAD_LEN(USB_VCOM_BULK_IN_EP, 0);
-			USB_VirtualCOM_bulkInWaiting = 0;
+			USB_VirtualCOM_SendBulkInPayload(NULL, 0);
 		}
 
 		// Remove transfer from queue
@@ -615,47 +621,49 @@ static void USB_VirtualCOM_HandleClassRequest() {
 	}
 }
 
-void USB_VirtualCOM_Init() {
-	// Initialize state
-	USB_VirtualCOM_txQueue.head = USB_VirtualCOM_txQueue.tail = NULL;
-	USB_VirtualCOM_bulkInWaiting = 1;
-	USB_VirtualCOM_rxBuffer.readIndex = USB_VirtualCOM_rxBuffer.writeIndex = 0;
-	USB_VirtualCOM_rxBuffer.dataSize = 0;
-	USB_VirtualCOM_rxCallbackPtr = NULL;
+/**
+ * Sends a data buffer synchronously over the USB virtual COM port.
+ * This is an internal function.
+ *
+ * @param buf  Data buffer.
+ * @param size Number of bytes to send.
+ */
+static void USB_VirtualCOM_SendSync(const uint8_t *buf, uint32_t size) {
+	uint32_t partialSize;
 
-	// Open USB
-	USBD_Open(&USB_VirtualCOM_UsbdInfo, USB_VirtualCOM_HandleClassRequest, NULL);
+	if(size == 0) {
+		return;
+	}
 
-	// Initialize setup packet buffer
-	USBD->STBUFSEG = USB_VCOM_SETUP_BUF_BASE;
+	while(size > 0) {
+		// Wait for bulk in to be free
+		while(!USB_VirtualCOM_bulkInWaiting);
 
-	// Control IN endpoint
-	USBD_CONFIG_EP(USB_VCOM_CTRL_IN_EP, USBD_CFG_CSTALL | USBD_CFG_EPMODE_IN | USB_VCOM_CTRL_IN_EP_NUM);
-	USBD_SET_EP_BUF_ADDR(USB_VCOM_CTRL_IN_EP, USB_VCOM_CTRL_IN_BUF_BASE);
-	// Control OUT endpoint
-	USBD_CONFIG_EP(USB_VCOM_CTRL_OUT_EP, USBD_CFG_CSTALL | USBD_CFG_EPMODE_OUT | USB_VCOM_CTRL_OUT_EP_NUM);
-	USBD_SET_EP_BUF_ADDR(USB_VCOM_CTRL_OUT_EP, USB_VCOM_CTRL_OUT_BUF_BASE);
+		// Send one packet at a time
+		partialSize = Minimum(size, USB_VCOM_BULK_IN_MAX_PKT_SIZE);
+		USB_VirtualCOM_SendBulkInPayload(buf, partialSize);
+		buf += partialSize;
+		size -= partialSize;
+	}
 
-	// Bulk IN endpoint
-	USBD_CONFIG_EP(USB_VCOM_BULK_IN_EP, USBD_CFG_EPMODE_IN | USB_VCOM_BULK_IN_EP_NUM);
-	USBD_SET_EP_BUF_ADDR(USB_VCOM_BULK_IN_EP, USB_VCOM_BULK_IN_BUF_BASE);
-	// Bulk OUT endpoint
-	USBD_CONFIG_EP(USB_VCOM_BULK_OUT_EP, USBD_CFG_EPMODE_OUT | USB_VCOM_BULK_OUT_EP_NUM);
-	USBD_SET_EP_BUF_ADDR(USB_VCOM_BULK_OUT_EP, USB_VCOM_BULK_OUT_BUF_BASE);
-	USBD_SET_PAYLOAD_LEN(USB_VCOM_BULK_OUT_EP, USB_VCOM_BULK_OUT_MAX_PKT_SIZE);
+	if(partialSize == USB_VCOM_BULK_IN_MAX_PKT_SIZE) {
+		// Size is a multiple of USB_VCOM_BULK_IN_MAX_PKT_SIZE
+		// Send zero packet for termination
+		while(!USB_VirtualCOM_bulkInWaiting);
+		USB_VirtualCOM_SendBulkInPayload(NULL, 0);
+	}
 
-	// Interrupt IN endpoint
-	USBD_CONFIG_EP(USB_VCOM_INT_IN_EP, USBD_CFG_EPMODE_IN | USB_VCOM_INT_IN_EP_NUM);
-	USBD_SET_EP_BUF_ADDR(USB_VCOM_INT_IN_EP, USB_VCOM_INT_IN_BUF_BASE);
-
-	// Start USB
-	USBD_Start();
-
-	// Enable USB interrupt
-	NVIC_EnableIRQ(USBD_IRQn);
+	while(!USB_VirtualCOM_bulkInWaiting);
 }
 
-void USB_VirtualCOM_Send(const uint8_t *buf, uint32_t size) {
+/**
+ * Sends a data buffer asynchronously over the USB virtual COM port.
+ * This is an internal function.
+ *
+ * @param buf  Data buffer.
+ * @param size Number of bytes to send.
+ */
+static void USB_VirtualCOM_SendAsync(const uint8_t *buf, uint32_t size) {
 	USB_VirtualCOM_TxTransfer_t *transfer;
 	uint32_t partialSize;
 
@@ -713,6 +721,56 @@ void USB_VirtualCOM_Send(const uint8_t *buf, uint32_t size) {
 	__set_PRIMASK(0);
 }
 
+void USB_VirtualCOM_Init() {
+	// Initialize state
+	USB_VirtualCOM_txQueue.head = USB_VirtualCOM_txQueue.tail = NULL;
+	USB_VirtualCOM_bulkInWaiting = 1;
+	USB_VirtualCOM_rxBuffer.readIndex = USB_VirtualCOM_rxBuffer.writeIndex = 0;
+	USB_VirtualCOM_rxBuffer.dataSize = 0;
+	USB_VirtualCOM_rxCallbackPtr = NULL;
+	USB_VirtualCOM_isAsync = 0;
+
+	// Open USB
+	USBD_Open(&USB_VirtualCOM_UsbdInfo, USB_VirtualCOM_HandleClassRequest, NULL);
+
+	// Initialize setup packet buffer
+	USBD->STBUFSEG = USB_VCOM_SETUP_BUF_BASE;
+
+	// Control IN endpoint
+	USBD_CONFIG_EP(USB_VCOM_CTRL_IN_EP, USBD_CFG_CSTALL | USBD_CFG_EPMODE_IN | USB_VCOM_CTRL_IN_EP_NUM);
+	USBD_SET_EP_BUF_ADDR(USB_VCOM_CTRL_IN_EP, USB_VCOM_CTRL_IN_BUF_BASE);
+	// Control OUT endpoint
+	USBD_CONFIG_EP(USB_VCOM_CTRL_OUT_EP, USBD_CFG_CSTALL | USBD_CFG_EPMODE_OUT | USB_VCOM_CTRL_OUT_EP_NUM);
+	USBD_SET_EP_BUF_ADDR(USB_VCOM_CTRL_OUT_EP, USB_VCOM_CTRL_OUT_BUF_BASE);
+
+	// Bulk IN endpoint
+	USBD_CONFIG_EP(USB_VCOM_BULK_IN_EP, USBD_CFG_EPMODE_IN | USB_VCOM_BULK_IN_EP_NUM);
+	USBD_SET_EP_BUF_ADDR(USB_VCOM_BULK_IN_EP, USB_VCOM_BULK_IN_BUF_BASE);
+	// Bulk OUT endpoint
+	USBD_CONFIG_EP(USB_VCOM_BULK_OUT_EP, USBD_CFG_EPMODE_OUT | USB_VCOM_BULK_OUT_EP_NUM);
+	USBD_SET_EP_BUF_ADDR(USB_VCOM_BULK_OUT_EP, USB_VCOM_BULK_OUT_BUF_BASE);
+	USBD_SET_PAYLOAD_LEN(USB_VCOM_BULK_OUT_EP, USB_VCOM_BULK_OUT_MAX_PKT_SIZE);
+
+	// Interrupt IN endpoint
+	USBD_CONFIG_EP(USB_VCOM_INT_IN_EP, USBD_CFG_EPMODE_IN | USB_VCOM_INT_IN_EP_NUM);
+	USBD_SET_EP_BUF_ADDR(USB_VCOM_INT_IN_EP, USB_VCOM_INT_IN_BUF_BASE);
+
+	// Start USB
+	USBD_Start();
+
+	// Enable USB interrupt
+	NVIC_EnableIRQ(USBD_IRQn);
+}
+
+void USB_VirtualCOM_Send(const uint8_t *buf, uint32_t size) {
+	if(USB_VirtualCOM_isAsync) {
+		USB_VirtualCOM_SendAsync(buf, size);
+	}
+	else {
+		USB_VirtualCOM_SendSync(buf, size);
+	}
+}
+
 void USB_VirtualCOM_SendString(const char *str) {
 	USB_VirtualCOM_Send((uint8_t *) str, strlen(str));
 }
@@ -735,6 +793,10 @@ uint16_t USB_VirtualCOM_Read(uint8_t *buf, uint16_t size) {
 void USB_VirtualCOM_SetRxCallback(USB_VirtualCOM_RxCallback_t callbackPtr) {
 	// Atomic
 	USB_VirtualCOM_rxCallbackPtr = callbackPtr;
+}
+
+void USB_VirtualCOM_SetAsyncMode(uint8_t isAsync) {
+	USB_VirtualCOM_isAsync = isAsync;
 }
 
 /**

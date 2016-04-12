@@ -84,6 +84,19 @@ uint16_t USB_VirtualCOM_Read(uint8_t *buf, uint16_t size);
  */
 void USB_VirtualCOM_SetRxCallback(USB_VirtualCOM_RxCallback_t callbackPtr);
 
+/**
+ * Sets the sending mode to be synchronous or asynchronous.
+ * In synchronous mode, Send() will block until all data is sent.
+ * This doesn't allocate any memory and is ideal if sending big
+ * amounts of data where performance isn't important.
+ * In asynchronous mode, Send() will not block and will allocate
+ * memory for the data. This is ideal if sending small amounts of
+ * data and waiting for it to be sent is not acceptable.
+ *
+ * @param isAsync True to set asynchronous mode, false for synchronous.
+ */
+void USB_VirtualCOM_SetAsyncMode(uint8_t isAsync);
+
 #ifdef __cplusplus
 }
 #endif

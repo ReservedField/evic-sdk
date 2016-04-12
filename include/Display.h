@@ -27,6 +27,9 @@
  * The topmost pixel is the least significant bit.
  * The bitmap direction is top-to-bottom, left-to-right.
  * The origin (0, 0) is at the top-left corner.
+ * Each column has to be padded to a multiple of 8 bits
+ * (i.e. each column begins at a byte boundary). The value
+ * of padding bits is ignored.
  */
 
 #ifndef EVICSDK_DISPLAY_H

@@ -47,6 +47,8 @@ imgBits = bitarray(endian='little')
 for x in range(width):
 	for y in range(height):
 		imgBits.append(imgPixels[x, y] // 0xFF)
+	# Pad column to byte boundary
+	imgBits.fill()
 if args.invert:
 	imgBits.invert()
 imgBytes = imgBits.tobytes() if hasattr(imgBits, 'tobytes') else imgBits.tostring()
@@ -55,7 +57,7 @@ imgBytes = imgBits.tobytes() if hasattr(imgBits, 'tobytes') else imgBits.tostrin
 # Grab this from the bit array to check the conversion
 for y in range(height):
 	for x in range(width):
-		sys.stderr.write('#' if imgBits[x * height + y] == 1 else ' ')
+		sys.stderr.write('#' if imgBits[x * ((height + 7) & ~7) + y] == 1 else ' ')
 	sys.stderr.write('\n')
 
 # Output C header

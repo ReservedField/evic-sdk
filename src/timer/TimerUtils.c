@@ -26,7 +26,7 @@
 typedef struct {
 	/**< Number of ticks so far. */
 	uint16_t tickCounter;
-	/**< NUmber of ticks to be reached. */
+	/**< Number of ticks to be reached. */
 	uint16_t tickTarget;
 } Timer_TimeoutData_t;
 

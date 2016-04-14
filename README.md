@@ -24,28 +24,51 @@ brew install gcc-arm-none-eabi
 ```
 
 On Windows, first install the [precompiled ARM toolchain](https://launchpad.net/gcc-arm-embedded).
-Choose an installation path without spaces to avoid problems with
-the build process. Then, install [Cygwin](https://www.cygwin.com/) (for a non-cygwin environment please refer to pr ReservedField#20)
-and add the following packages on top of the base install:
+Choose an installation path without spaces to avoid problems with the build process.
+If you already have a working Windows `make`, along with utilities such as `awk`, `grep`, `sed`,
+`tr`, `git`, etc. you can go ahead, but make sure those binaries are in your `PATH`. Otherwise,
+install [Cygwin](https://www.cygwin.com/) and add the following packages on top of the base install:
 ```
 make
 git
 ```
 
 On any OS, you also need a working [python-evic](https://github.com/Ban3/python-evic) install.
+If you experience problems with hidapi, you can flash using the official updater. The conversion
+utilies needed by the SDK will work anyway.
 
-**On Cygwin**, hidapi (needed by python-evic) won't build as-is. There are various issues
+#### Installing python-evic on Cygwin
+
+On Cygwin, hidapi (needed by python-evic) won't build as-is. There are various issues
 (Cygwin not recognized as a target, DLL naming conflict, HID open permissions).
-Follow those instructions to get python-evic to work on Cygwin:
+You have two options: you can install python-evic just for the conversion part which doesn't
+require hidapi and use the official updater for flashing, or patch hidapi to make it work
+on Cygwin. In either case, you need to install python-evic in the first place:
 
-1. Install the following packages (python, basic build environment, libs and utils):
-   
+1. Install the following Cygwin packages:
+
+   ```
+   python3
+   python3-setuptools
+   ```
+
+2. Download and install python-evic:
+
+   ```
+   git clone https://github.com/Ban3/python-evic
+   cd python-evic
+   python3 setup.py install
+   ```
+
+If you want to patch hidapi to get flashing functionality from python-evic, follow
+those instructions:
+
+1. Install the following Cygwin packages:
+
    ```
    binutils
    gcc-core
    gcc-g++
-   python3
-   python3-setuptools
    libhidapi0
    libhidapi-devel
    libusb1.0
@@ -53,21 +76,15 @@ Follow those instructions to get python-evic to work on Cygwin:
    wget
    patch
    ```
+
 2. Download, patch and install hidapi:
-   
+
    ```
    wget https://pypi.python.org/packages/source/h/hidapi/hidapi-0.7.99.post12.tar.gz
    wget http://pastebin.com/raw/16E7UdNF && echo >> 16E7UdNF
    tar -zxvf hidapi-0.7.99.post12.tar.gz
    patch -s -p0 < 16E7UdNF
    cd hidapi-0.7.99.post12
-   python3 setup.py install
-   ```
-3. Download and install python-evic:
-   
-   ```
-   git clone https://github.com/Ban3/python-evic
-   cd python-evic
    python3 setup.py install
    ```
 
@@ -130,11 +147,11 @@ You can flash the output binary using the official updater. For development,
 using `python-evic` is quicker and simpler.
 I suggest to backup your dataflash before flashing, in case anything goes south:
 ```
-evic dump-dataflash -o data.bin
+evic-usb dump-dataflash -o data.bin
 ```
 Now, flash:
 ```
-evic upload bin/helloworld.bin
+evic-usb upload bin/helloworld.bin
 ```
 If everything went well you should see the "Hello, World." message.
 

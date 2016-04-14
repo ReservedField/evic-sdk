@@ -23,6 +23,7 @@
 #include <ADC.h>
 #include <TimerUtils.h>
 #include <Dataflash.h>
+#include <Battery.h>
 
 /**
  * \file
@@ -74,6 +75,12 @@
 // Board temperature limit is 70°C.
 // Simplified from: ATOMIZER_ADC_THERMRES(x) <= Atomizer_boardTempTable[14]
 #define ATOMIZER_ADC_OVERTEMP(x) (41L * (x) <= 16480L)
+// This assumes a battery internal resistance of 10mOhm (which is pretty low).
+// It takes the target output voltage in 10mV units, the atomizer resistance in mOhm and
+// the battery voltage in mV. The battery is weak if it's under 3.1V, or if it's expected
+// to sag below 2.8V under load (only checked if res != 0).
+#define ATOMIZER_PREDICT_WEAKBATT(targetVolts, res, battVolts) ((battVolts) < 3100 || \
+	((res) != 0 && (battVolts) - (targetVolts) * 10L / (res) < 2800))
 
 // Timer flags
 #define ATOMIZER_TMRFLAG_WARMUP (1 << 0)
@@ -321,7 +328,10 @@ static void Atomizer_NegativeFeedback(uint32_t unused) {
 		}
 	}
 	if(Atomizer_error != OK) {
-		Atomizer_baseRes = 0;
+		if(Atomizer_error == SHORT || Atomizer_error == OPEN) {
+			Atomizer_baseRes = 0;
+		}
+
 		Atomizer_tempRes = 0;
 		Atomizer_Control(0);
 		return;
@@ -462,6 +472,8 @@ void Atomizer_SetOutputVoltage(uint16_t volts) {
 }
 
 void Atomizer_Control(uint8_t powerOn) {
+	uint16_t battVolts;
+
 	if(Atomizer_error == SHORT) {
 		// Lock atomizer after short
 		return;
@@ -473,6 +485,13 @@ void Atomizer_Control(uint8_t powerOn) {
 	}
 
 	if(powerOn) {
+		// Don't even bother firing if the battery is weak
+		battVolts = Battery_GetVoltage();
+		if(ATOMIZER_PREDICT_WEAKBATT(Atomizer_targetVolts, Atomizer_baseRes, battVolts)) {
+			Atomizer_error = WEAK_BATT;
+			return;
+		}
+
 		// Start from buck with duty cycle 10
 		Atomizer_error = OK;
 		Atomizer_curCmr = 10;
@@ -562,6 +581,13 @@ static void Atomizer_Sample(uint16_t targetVolts, uint16_t *voltage, uint16_t *c
 	}
 	else {
 		*resistance = adcRes;
+
+		// Since TCR is always positive, adcRes < baseRes
+		// implies a better resistance reading has been acquired.
+		if(adcRes >= 5 && adcRes < Atomizer_baseRes) {
+			Atomizer_baseRes = adcRes;
+		}
+
 		return;
 	}
 

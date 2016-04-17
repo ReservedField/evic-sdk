@@ -150,6 +150,13 @@ void Display_Clear();
  */
 void Display_PutPixels(int x, int y, const uint8_t *bitmap, int w, int h);
 
+
+/**
+ * Copies a bitmap into the framebuffer.
+ *
+ */
+void Display_PutLine(int startX, int startY, int endX, int endY);
+
 /**
  * Blits text into the framebuffer.
  *

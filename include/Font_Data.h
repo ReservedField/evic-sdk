@@ -68,6 +68,10 @@ typedef struct {
 	 * Font bitmap.
 	 */
 	const uint8_t *data;
+	/**
+	 * Font char kerning
+	 */
+	const int8_t kerning;
 } Font_Info_t;
 
 #ifdef __cplusplus

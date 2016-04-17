@@ -151,6 +151,16 @@ void Display_Clear();
 void Display_PutPixels(int x, int y, const uint8_t *bitmap, int w, int h);
 
 /**
+ * Draws a line into the framebuffer.
+ *
+ * @param startX X coordinate to start the line at.
+ * @param startY Y coordinate to start the line at.
+ * @param endX   X coordinate to end the line at.
+ * @param endY   Y coordinate to end the line at.
+ */
+void Display_PutLine(int startX, int startY, int endX, int endY);
+
+/**
  * Blits text into the framebuffer.
  *
  * @param x    X coordinate to place the text at.

@@ -37,7 +37,7 @@
 #include <Display.h>
 #include <Display_SSD.h>
 #include <Font.h>
-#include <Dataflash.h>
+#include <SysInfo.h>
 
 /**
  * Global framebuffer.
@@ -74,7 +74,7 @@ void Display_SetupSPI() {
 }
 
 void Display_Init() {
-	switch(Dataflash_info.hwVersion) {
+	switch(gSysInfo.hwVersion) {
 		case 102:
 		case 103:
 		case 106:
@@ -100,11 +100,11 @@ Display_Type_t Display_GetType() {
 }
 
 bool Display_IsFlipped() {
-	return (Dataflash_info.status & DATAFLASH_STATUS_FLIP) ? true : false;
+	return gSysInfo.displayFlip;
 }
 
 void Display_Flip() {
-	Dataflash_info.status ^= DATAFLASH_STATUS_FLIP;
+	gSysInfo.displayFlip ^= 1;
 	Display_SSD_SetOn(0);
 	Display_SSD_Flip();
 	Display_SSD_Update(Display_framebuf);

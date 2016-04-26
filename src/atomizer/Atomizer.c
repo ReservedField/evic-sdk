@@ -22,7 +22,7 @@
 #include <Atomizer.h>
 #include <ADC.h>
 #include <TimerUtils.h>
-#include <Dataflash.h>
+#include <SysInfo.h>
 #include <Battery.h>
 
 /**
@@ -400,7 +400,7 @@ static void Atomizer_NegativeFeedback(uint32_t unused) {
 
 void Atomizer_Init() {
 	// Select shunt value based on hardware version
-	switch(Dataflash_info.hwVersion) {
+	switch(gSysInfo.hwVersion) {
 		case 101:
 		case 108:
 			Atomizer_shuntRes = 125;

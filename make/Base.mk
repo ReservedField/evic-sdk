@@ -72,6 +72,8 @@ ifdef NEED_FIXPATH
 		OBJS_FIXPATH := $(OBJS)
 endif
 
+GCC_VERSION := $(shell arm-none-eabi-gcc -dumpversion)
+
 AS := arm-none-eabi-as
 LD := arm-none-eabi-ld
 OBJCOPY := arm-none-eabi-objcopy
@@ -86,8 +88,10 @@ INCDIRS := -I$(NUVOSDK)/CMSIS/Include \
 LDSCRIPT := $(EVICSDK)/linker/linker.ld
 
 LIBDIRS := -L$(ARMGCC)/arm-none-eabi/lib \
+	-L$(ARMGCC)/arm-none-eabi/newlib \
 	-L$(ARMGCC)/lib/arm-none-eabi/newlib \
-	-L$(ARMGCC)/lib/gcc/arm-none-eabi/$(shell arm-none-eabi-gcc -dumpversion) \
+	-L$(ARMGCC)/gcc/arm-none-eabi/$(GCC_VERSION) \
+	-L$(ARMGCC)/lib/gcc/arm-none-eabi/$(GCC_VERSION) \
 	-L$(EVICSDK)/lib
 
 CFLAGS += -Wall -mcpu=$(CPU) -mthumb -Os -fdata-sections -ffunction-sections

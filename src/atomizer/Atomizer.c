@@ -80,7 +80,7 @@
 // the battery voltage in mV. The battery is weak if it's under 3.1V, or if it's expected
 // to sag below 2.8V under load (only checked if res != 0).
 #define ATOMIZER_PREDICT_WEAKBATT(targetVolts, res, battVolts) ((battVolts) < 3100 || \
-	((res) != 0 && (battVolts) - (targetVolts) * 10L / (res) < 2800))
+	((res) != 0 && (battVolts) - (targetVolts) * 100L / (res) < 2800))
 
 // Timer flags
 #define ATOMIZER_TMRFLAG_WARMUP (1 << 0)

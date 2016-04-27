@@ -122,6 +122,8 @@ void SysInfo_Init() {
 		gSysInfo.hwVersion = 0;
 		gSysInfo.displayFlip = 0,
 		gSysInfo.bootFlag = SYSINFO_BOOTFLAG_APROM;
+
+		FMC_Close();
 		return;
 	}
 

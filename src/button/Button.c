@@ -73,7 +73,7 @@ static void Button_UpdateState(uint8_t mask) {
  * GPD/GPE interrupt handler.
  * This is an internal function.
  */
-void Button_IRQHandler() {
+static void Button_IRQHandler() {
 	int i;
 	uint8_t mask;
 

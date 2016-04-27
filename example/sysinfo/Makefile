@@ -1,4 +1,4 @@
-TARGET = dataflash
+TARGET = sysinfo
 
 OBJS = main.o
 

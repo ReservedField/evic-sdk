@@ -18,6 +18,7 @@
  */
 
 #include <M451Series.h>
+#include <SysInfo.h>
 #include <Dataflash.h>
 #include <Display.h>
 #include <Battery.h>
@@ -91,7 +92,8 @@ void SYS_Init() {
 	// Update system core clock
 	SystemCoreClockUpdate();
 
-	// Initialize dataflash
+	// Initialize system info and dataflash
+	SysInfo_Init();
 	Dataflash_Init();
 
 	// Setup debounce, used both by buttons and battery presence pin.

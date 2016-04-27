@@ -15,7 +15,6 @@
  * along with eVic SDK.  If not, see <http://www.gnu.org/licenses/>.
  *
  * Copyright (C) 2016 ReservedField
- * Copyright (C) 2016 Jussi Timperi
  */
 
 #ifndef EVICSDK_DATAFLASH_H
@@ -26,48 +25,81 @@ extern "C" {
 #endif
 
 /**
- * Status flag.
+ * Maximum structure size.
  */
-#define DATAFLASH_STATUS_FLIP 4 // Display flipped.
+#define DATAFLASH_STRUCT_MAX_SIZE      (FMC_FLASH_PAGE_SIZE - 8)
+/**
+ * Maximum number of structures.
+ */
+#define DATAFLASH_STRUCT_MAX_COUNT     8
+/**
+ * Invalid structure magic value.
+ */
+#define DATAFLASH_STRUCT_INVALID_MAGIC 0x00FFFFFF
 
 /**
- * Boot flag: boot from APROM.
- */
-#define DATAFLASH_BOOTFLAG_APROM 0x00
-/**
- * Boot flag: boot from LDROM.
- */
-#define DATAFLASH_BOOTFLAG_LDROM 0x01
-
-/**
- * This structure contains the dataflash information.
+ * Structure to hold information about a dataflash struct.
  */
 typedef struct {
-	/**
-	 * Hardware version.
-	 */
-	uint8_t hwVersion;
-	/**
-	 * Status flag.
-	 */
-	uint32_t status;
-	/**
-	 * Boot flag. One of DATAFLASH_BOOTFLAG_*.
-	 */
-	uint8_t bootFlag;
-} Dataflash_Info_t;
+	/**< Magic value (24 bits). Upper 8 bits must be zero. */
+	uint32_t magic;
+	/**< Structure size. */
+	uint16_t size;
+} Dataflash_StructInfo_t;
 
 /**
- * Global dataflash information.
- */
-extern Dataflash_Info_t Dataflash_info;
-
-/**
- * Reads the dataflash and initializes the info structure.
- * Additionally, it defaults boot to APROM.
+ * Initializes the dataflash library.
  * System control registers must be unlocked.
  */
 void Dataflash_Init();
+
+/**
+ * Gets a list of magic numbers for structures present
+ * int the dataflash.
+ *
+ * @param magicList An array at least DATAFLASH_STRUCT_MAX_COUNT
+ *                  elements big to receive the magic numbers.
+ *
+ * @return Number of magic numbers stored in the array.
+ */
+uint8_t Dataflash_GetMagicList(uint32_t *magicList);
+
+/**
+ * Reads a structure from the dataflash.
+ *
+ * @param structInfo Structure info.
+ * @param dst        Pointer to structure to be filled.
+ *
+ * @return True on success, false otherwise.
+ */
+uint8_t Dataflash_ReadStruct(const Dataflash_StructInfo_t *structInfo, void *dst);
+
+/**
+ * Selects the set of dataflash structures to be used from now on.
+ * This can only be called once (further calls will be ignored) and must
+ * have been called prior to performing updates (they'll fail otherwise).
+ * NOTE: GCC and Clang went big-hammer on multiple-indirection const casts,
+ * so I made structInfo not const just to avoid warnings. It will NOT
+ * be modified.
+ *
+ * @param structInfo Array of pointers to structure infos.
+ * @param count      Number of elements in the array.
+ *
+ * @return True on success, false if the arguments or the infos are not valid.
+ */
+uint8_t Dataflash_SelectStructSet(Dataflash_StructInfo_t **structInfo, uint8_t count);
+
+/**
+ * Updates/writes a structure in the dataflash.
+ * The dataflash structure set must have already been selected, or
+ * this will fail.
+ *
+ * @param structInfo Structure info.
+ * @param src        Pointer to structure to be stored.
+ *
+ * @return True on success, false otherwise.
+ */
+uint8_t Dataflash_UpdateStruct(const Dataflash_StructInfo_t *structInfo, void *src);
 
 #ifdef __cplusplus
 }

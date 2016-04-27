@@ -106,6 +106,10 @@ SECTIONS {
 	Heap_Start = BSS_End;
 	Heap_Limit = Stack_Limit;
 
+	/* Check for ROM overflow */
+	/* 8kB OFW dataflash, 16kB custom dataflash */
+	ASSERT(Data_Start_ROM + Data_Size <= ORIGIN(ROM) + LENGTH(ROM) - 24K, "ROM too big")
+
 	/* Check for RAM overflow */
 	ASSERT(Stack_Limit > Heap_Start, "RAM overflowed with stack")
 }

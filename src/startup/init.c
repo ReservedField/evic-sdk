@@ -35,7 +35,7 @@
  * Initializes the system.
  * System control registers must be unlocked.
  */
-void SYS_Init() {
+void Sys_Init() {
 	// TODO: why is SYS_UnlockReg() needed? Should be already unlocked.
 	SYS_UnlockReg();
 

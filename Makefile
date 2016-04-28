@@ -24,6 +24,7 @@ OBJS := $(NUVOSDK)/Device/Nuvoton/M451Series/Source/system_M451Series.o \
 	src/startup/initfini.o \
 	src/startup/sbrk.o \
 	src/startup/init.o \
+	src/startup/sleep.o \
 	src/sysinfo/SysInfo.o \
 	src/dataflash/Dataflash.o \
 	src/display/Display_SSD.o \

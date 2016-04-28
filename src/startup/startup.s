@@ -180,8 +180,8 @@ BSS_Zero_Check:
 	LDR   R0, =SystemInit
 	BLX   R0
 
-	@ Call SYS_Init
-	LDR   R0, =SYS_Init
+	@ Call Sys_Init
+	LDR   R0, =Sys_Init
 	BLX   R0
 
 	@ Lock registers

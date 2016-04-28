@@ -53,6 +53,11 @@ extern "C" {
 void Display_SSD1327_PowerOn();
 
 /**
+ * Performs the controller power-off sequence.
+ */
+void Display_SSD1327_PowerOff();
+
+/**
  * Sends the initialization commands to the controller.
  */
 void Display_SSD1327_SendInitCmds();

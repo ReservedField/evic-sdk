@@ -25,6 +25,11 @@
 #include <Display_SSD1306.h>
 #include <Display_SSD1327.h>
 
+/**
+ * True if the display is powered.
+ */
+static uint8_t Display_SSD_isPowerOn;
+
 void Display_SSD_Write(uint8_t isData, const uint8_t *buf, uint32_t len) {
 	int i;
 
@@ -71,6 +76,7 @@ void Display_SSD_Update(const uint8_t *framebuf) {
 
 void Display_SSD_Init() {
 	// Power on and initialize controller
+	Display_SSD_isPowerOn = 1;
 	if(Display_GetType() == DISPLAY_SSD1327) {
 		Display_SSD1327_PowerOn();
 		Display_SSD1327_SendInitCmds();
@@ -96,4 +102,23 @@ void Display_SSD_Init() {
 
 void Display_SSD_SetOn(uint8_t isOn) {
 	Display_SSD_SendCommand(isOn ? SSD_DISPLAY_ON : SSD_DISPLAY_OFF);
+}
+
+void Display_SSD_SetPowerOn(uint8_t isPowerOn) {
+	if(!isPowerOn == !Display_SSD_isPowerOn) {
+		return;
+	}
+
+	if(isPowerOn) {
+		Display_SSD_Init();
+		return;
+	}
+
+	Display_SSD_isPowerOn = 0;
+	if(Display_GetType() == DISPLAY_SSD1327) {
+		Display_SSD1327_PowerOff();
+	}
+	else {
+		Display_SSD1306_PowerOff();
+	}
 }

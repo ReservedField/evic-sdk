@@ -62,13 +62,13 @@ int main() {
 			// until you counted five clicks.
 			
 			// Go to bed
-			Display_SetOn(0);
+			Display_SetPowerOn(0);
 			Sys_Sleep();
 
 			// Zzz...
 			
 			// Woke up, turn screen on and reset countdown
-			Display_SetOn(1);
+			Display_SetPowerOn(1);
 			timerCountdown = 10;
 		}
 

@@ -62,6 +62,16 @@ void Display_SSD1327_PowerOn() {
 	Timer_DelayUs(1000);
 }
 
+void Display_SSD1327_PowerOff() {
+	Display_SSD_SendCommand(SSD_DISPLAY_OFF);
+	DISPLAY_SSD_VCC = 0;
+	Timer_DelayUs(100000);
+	DISPLAY_SSD_VDD = 0;
+	Timer_DelayUs(100000);
+	DISPLAY_SSD_RESET = 0;
+	Timer_DelayUs(100000);
+}
+
 void Display_SSD1327_SendInitCmds() {
 	Display_SSD_Write(0, Display_SSD1327_initCmds, sizeof(Display_SSD1327_initCmds));
 }

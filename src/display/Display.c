@@ -95,6 +95,10 @@ void Display_SetOn(uint8_t isOn) {
 	Display_SSD_SetOn(isOn);
 }
 
+void Display_SetPowerOn(uint8_t isPowerOn) {
+	Display_SSD_SetPowerOn(isPowerOn);
+}
+
 Display_Type_t Display_GetType() {
 	return Display_type;
 }

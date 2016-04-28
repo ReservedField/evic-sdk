@@ -60,10 +60,23 @@ extern "C" {
 
 /**
  * Turns the display on or off.
+ * This only acts on the pixels, the display will
+ * still be powered. If you want to control the supply
+ * rails, use Display_SSD_SetPowerOn().
  *
  * @param isOn True to turn the display on, false to turn it off.
  */
 void Display_SSD_SetOn(uint8_t isOn);
+
+/**
+ * Powers the display on or off.
+ * This turns the actual supply rails on/off, cutting
+ * off all current draw from the display when off. It is
+ * slower than Display_SSD_SetOn().
+ *
+ * @param isPowerOn True to power on the display, false to power it off.
+ */
+void Display_SSD_SetPowerOn(uint8_t isPowerOn);
 
 /**
  * Flips the display according to the display orientation value in data flash.

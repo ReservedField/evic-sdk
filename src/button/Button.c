@@ -134,6 +134,10 @@ uint8_t Button_GetState() {
 int8_t Button_CreateCallback(Button_Callback_t callback, uint8_t buttonMask) {
 	int i;
 
+	if(callback == NULL) {
+		return -1;
+	}
+
 	// Find an unused callback
 	for(i = 0; i < 3 && Button_callbackPtr[i] != NULL; i++);
 	if(i == 3) {

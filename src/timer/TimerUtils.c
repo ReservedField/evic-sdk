@@ -133,6 +133,10 @@ static int8_t Timer_AssignSlot(uint32_t freq, uint8_t isPeriodic) {
 int8_t Timer_CreateTimer(uint32_t freq, uint8_t isPeriodic, Timer_Callback_t callback, uint32_t callbackData) {
 	uint8_t timerIndex;
 
+	if(callback == NULL) {
+		return -1;
+	}
+
 	// Get a timer slot
 	timerIndex = Timer_AssignSlot(freq, isPeriodic);
 	if(timerIndex < 0) {
@@ -153,6 +157,10 @@ int8_t Timer_CreateTimeout(uint16_t timeout, uint8_t isPeriodic, Timer_Callback_
 	int8_t i, timerIndex;
 	uint16_t tickCount;
 	uint32_t timerFreq;
+
+	if(callback == NULL) {
+		return -1;
+	}
 
 	// In case someone tries to do a 0ms timeout,
 	// raise to 1ms to avoid it lasting 1000ms.

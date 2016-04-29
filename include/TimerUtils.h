@@ -50,7 +50,7 @@ typedef void (*Timer_Callback_t)(uint32_t);
  * @param callbackData Optional argument to pass to the callback function.
  *
  * @return A positive index for the newly created timer, or a negative
- *         value if there are no timer slots available.
+ *         value if there are no timer slots available or if callback is NULL.
  */
 int8_t Timer_CreateTimer(uint32_t freq, uint8_t isPeriodic, Timer_Callback_t callback, uint32_t callbackData);
 
@@ -66,7 +66,7 @@ int8_t Timer_CreateTimer(uint32_t freq, uint8_t isPeriodic, Timer_Callback_t cal
  * @param callbackData Optional argument to pass to the callback function.
  *
  * @return A positive index for the newly created timer, or a negative
- *         value if there are no timer slots available.
+ *         value if there are no timer slots available or if callback is NULL.
  */
 int8_t Timer_CreateTimeout(uint16_t timeout, uint8_t isPeriodic, Timer_Callback_t callback, uint32_t callbackData);
 

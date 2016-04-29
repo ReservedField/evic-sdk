@@ -72,7 +72,8 @@ uint8_t Button_GetState();
  *                   buttons the callback should be notified of.
  *
  * @return A positive index if the callback was successfully created, or a
- *         negative value if no callback slots are available.
+ *         negative value if no callback slots are available or if callback
+ *         is NULL.
  */
 int8_t Button_CreateCallback(Button_Callback_t callback, uint8_t buttonMask);
 

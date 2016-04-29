@@ -18,11 +18,41 @@
  */
 
 /**
+ * Wakeup source: fire button.
+ */
+#define SYS_WAKEUP_FIRE    0x01
+/**
+ * Wakeup source: right button.
+ */
+#define SYS_WAKEUP_RIGHT   0x02
+/**
+ * Wakeup source: left button.
+ */
+#define SYS_WAKEUP_LEFT    0x04
+/**
+ * Wakeup source: battery presence change.
+ * This includes battery insertion/removal and
+ * USB charging connect/disconnect.
+ */
+#define SYS_WAKEUP_BATTERY 0x08
+
+/**
  * Puts the system into power down mode.
  * Will return once the system wakes up.
- * Wakeup sources:
- *  - button presses
- *  - battery insertion/removal
- *  - USB insertion/removal
  */
 void Sys_Sleep();
+
+/**
+ * Sets the desired wakeup sources.
+ *
+ * @param source OR combination of SYS_WAKEUP_*.
+ */
+void Sys_SetWakeupSource(uint8_t source);
+
+/**
+ * Gets the source of last wakeup.
+ *
+ * @return Last wakeup source (SYS_WAKEUP_*), or
+ *         zero if no wakeup has ever happened.
+ */
+uint8_t Sys_GetLastWakeupSource();

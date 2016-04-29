@@ -35,7 +35,14 @@ void timerCallback(uint32_t unused) {
 
 int main() {
 	char buf[100];
+	const char *lastWakeup;
 	uint8_t buttonState, buttonPress = 0;
+
+	// Wake up from:
+	//  - Fire button
+	//  - Battery presence change
+	// Check System.h for a list of sources.
+	Sys_SetWakeupSource(SYS_WAKEUP_FIRE | SYS_WAKEUP_BATTERY);
 
 	// Setup countdown with 1Hz timer
 	timerCountdown = 10;
@@ -72,7 +79,29 @@ int main() {
 			timerCountdown = 10;
 		}
 
-		siprintf(buf, "Sleeping\nin: %lus", timerCountdown);
+		// Display the last wakeup source nicely
+		switch(Sys_GetLastWakeupSource()) {
+			case SYS_WAKEUP_FIRE:
+				lastWakeup = "FIRE";
+				break;
+			case SYS_WAKEUP_RIGHT:
+				// Won't happen with our sources
+				lastWakeup = "RIGHT";
+				break;
+			case SYS_WAKEUP_LEFT:
+				// Won't happen with our sources
+				lastWakeup = "LEFT";
+				break;
+			case SYS_WAKEUP_BATTERY:
+				lastWakeup = "BATTERY";
+				break;
+			default:
+				// No wakeup has happened yet
+				lastWakeup = "---";
+				break;
+		}
+
+		siprintf(buf, "Sleeping\nin: %lus\n\nSource:\n%s", timerCountdown, lastWakeup);
 		Display_Clear();
 		Display_PutText(0, 0, buf, FONT_DEJAVU_8PT);
 		Display_Update();

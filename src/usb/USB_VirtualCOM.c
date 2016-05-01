@@ -85,6 +85,9 @@
 /* RX buffer size */
 #define USB_VCOM_RX_BUF_SIZE 128
 
+/* Mask for DTR bit in line state */
+#define USB_VCOM_LINESTATE_MASK_DTR (1 << 0)
+
 /**
  * USB device descriptor.
  */
@@ -316,6 +319,11 @@ typedef struct {
 static USB_VirtualCOM_LineCoding_t USB_VirtualCOM_lineCoding = {115200, 0, 0, 8};
 
 /**
+ * Line state set by host with SET_CONTROL_LINE_STATE.
+ */
+static uint16_t USB_VirtualCOM_lineState;
+
+/**
  * TX transfer queue.
  */
 static volatile USB_VirtualCOM_TxQueue_t USB_VirtualCOM_txQueue;
@@ -513,6 +521,8 @@ static void USB_VirtualCOM_IRQHandler() {
 			// USB unplugged
 			USBD_DISABLE_USB();
 		}
+
+		USB_VirtualCOM_lineState = 0;
 	}
 	else if(intSts & USBD_INTSTS_BUS) {
 		if(busState & USBD_STATE_USBRST) {
@@ -528,6 +538,8 @@ static void USB_VirtualCOM_IRQHandler() {
 			// Resume: USB enabled, PHY enabled
 			USBD_ENABLE_USB();
 		}
+
+		USB_VirtualCOM_lineState = 0;
 	}
 	else if(intSts & USBD_INTSTS_USB) {
 		if(intSts & USBD_INTSTS_SETUP) {
@@ -597,7 +609,9 @@ static void USB_VirtualCOM_HandleClassRequest() {
 		// Transfer direction: host to device
 		switch(setupPacket.bRequest) {
 			case USB_VCOM_REQ_SET_CONTROL_LINE_STATE:
-				// Control signals are ignored
+				// Store new line state
+				USB_VirtualCOM_lineState = setupPacket.wValue;
+
 				// Status stage
 				USBD_SET_DATA1(USB_VCOM_CTRL_IN_EP);
 				USBD_SET_PAYLOAD_LEN(USB_VCOM_CTRL_IN_EP, 0);
@@ -723,6 +737,7 @@ static void USB_VirtualCOM_SendAsync(const uint8_t *buf, uint32_t size) {
 
 void USB_VirtualCOM_Init() {
 	// Initialize state
+	USB_VirtualCOM_lineState = 0;
 	USB_VirtualCOM_txQueue.head = USB_VirtualCOM_txQueue.tail = NULL;
 	USB_VirtualCOM_bulkInWaiting = 1;
 	USB_VirtualCOM_rxBuffer.readIndex = USB_VirtualCOM_rxBuffer.writeIndex = 0;
@@ -763,6 +778,11 @@ void USB_VirtualCOM_Init() {
 }
 
 void USB_VirtualCOM_Send(const uint8_t *buf, uint32_t size) {
+	if(!USBD_IS_ATTACHED() || !(USB_VirtualCOM_lineState & USB_VCOM_LINESTATE_MASK_DTR)) {
+		// Don't send if no one is listening
+		return;
+	}
+
 	if(USB_VirtualCOM_isAsync) {
 		USB_VirtualCOM_SendAsync(buf, size);
 	}
@@ -797,6 +817,18 @@ void USB_VirtualCOM_SetRxCallback(USB_VirtualCOM_RxCallback_t callbackPtr) {
 
 void USB_VirtualCOM_SetAsyncMode(uint8_t isAsync) {
 	USB_VirtualCOM_isAsync = isAsync;
+}
+
+USB_VirtualCOM_State_t USB_VirtualCOM_GetState() {
+	if(!USBD_IS_ATTACHED()) {
+		return DETACH;
+	}
+
+	if(USB_VirtualCOM_lineState & USB_VCOM_LINESTATE_MASK_DTR) {
+		return READY;
+	}
+
+	return ATTACH;
 }
 
 /**

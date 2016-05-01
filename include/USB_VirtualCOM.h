@@ -27,6 +27,18 @@ extern "C" {
 #endif
 
 /**
+ * USB virtual COM states.
+ */
+typedef enum {
+	/**< USB disconnected. */
+	DETACH,
+	/**< USB connected, but terminal app isn't open/ready yet. */
+	ATTACH,
+	/**< Terminal app is ready. */
+	READY
+} USB_VirtualCOM_State_t;
+
+/**
  * Function pointer type for USB receive callbacks.
  * Callbacks will be invoked from an interrupt handler,
  * so they should be as fast as possible. You'll typically
@@ -96,6 +108,13 @@ void USB_VirtualCOM_SetRxCallback(USB_VirtualCOM_RxCallback_t callbackPtr);
  * @param isAsync True to set asynchronous mode, false for synchronous.
  */
 void USB_VirtualCOM_SetAsyncMode(uint8_t isAsync);
+
+/**
+ * Checks the current state of the USB virtual COM port.
+ *
+ * @return Port state.
+ */
+USB_VirtualCOM_State_t USB_VirtualCOM_GetState();
 
 #ifdef __cplusplus
 }

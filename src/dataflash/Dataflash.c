@@ -67,7 +67,7 @@ typedef struct {
 	uint32_t magicWord;
 	/**< One of DATAFLASH_PAGEFLAG_*. */
 	uint8_t flag;
-	/**< Most recent block info. Only valid if flag is DATAFLASH_PAGEFLAG_GOOD. */
+	/**< Most recent block info. Only valid if flag is DATAFLASH_PAGEFLAG_INFO/GOOD. */
 	Dataflash_BlockInfo_t blockInfo;
 } Dataflash_PageInfo_t;
 

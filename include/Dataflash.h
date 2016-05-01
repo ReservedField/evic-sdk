@@ -101,6 +101,34 @@ uint8_t Dataflash_SelectStructSet(Dataflash_StructInfo_t **structInfo, uint8_t c
  */
 uint8_t Dataflash_UpdateStruct(const Dataflash_StructInfo_t *structInfo, void *src);
 
+/**
+ * Invalidates a structure in the dataflash.
+ * This doesn't actually erase the structure, but marks it in a
+ * way such that it won't be read by the dataflash routines.
+ * NOTE: This is provided for development/debugging only. You should
+ * never need this in production code. The right way to restore defaults
+ * is to push an update with default values. If you absolutely need this,
+ * and you are sure you can't do it any other way, then go ahead, it
+ * should be safe.
+ *
+ * @param structInfo Structure info.
+ *
+ * @return True on success, false if there is nothing to invalidate.
+ */
+uint8_t Dataflash_InvalidateStruct(const Dataflash_StructInfo_t *structInfo);
+
+/**
+ * Erases the whole dataflash.
+ * This actually erases all the flash memory belonging to dataflash.
+ * NOTE: This is provided for development/debugging only. Do NOT use this
+ * in production code. The right way to restore defaults is to push an
+ * update with default values. If that absolutely won't work for you, use
+ * Dataflash_InvalidateStruct.
+ *
+ * @return True on success, false otherwise.
+ */
+uint8_t Dataflash_Erase();
+
 #ifdef __cplusplus
 }
 #endif

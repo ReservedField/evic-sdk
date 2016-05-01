@@ -552,3 +552,61 @@ uint8_t Dataflash_UpdateStruct(const Dataflash_StructInfo_t *structInfo, void *s
 
 	return 1;
 }
+
+uint8_t Dataflash_InvalidateStruct(const Dataflash_StructInfo_t *structInfo) {
+	uint8_t ret, i;
+	uint32_t baseAddr, magicWord, magicMask;
+
+	ret = 0;
+	DATAFLASH_FMC_OPEN();
+	baseAddr = DATAFLASH_READ_BASEADDR();
+
+	// Operate directly on pageInfo to cover all corner cases
+	// Look up MRP pages for this magic
+	magicMask = (structInfo->magic & DATAFLASH_MASK_MAGIC) | DATAFLASH_MASK_MRP;
+	for(i = 0; i < DATAFLASH_PAGE_COUNT; i++) {
+		magicWord = Dataflash_pageInfo[i].magicWord;
+		if((magicWord & magicMask) == magicMask) {
+			// Unset MRP bit
+			magicWord &= ~DATAFLASH_MASK_MRP;
+			FMC_Write(baseAddr + i * FMC_FLASH_PAGE_SIZE, magicWord);
+
+			// Update page info
+			Dataflash_pageInfo[i].magicWord = magicWord;
+			Dataflash_pageInfo[i].flag = DATAFLASH_PAGEFLAG_STALE;
+
+			ret = 1;
+		}
+	}
+
+	DATAFLASH_FMC_CLOSE();
+
+	return ret;
+}
+
+uint8_t Dataflash_Erase() {
+	uint8_t ret, i;
+	uint32_t baseAddr;
+
+	ret = 1;
+	DATAFLASH_FMC_OPEN();
+	baseAddr = DATAFLASH_READ_BASEADDR();
+
+	for(i = 0; i < DATAFLASH_PAGE_COUNT; i++) {
+		if(FMC_Erase(baseAddr + i * FMC_FLASH_PAGE_SIZE) == 0) {
+			// Erase succeeded, mark as clean
+			Dataflash_pageInfo[i].magicWord = 0xFFFFFFFF;
+			Dataflash_pageInfo[i].flag = DATAFLASH_PAGEFLAG_CLEAN;
+		}
+		else {
+			// Erase failed, continue anyway
+			// Mark as stale for this run
+			Dataflash_pageInfo[i].flag = DATAFLASH_PAGEFLAG_STALE;
+			ret = 0;
+		}
+	}
+
+	DATAFLASH_FMC_CLOSE();
+
+	return ret;
+}

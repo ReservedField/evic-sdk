@@ -109,7 +109,7 @@ uint8_t Dataflash_UpdateStruct(const Dataflash_StructInfo_t *structInfo, void *s
  * never need this in production code. The right way to restore defaults
  * is to push an update with default values. If you absolutely need this,
  * and you are sure you can't do it any other way, then go ahead, it
- * should be safe.
+ * should be safe. It will probably increase wear on some flash pages, though.
  *
  * @param structInfo Structure info.
  *

@@ -302,7 +302,7 @@ static void Dataflash_Read(uint8_t *dst, uint32_t src, uint32_t size) {
  * Writes data to the dataflash.
  * This is an internal function.
  *
- * @param dst  Dataflash destination address, must be work-aligned.
+ * @param dst  Dataflash destination address, must be word-aligned.
  * @param src  Source buffer.
  * @param size Copy size.
  */
@@ -326,6 +326,58 @@ static void Dataflash_Write(uint32_t dst, const uint8_t *src, uint32_t size) {
 		memcpy(&word, src, size);
 		FMC_Write(dst, word);
 	}
+}
+
+/**
+ * Compares a buffer with dataflash contents.
+ * Also checks if the flash can be simply updated by
+ * overwrite (only 1 -> 0 flips).
+ * This is an internal function.
+ *
+ * @param dst    Dataflash destination address, must be word-aligned.
+ * @param src    Source buffer.
+ * @param size   Data size.
+ * @param owFlag Pointer to receive overwrite flag (true if it can be
+ *               updated by overwrite, false otherwise).
+ *
+ * @return True if the contents are equal, false otherwise.
+ */
+static uint8_t Dataflash_Compare(uint32_t dst, const uint8_t *src, uint32_t size, uint8_t *owFlag) {
+	uint32_t dstWord, srcWord;
+	uint8_t eqFlag;
+
+	eqFlag = 1;
+	*owFlag = 1;
+
+	while(size && *owFlag) {
+		dstWord = FMC_Read(dst);
+
+		if(size < 4) {
+			// Mask out higher bytes (little endian)
+			srcWord = 0;
+			memcpy(&srcWord, src, size);
+			dstWord &= (1 << (size * 8)) - 1;
+		}
+		else {
+			srcWord = *((const uint32_t *) src);
+		}
+
+		if((dstWord & srcWord) != srcWord) {
+			// Can't be updated by overwrite (1 -> 0)
+			// Also implies it's not equal
+			eqFlag = 0;
+			*owFlag = 0;
+		}
+		else if(dstWord != srcWord) {
+			eqFlag = 0;
+		}
+
+		dst += 4;
+		src += 4;
+		size = size < 4 ? 0 : (size - 4);
+	}
+
+	return eqFlag;
 }
 
 void Dataflash_Init() {
@@ -492,7 +544,7 @@ uint8_t Dataflash_SelectStructSet(Dataflash_StructInfo_t **structInfo, uint8_t c
 
 uint8_t Dataflash_UpdateStruct(const Dataflash_StructInfo_t *structInfo, void *src) {
 	int8_t oldPage, newPage;
-	uint8_t allocPage;
+	uint8_t allocPage, owFlag;
 	uint16_t structSizeAlign;
 	uint32_t baseAddr, endAddr, dstAddr;
 	Dataflash_BlockInfo_t *blockInfo;
@@ -510,26 +562,44 @@ uint8_t Dataflash_UpdateStruct(const Dataflash_StructInfo_t *structInfo, void *s
 	// Find most recent GOOD page for this struct
 	oldPage = Dataflash_GetStructPageIndex(structInfo, 1);
 	if(oldPage >= 0) {
-		// Page found, check whether an update can fit in it
+		// Page found
 		blockInfo = &Dataflash_pageInfo[oldPage].blockInfo;
-		// If blockInfo->count == 33 we'll need to create a new block (extra 4 bytes)
-		dstAddr = blockInfo->addr + blockInfo->count * structSizeAlign + (blockInfo->count == 33 ? 8 : 4);
-		endAddr = baseAddr + (oldPage + 1) * FMC_FLASH_PAGE_SIZE;
-		if(dstAddr + structSizeAlign <= endAddr) {
-			// Fits in this page
-			allocPage = 0;
 
-			if(blockInfo->count == 33) {
-				// Will create a new block
-				// Counter word is already erased (i.e. 1)
-				// dstAddr will skip over the counter word
-				blockInfo->addr = dstAddr - 4;
-				blockInfo->count = 1;
-			}
-			else {
-				// Increment struct counter
-				blockInfo->count++;
-				FMC_Write(blockInfo->addr, Dataflash_UnaryEncode(blockInfo->count));
+		// Check if we can take shortcuts
+		dstAddr = blockInfo->addr + 4 + (blockInfo->count - 1) * structSizeAlign;
+		if(Dataflash_Compare(dstAddr, src, structInfo->size, &owFlag)) {
+			// Data is identical, no need to update
+			DATAFLASH_FMC_CLOSE();
+			return 1;
+		}
+
+		if(owFlag) {
+			// Just overwrite the most recent update
+			// dstAddr is already set up
+			allocPage = 0;
+		}
+		else {
+			// We need to create a new update
+			// Check whether an update can fit in this page
+			// If blockInfo->count == 33 we'll need to create a new block (extra 4 bytes)
+			dstAddr += structSizeAlign + (blockInfo->count == 33 ? 4 : 0);
+			endAddr = baseAddr + (oldPage + 1) * FMC_FLASH_PAGE_SIZE;
+			if(dstAddr + structSizeAlign <= endAddr) {
+				// Fits in this page
+				allocPage = 0;
+
+				if(blockInfo->count == 33) {
+					// Will create a new block
+					// Counter word is already erased (i.e. 1)
+					// dstAddr will skip over the counter word
+					blockInfo->addr = dstAddr - 4;
+					blockInfo->count = 1;
+				}
+				else {
+					// Increment struct counter
+					blockInfo->count++;
+					FMC_Write(blockInfo->addr, Dataflash_UnaryEncode(blockInfo->count));
+				}
 			}
 		}
 	}

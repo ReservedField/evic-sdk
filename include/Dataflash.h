@@ -93,6 +93,9 @@ uint8_t Dataflash_SelectStructSet(Dataflash_StructInfo_t **structInfo, uint8_t c
  * Updates/writes a structure in the dataflash.
  * The dataflash structure set must have already been selected, or
  * this will fail.
+ * The update operation is a read-compare-write, i.e. it won't waste flash
+ * space and cycles writing if the old structure is the same as the new one.
+ * However, this function is not fast, so try minimizing calls to it.
  *
  * @param structInfo Structure info.
  * @param src        Pointer to structure to be stored.

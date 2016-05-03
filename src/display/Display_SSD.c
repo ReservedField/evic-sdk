@@ -122,3 +122,8 @@ void Display_SSD_SetPowerOn(uint8_t isPowerOn) {
 		Display_SSD1306_PowerOff();
 	}
 }
+
+void Display_SSD_SetContrast(uint8_t contrast) {
+	Display_SSD_SendCommand(SSD_SET_CONTRAST_LEVEL);
+	Display_SSD_SendCommand(contrast);
+}

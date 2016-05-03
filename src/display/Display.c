@@ -270,3 +270,7 @@ void Display_PutText(int x, int y, const char *txt, const Font_Info_t *font) {
 uint8_t *Display_GetFramebuffer() {
 	return Display_framebuf;
 }
+
+void Display_SetContrast(uint8_t contrast) {
+	Display_SSD_SetContrast(contrast);
+}

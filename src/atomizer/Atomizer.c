@@ -165,6 +165,12 @@ static volatile uint16_t Atomizer_baseRes;
 static volatile uint16_t Atomizer_tempRes;
 
 /**
+ * Temperature at which Atomizer_baseRes is measured,
+ * in °C. Only valid if Atomizer_baseRes != 0.
+ */
+static volatile uint8_t Atomizer_baseTemp;
+
+/**
  * Target voltage for resistance stabilization, in 10mV units.
  */
 static volatile uint16_t Atomizer_tempTargetVolts;
@@ -185,6 +191,12 @@ static volatile uint16_t Atomizer_timerCountRefresh;
  * Bitwise combination of ATOMIZER_TMRFLAG_*.
  */
 static volatile uint8_t Atomizer_timerFlag;
+
+/**
+ * Pointer to base update callback.
+ * NULL when not used.
+ */
+static volatile Atomizer_BaseUpdateCallback_t Atomizer_baseUpdateCallbackPtr;
 
 /**
  * Thermistor resistance to board temperature lookup table.
@@ -455,6 +467,8 @@ void Atomizer_Init() {
 	Atomizer_error = OK;
 	Atomizer_baseRes = 0;
 	Atomizer_tempRes = 0;
+	Atomizer_baseTemp = 0;
+	Atomizer_baseUpdateCallbackPtr = NULL;
 	ATOMIZER_TIMER_RESET();
 
 	// Setup 25kHz timer for negative feedback cycle
@@ -516,6 +530,26 @@ Atomizer_Error_t Atomizer_GetError() {
 }
 
 /**
+ * Updates base resistance and temperature, invoking the
+ * callback if registered.
+ * This is an internal function.
+ *
+ * @param newRes  New base resistance.
+ * @param newTemp New base temperature.
+ */
+static void Atomizer_BaseUpdate(uint16_t newRes, uint8_t newTemp) {
+	if(Atomizer_baseUpdateCallbackPtr != NULL &&
+	   !Atomizer_baseUpdateCallbackPtr(Atomizer_baseRes, Atomizer_baseTemp, &newRes, &newTemp)) {
+		// Callback refused the update
+		return;
+	}
+
+	// Update base values (callback can modify them)
+	Atomizer_baseRes = newRes;
+	Atomizer_baseTemp = newTemp;
+}
+
+/**
  * Samples the atomizer info.
  * This is an internal function.
  *
@@ -527,7 +561,7 @@ Atomizer_Error_t Atomizer_GetError() {
 static void Atomizer_Sample(uint16_t targetVolts, uint16_t *voltage, uint16_t *current, uint16_t *resistance) {
 	uint32_t vSum, iSum, adcRes;
 	uint16_t savedTargetVolts;
-	uint8_t i;
+	uint8_t i, newTemp;
 
 	vSum = 0;
 	iSum = 0;
@@ -585,7 +619,13 @@ static void Atomizer_Sample(uint16_t targetVolts, uint16_t *voltage, uint16_t *c
 		// Since TCR is always positive, adcRes < baseRes
 		// implies a better resistance reading has been acquired.
 		if(adcRes >= 5 && adcRes < Atomizer_baseRes) {
-			Atomizer_baseRes = adcRes;
+			// Also update base temperature if lower
+			newTemp = Atomizer_ReadBoardTemp();
+			if(newTemp > Atomizer_baseTemp) {
+				newTemp = Atomizer_baseTemp;
+			}
+
+			Atomizer_BaseUpdate(adcRes, newTemp);
 		}
 
 		return;
@@ -645,7 +685,12 @@ static void Atomizer_Refresh() {
 	}
 	else {
 		Atomizer_tempRes = 0;
-		Atomizer_baseRes = resistance;
+		// If this update is refused, both tempRes and baseRes
+		// will be zero and the measure will be repeated.
+		Atomizer_BaseUpdate(resistance, Atomizer_ReadBoardTemp());
+		if(Atomizer_baseRes == 0) {
+			Atomizer_error = OPEN;
+		}
 	}
 }
 
@@ -664,6 +709,14 @@ void Atomizer_ReadInfo(Atomizer_Info_t *info) {
 	else {
 		Atomizer_Sample(0, &info->voltage, &info->current, &info->resistance);
 	}
+
+	info->baseResistance = Atomizer_baseRes;
+	info->baseTemperature = Atomizer_baseTemp;
+}
+
+void Atomizer_SetBaseUpdateCallback(Atomizer_BaseUpdateCallback_t callbackPtr) {
+	// Atomic
+	Atomizer_baseUpdateCallbackPtr = callbackPtr;
 }
 
 uint8_t Atomizer_ReadBoardTemp() {

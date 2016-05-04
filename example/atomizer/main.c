@@ -146,15 +146,17 @@ int main() {
 				atomState = Atomizer_IsOn() ? "FIRING" : "";
 				break;
 		}
-		siprintf(buf, "P:%3lu.%luW\nV:%2d.%02dV\nR:%2d.%02do\nI:%2d.%02dA\nT:%5dC\n%s\n\nBattery:\n%d%%\n%s",
+		siprintf(buf, "P:%3lu.%luW\nV:%2d.%02dV\nR:%2d.%02do\nRb:%d.%02do\nI:%2d.%02dA\nT:%5dC\nTb:%4dC\n%s\n%d%% %s",
 			watts / 1000, watts % 1000 / 100,
 			displayVolts / 1000, displayVolts % 1000 / 10,
 			atomInfo.resistance / 1000, atomInfo.resistance % 1000 / 10,
+			atomInfo.baseResistance / 1000, atomInfo.baseResistance % 1000 / 10,
 			atomInfo.current / 1000, atomInfo.current % 1000 / 10,
 			boardTemp,
+			atomInfo.baseResistance ? atomInfo.baseTemperature : 0,
 			atomState,
 			battPerc,
-			Battery_IsCharging() ? "CHARGING" : "");
+			Battery_IsCharging() ? "CHRG" : "");
 		Display_Clear();
 		Display_PutText(0, 0, buf, FONT_DEJAVU_8PT);
 		Display_Update();

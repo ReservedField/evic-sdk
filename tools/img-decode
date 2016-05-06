@@ -15,7 +15,7 @@
 # You should have received a copy of the GNU General Public License
 # along with eVic SDK.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright (C) 2015-2016 ReservedField
+# Copyright (C) 2016 ReservedField
 
 import sys
 import argparse
@@ -23,32 +23,26 @@ from PIL import Image
 from common.bitmap import Bitmap
 
 # Parse command-line arguments
-parser = argparse.ArgumentParser(description='Convert images to eVic SDK bitmap format.')
-parser.add_argument('bitmapName', metavar='name', type=str, help='C bitmap name')
-parser.add_argument('fileName', metavar='file', type=str, help='input file name')
+parser = argparse.ArgumentParser(description='Decode images from eVic SDK bitmap format.')
+parser.add_argument('width', metavar='width', type=int, help='image width')
+parser.add_argument('height', metavar='height', type=int, help='image height')
+parser.add_argument('inFileName', metavar='input', type=str, help='input file name')
+parser.add_argument('outFileName', metavar='output', type=str, help='output file name')
 parser.add_argument('--invert', dest='invert', action='store_const',
 	const=True, default=False, help='invert image colors')
 args = parser.parse_args()
 
-# Convert to SDK bitmap
-img = Image.open(args.fileName)
-bitmap = Bitmap.fromImage(img)
+# Read input file
+with open(args.inFileName, 'rb') as inFile:
+	imgBytes = inFile.read()
+
+# Decode SDK bitmap
+bitmap = Bitmap.fromBytes(imgBytes, args.width, args.height)
 if args.invert:
 	bitmap.invert()
 
-# Print image to stderr
-sys.stderr.write(bitmap.toAsciiArtStr(True))
-sys.stderr.write('\n')
+# Print image
+print(bitmap.toAsciiArtStr(False))
 
-# Output C header
-print(('#include <stdint.h>\n\n'
-	   '#ifndef {0}_H\n'
-	   '#define {0}_H\n\n'
-       'uint8_t {1}[] = {{')
-       .format(args.bitmapName.upper(), args.bitmapName))
-print(bitmap.toCArrayStr('\t', 8))
-print(('}};\n\n'
-	   'int {0}_width  = {1};\n'
-	   'int {0}_height = {2};\n\n'
-	   '#endif')
-	   .format(args.bitmapName, bitmap.width, bitmap.height))
+# Write output file
+bitmap.img.save(args.outFileName)

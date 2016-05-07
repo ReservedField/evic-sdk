@@ -44,6 +44,9 @@
  */
 static uint8_t Display_framebuf[DISPLAY_FRAMEBUFFER_SIZE];
 
+/**
+ * Display type. Depends on hardware version.
+ */
 static Display_Type_t Display_type;
 
 void Display_SetupSPI() {
@@ -262,4 +265,8 @@ void Display_PutText(int x, int y, const char *txt, const Font_Info_t *font) {
 		Display_PutPixels(curX, y, charPtr, font->charInfo[charIdx].width, font->height);
 		curX += font->charInfo[charIdx].width;
 	}
+}
+
+uint8_t *Display_GetFramebuffer() {
+	return Display_framebuf;
 }

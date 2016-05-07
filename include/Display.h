@@ -159,6 +159,16 @@ void Display_PutPixels(int x, int y, const uint8_t *bitmap, int w, int h);
  */
 void Display_PutText(int x, int y, const char *txt, const Font_Info_t *font);
 
+/**
+ * Gets the framebuffer address.
+ * Framebuffer size is DISPLAY_FRAMEBUFFER_SIZE.
+ * Dimensions are DISPLAY_WIDTH and DISPLAY_HEIGHT.
+ * It's stored in bitmap format.
+ *
+ * @return Pointer to global framebuffer.
+ */
+uint8_t *Display_GetFramebuffer();
+
 #ifdef __cplusplus
 }
 #endif

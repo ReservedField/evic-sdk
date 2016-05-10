@@ -20,6 +20,8 @@
 #ifndef EVICSDK_TIMERUTILS_H
 #define EVICSDK_TIMERUTILS_H
 
+#include <stdint.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif

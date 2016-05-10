@@ -20,6 +20,8 @@
 #ifndef EVICSDK_BATTERY_H
 #define EVICSDK_BATTERY_H
 
+#include <stdint.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif

@@ -20,7 +20,7 @@
 #ifndef EVICSDK_USB_H
 #define EVICSDK_USB_H
 
-#include <M451Series.h>
+#include <stdint.h>
 
 #ifdef __cplusplus
 extern "C" {

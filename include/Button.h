@@ -20,6 +20,8 @@
 #ifndef EVICSDK_BUTTON_H
 #define EVICSDK_BUTTON_H
 
+#include <stdint.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif

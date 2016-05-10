@@ -17,6 +17,15 @@
  * Copyright (C) 2016 ReservedField
  */
 
+#include <stdint.h>
+
+#ifndef EVICSDK_SYSTEM_H
+#define EVICSDK_SYSTEM_H
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * Wakeup source: fire button.
  */
@@ -56,3 +65,9 @@ void Sys_SetWakeupSource(uint8_t source);
  *         zero if no wakeup has ever happened.
  */
 uint8_t Sys_GetLastWakeupSource();
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif

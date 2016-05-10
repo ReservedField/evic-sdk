@@ -20,6 +20,8 @@
 #ifndef EVICSDK_ADC_H
 #define EVICSDK_ADC_H
 
+#include <stdint.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif

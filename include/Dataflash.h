@@ -20,6 +20,8 @@
 #ifndef EVICSDK_DATAFLASH_H
 #define EVICSDK_DATAFLASH_H
 
+#include <stdint.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif

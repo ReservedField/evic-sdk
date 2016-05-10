@@ -21,6 +21,8 @@
 #ifndef EVICSDK_SYSINFO_H
 #define EVICSDK_SYSINFO_H
 
+#include <stdint.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif

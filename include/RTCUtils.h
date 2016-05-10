@@ -20,6 +20,8 @@
 #ifndef EVICSDK_RTCUTILS_H
 #define EVICSDK_RTCUTILS_H
 
+#include <stdint.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif

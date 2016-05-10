@@ -21,6 +21,8 @@
 #ifndef EVICSDK_ATOMIZER_H
 #define EVICSDK_ATOMIZER_H
 
+#include <stdint.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif

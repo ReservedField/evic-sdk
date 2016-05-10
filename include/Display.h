@@ -35,6 +35,7 @@
 #ifndef EVICSDK_DISPLAY_H
 #define EVICSDK_DISPLAY_H
 
+#include <stdint.h>
 #include <stdbool.h>
 #include <Font.h>
 

@@ -171,6 +171,12 @@ static volatile uint16_t Atomizer_tempRes;
 static volatile uint8_t Atomizer_baseTemp;
 
 /**
+ * True if a measure has been forced.
+ * Will be reset to false on atomizer error.
+ */
+static volatile uint8_t Atomizer_forceMeasure;
+
+/**
  * Target voltage for resistance stabilization, in 10mV units.
  */
 static volatile uint16_t Atomizer_tempTargetVolts;
@@ -345,6 +351,7 @@ static void Atomizer_NegativeFeedback(uint32_t unused) {
 		}
 
 		Atomizer_tempRes = 0;
+		Atomizer_forceMeasure = 0;
 		Atomizer_Control(0);
 		return;
 	}
@@ -468,6 +475,7 @@ void Atomizer_Init() {
 	Atomizer_baseRes = 0;
 	Atomizer_tempRes = 0;
 	Atomizer_baseTemp = 0;
+	Atomizer_forceMeasure = 0;
 	Atomizer_baseUpdateCallbackPtr = NULL;
 	ATOMIZER_TIMER_RESET();
 
@@ -525,8 +533,8 @@ uint8_t Atomizer_IsOn() {
 }
 
 Atomizer_Error_t Atomizer_GetError() {
-	// Mask OK code while resistance is stabilizing
-	return Atomizer_error == OK && Atomizer_tempRes != 0 ? OPEN : Atomizer_error;
+	// Mask OK code while resistance is stabilizing (on first measure)
+	return Atomizer_error == OK && !Atomizer_baseRes && Atomizer_tempRes ? OPEN : Atomizer_error;
 }
 
 /**
@@ -635,6 +643,7 @@ static void Atomizer_Sample(uint16_t targetVolts, uint16_t *voltage, uint16_t *c
 	Atomizer_Control(0);
 	Atomizer_baseRes = 0;
 	Atomizer_tempRes = 0;
+	Atomizer_forceMeasure = 0;
 
 	*voltage = 0;
 	*current = 0;
@@ -660,13 +669,13 @@ static void Atomizer_Refresh() {
 		Atomizer_Control(0);
 		Atomizer_SetOutputVoltage(targetVolts);
 
-		if(Atomizer_baseRes != 0 || Atomizer_error != OK) {
+		if((!Atomizer_forceMeasure && Atomizer_baseRes) || Atomizer_error != OK) {
 			return;
 		}
 	}
 
-	// If tempRes == 0, then the atomizer has just been connected,
-	// so we start sampling it at 1.00V.
+	// If tempRes == 0, then the atomizer has just been connected or
+	// a measure has just been forced, so we start sampling at 1.00V.
 	// Otherwise, we use the previously calculated target voltage.
 	targetVolts = Atomizer_tempRes == 0 ? 100 : Atomizer_tempTargetVolts;
 	Atomizer_Sample(targetVolts, &voltage, &current, &resistance);
@@ -685,8 +694,10 @@ static void Atomizer_Refresh() {
 	}
 	else {
 		Atomizer_tempRes = 0;
-		// If this update is refused, both tempRes and baseRes
-		// will be zero and the measure will be repeated.
+		Atomizer_forceMeasure = 0;
+		// If this is the first measure and the update is
+		// refused both tempRes and baseRes will be zero
+		// and the measure will be repeated.
 		Atomizer_BaseUpdate(resistance, Atomizer_ReadBoardTemp());
 		if(Atomizer_baseRes == 0) {
 			Atomizer_error = OPEN;
@@ -707,6 +718,12 @@ void Atomizer_ReadInfo(Atomizer_Info_t *info) {
 		info->resistance = Atomizer_baseRes;
 	}
 	else {
+		if(Atomizer_forceMeasure) {
+			// Abort forced measurement on fire
+			Atomizer_tempRes = 0;
+			Atomizer_forceMeasure = 0;
+		}
+
 		Atomizer_Sample(0, &info->voltage, &info->current, &info->resistance);
 	}
 
@@ -717,6 +734,10 @@ void Atomizer_ReadInfo(Atomizer_Info_t *info) {
 void Atomizer_SetBaseUpdateCallback(Atomizer_BaseUpdateCallback_t callbackPtr) {
 	// Atomic
 	Atomizer_baseUpdateCallbackPtr = callbackPtr;
+}
+
+void Atomizer_ForceMeasure() {
+	Atomizer_forceMeasure = 1;
 }
 
 uint8_t Atomizer_ReadBoardTemp() {

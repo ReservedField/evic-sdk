@@ -169,6 +169,18 @@ void Atomizer_ReadInfo(Atomizer_Info_t *info);
 void Atomizer_SetBaseUpdateCallback(Atomizer_BaseUpdateCallback_t callbackPtr);
 
 /**
+ * Schedules a forced atomizer measurement.
+ * The current resistance measurement will be kept, but successive
+ * calls to Atomizer_ReadInfo will perform the measurement again.
+ * The previous measurement will be replaced only once the new one
+ * is complete. If a base update callback is set, it will be called
+ * once the new measuremet is complete.
+ * NOTE: use this *very* sparingly and carefully. Fast, consecutive
+ * measurements can heat up the atomizer considerably.
+ */
+void Atomizer_ForceMeasure();
+
+/**
  * Reads the DC/DC converter temperature.
  *
  * @return DC/DC converter temperature, in °C.

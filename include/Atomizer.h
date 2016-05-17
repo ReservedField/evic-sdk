@@ -113,6 +113,17 @@ typedef enum {
 typedef uint8_t (*Atomizer_BaseUpdateCallback_t)(uint16_t oldRes, uint8_t oldTemp, uint16_t *newRes, uint8_t *newTemp);
 
 /**
+ * Function pointer type for atomizer error callbacks.
+ * This callback will be invoked both from normal context and
+ * interrupt context, so it should be as fast as possible.
+ * You'll typically want to just set a flag and return, and
+ * then act on that flag from you main application loop.
+ *
+ * @param error Latest atomizer error.
+ */
+typedef void (*Atomizer_ErrorCallback_t)(Atomizer_Error_t error);
+
+/**
  * Initializes the atomizer library.
  * System control registers must be unlocked.
  */
@@ -181,6 +192,28 @@ void Atomizer_SetBaseUpdateCallback(Atomizer_BaseUpdateCallback_t callbackPtr);
  * measurements can heat up the atomizer considerably.
  */
 void Atomizer_ForceMeasure();
+
+/**
+ * Enable or disable atomizer locking on error.
+ * The lock affects Atomizer_Control and Atomizer_ReadInfo.
+ *
+ * @param enable True to enable, false to disable.
+ */
+void Atomizer_SetErrorLock(uint8_t enable);
+
+/**
+ * If error locking is enabled, unlocks the atomizer after an error
+ * locked it.
+ */
+void Atomizer_Unlock();
+
+/**
+ * Sets a callback that will be invoked when the atomizer encounters
+ * an error.
+ *
+ * @param callbackPtr Callback function pointer, or NULL to disable.
+ */
+void Atomizer_SetErrorCallback(Atomizer_ErrorCallback_t callbackPtr);
 
 /**
  * Reads the DC/DC converter temperature.

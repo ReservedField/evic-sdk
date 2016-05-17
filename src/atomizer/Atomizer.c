@@ -205,6 +205,22 @@ static volatile uint8_t Atomizer_timerFlag;
 static volatile Atomizer_BaseUpdateCallback_t Atomizer_baseUpdateCallbackPtr;
 
 /**
+ * True if the atomizer should be locked on any error.
+ */
+static volatile uint8_t Atomizer_errorLock;
+
+/**
+ * True if the atomizer is locked.
+ */
+static volatile uint8_t Atomizer_isLocked;
+
+/**
+ * Pointer to error callback.
+ * NULL when not used.
+ */
+static volatile Atomizer_ErrorCallback_t Atomizer_errorCallbackPtr;
+
+/**
  * Thermistor resistance to board temperature lookup table.
  * boardTempTable[i] maps the 5°C range starting at 5*i °C.
  * Linear interpolation is done inside the range.
@@ -286,6 +302,39 @@ static void Atomizer_ConfigureConverters(uint8_t enableBuck, uint8_t enableBoost
 }
 
 /**
+ * Sets the atomizer error, resetting the approriate
+ * atomizer state if needed. If the error is not OK,
+ * powers off the atomizer.
+ *
+ * @param error New error.
+ */
+static void Atomizer_SetError(Atomizer_Error_t error) {
+	if(error != OK) {
+		// Shutdown and reset measurement state
+		Atomizer_Control(0);
+		Atomizer_tempRes = 0;
+		Atomizer_forceMeasure = 0;
+
+		if(Atomizer_errorLock) {
+			// Lock atomizer
+			Atomizer_isLocked = 1;
+		}
+	}
+
+	if(error == SHORT || error == OPEN) {
+		// Reset base resistance
+		Atomizer_baseRes = 0;
+	}
+
+	Atomizer_error = error;
+
+	if(Atomizer_errorCallbackPtr != NULL) {
+		// Invoke error callback
+		Atomizer_errorCallbackPtr(error);
+	}
+}
+
+/**
  * Negative feedback iteration to keep the DC/DC converters stable.
  * Takes parameters as a timer callback.
  * This is an internal function.
@@ -330,29 +379,23 @@ static void Atomizer_NegativeFeedback(uint32_t unused) {
 
 	Atomizer_error = OK;
 	if(ATOMIZER_ADC_OVERTEMP(adcBoardTemp)) {
-		Atomizer_error = OVER_TEMP;
+		Atomizer_SetError(OVER_TEMP);
 	}
 	else if(ATOMIZER_ADC_WEAKBATT(adcBattery)) {
-		Atomizer_error = WEAK_BATT;
+		Atomizer_SetError(WEAK_BATT);
 	}
 	else if(Atomizer_timerCountWarmup > 25) {
 		// Start checking resistance after 1ms
 		resistance = ATOMIZER_ADC_RESISTANCE(adcVoltage, adcCurrent);
 		if(resistance >= 5 && resistance < 40) {
-			Atomizer_error = SHORT;
+			Atomizer_SetError(SHORT);
 		}
 		else if(resistance > 50000) {
-			Atomizer_error = OPEN;
+			Atomizer_SetError(OPEN);
 		}
 	}
-	if(Atomizer_error != OK) {
-		if(Atomizer_error == SHORT || Atomizer_error == OPEN) {
-			Atomizer_baseRes = 0;
-		}
 
-		Atomizer_tempRes = 0;
-		Atomizer_forceMeasure = 0;
-		Atomizer_Control(0);
+	if(Atomizer_error != OK) {
 		return;
 	}
 
@@ -477,6 +520,9 @@ void Atomizer_Init() {
 	Atomizer_baseTemp = 0;
 	Atomizer_forceMeasure = 0;
 	Atomizer_baseUpdateCallbackPtr = NULL;
+	Atomizer_errorLock = 0;
+	Atomizer_isLocked = 0;
+	Atomizer_errorCallbackPtr = NULL;
 	ATOMIZER_TIMER_RESET();
 
 	// Setup 25kHz timer for negative feedback cycle
@@ -496,8 +542,8 @@ void Atomizer_SetOutputVoltage(uint16_t volts) {
 void Atomizer_Control(uint8_t powerOn) {
 	uint16_t battVolts;
 
-	if(Atomizer_error == SHORT) {
-		// Lock atomizer after short
+	if(powerOn && (Atomizer_isLocked || Atomizer_error == SHORT)) {
+		// Lock atomizer after short or if locked by error
 		return;
 	}
 
@@ -510,7 +556,7 @@ void Atomizer_Control(uint8_t powerOn) {
 		// Don't even bother firing if the battery is weak
 		battVolts = Battery_GetVoltage();
 		if(ATOMIZER_PREDICT_WEAKBATT(Atomizer_targetVolts, Atomizer_baseRes, battVolts)) {
-			Atomizer_error = WEAK_BATT;
+			Atomizer_SetError(WEAK_BATT);
 			return;
 		}
 
@@ -616,10 +662,10 @@ static void Atomizer_Sample(uint16_t targetVolts, uint16_t *voltage, uint16_t *c
 	// so we re-check the resistance.
 	adcRes = ATOMIZER_ADC_RESISTANCE(vSum, iSum);
 	if(adcRes >= 5 && adcRes < 50) {
-		Atomizer_error = SHORT;
+		Atomizer_SetError(SHORT);
 	}
 	else if(adcRes > 3500) {
-		Atomizer_error = OPEN;
+		Atomizer_SetError(OPEN);
 	}
 	else {
 		*resistance = adcRes;
@@ -639,12 +685,7 @@ static void Atomizer_Sample(uint16_t targetVolts, uint16_t *voltage, uint16_t *c
 		return;
 	}
 
-	// Check failed: behave like an atomizer error
-	Atomizer_Control(0);
-	Atomizer_baseRes = 0;
-	Atomizer_tempRes = 0;
-	Atomizer_forceMeasure = 0;
-
+	// Check failed
 	*voltage = 0;
 	*current = 0;
 	*resistance = 0;
@@ -700,15 +741,16 @@ static void Atomizer_Refresh() {
 		// and the measure will be repeated.
 		Atomizer_BaseUpdate(resistance, Atomizer_ReadBoardTemp());
 		if(Atomizer_baseRes == 0) {
-			Atomizer_error = OPEN;
+			Atomizer_SetError(OPEN);
 		}
 	}
 }
 
 void Atomizer_ReadInfo(Atomizer_Info_t *info) {
 	if(Atomizer_curState == POWEROFF) {
-		// Lock atomizer after short
-		if(Atomizer_error != SHORT && (Atomizer_timerFlag & ATOMIZER_TMRFLAG_REFRESH)) {
+		// Lock atomizer after short or if locked by error
+		if(!Atomizer_isLocked && Atomizer_error != SHORT &&
+		   (Atomizer_timerFlag & ATOMIZER_TMRFLAG_REFRESH)) {
 			ATOMIZER_TIMER_REFRESH_RESET();
 			Atomizer_Refresh();
 		}
@@ -738,6 +780,18 @@ void Atomizer_SetBaseUpdateCallback(Atomizer_BaseUpdateCallback_t callbackPtr) {
 
 void Atomizer_ForceMeasure() {
 	Atomizer_forceMeasure = 1;
+}
+
+void Atomizer_SetErrorLock(uint8_t enable) {
+	Atomizer_errorLock = enable;
+}
+
+void Atomizer_Unlock() {
+	Atomizer_isLocked = 0;
+}
+
+void Atomizer_SetErrorCallback(Atomizer_ErrorCallback_t callbackPtr) {
+	Atomizer_errorCallbackPtr = callbackPtr;
 }
 
 uint8_t Atomizer_ReadBoardTemp() {

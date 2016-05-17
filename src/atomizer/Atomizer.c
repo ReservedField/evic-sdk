@@ -182,14 +182,14 @@ static volatile uint8_t Atomizer_forceMeasure;
 static volatile uint16_t Atomizer_tempTargetVolts;
 
 /**
- * Warmup timer counter. Each tick is 40us.
- * Counts up to 51 (2ms) and stops.
+ * Warmup timer counter. Each tick is 400us.
+ * Counts up to 6 (2ms) and stops.
  */
 static volatile uint8_t Atomizer_timerCountWarmup;
 
 /**
- * Refresh timer counter. Each tick is 40us.
- * Counts up to 5000 (200ms) and stops.
+ * Refresh timer counter. Each tick is 400us.
+ * Counts up to 500 (200ms) and stops.
  */
 static volatile uint16_t Atomizer_timerCountRefresh;
 
@@ -353,7 +353,7 @@ static void Atomizer_NegativeFeedback(uint32_t unused) {
 		ADC_MODULE_VBAT, ADC_MODULE_TEMP
 	}, 4, 0);
 
-	if(Atomizer_timerCountRefresh != 5000) {
+	if(Atomizer_timerCountRefresh != 500) {
 		Atomizer_timerCountRefresh++;
 	}
 	else {
@@ -364,7 +364,7 @@ static void Atomizer_NegativeFeedback(uint32_t unused) {
 		return;
 	}
 
-	if(Atomizer_timerCountWarmup != 51) {
+	if(Atomizer_timerCountWarmup != 6) {
 		Atomizer_timerCountWarmup++;
 	}
 	else {
@@ -384,8 +384,8 @@ static void Atomizer_NegativeFeedback(uint32_t unused) {
 	else if(ATOMIZER_ADC_WEAKBATT(adcBattery)) {
 		Atomizer_SetError(WEAK_BATT);
 	}
-	else if(Atomizer_timerCountWarmup > 25) {
-		// Start checking resistance after 1ms
+	else if(Atomizer_timerCountWarmup > 3) {
+		// Start checking resistance after ~1ms
 		resistance = ATOMIZER_ADC_RESISTANCE(adcVoltage, adcCurrent);
 		if(resistance >= 5 && resistance < 40) {
 			Atomizer_SetError(SHORT);
@@ -525,10 +525,10 @@ void Atomizer_Init() {
 	Atomizer_errorCallbackPtr = NULL;
 	ATOMIZER_TIMER_RESET();
 
-	// Setup 25kHz timer for negative feedback cycle
+	// Setup 2.5kHz timer for negative feedback cycle
 	// This function should run during system init, so
 	// the user hasn't had time to create timers yet.
-	Timer_CreateTimer(25000, 1, Atomizer_NegativeFeedback, 0);
+	Timer_CreateTimer(2500, 1, Atomizer_NegativeFeedback, 0);
 }
 
 void Atomizer_SetOutputVoltage(uint16_t volts) {

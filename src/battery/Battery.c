@@ -73,9 +73,20 @@ uint8_t Battery_IsCharging() {
 }
 
 uint16_t Battery_GetVoltage() {
+	uint8_t i;
+	uint16_t adcSum;
+
+	// Sample and average battery voltage.
+	// A power-of-2 sample count is better for
+	// optimization. 16 is also the biggest number
+	// of samples that will fit in a uint16_t.
+	adcSum = 0;
+	for(i = 0; i < 16; i++) {
+		adcSum += ADC_Read(ADC_MODULE_VBAT);
+	}
+
 	// Double the voltage to compensate for the divider
-	uint16_t adcValue = ADC_Read(ADC_MODULE_VBAT);
-	return adcValue * 2L * ADC_VREF / ADC_DENOMINATOR;
+	return adcSum / 16L * 2L * ADC_VREF / ADC_DENOMINATOR;
 }
 
 uint8_t Battery_VoltageToPercent(uint16_t volts) {

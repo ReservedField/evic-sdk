@@ -390,7 +390,7 @@ static void Atomizer_NegativeFeedback(uint32_t unused) {
 		if(resistance >= 5 && resistance < 40) {
 			Atomizer_SetError(SHORT);
 		}
-		else if(resistance > 50000) {
+		else if(adcVoltage != 0 && adcCurrent < 5) {
 			Atomizer_SetError(OPEN);
 		}
 	}
@@ -571,6 +571,7 @@ void Atomizer_Control(uint8_t powerOn) {
 	else {
 		Atomizer_curState = POWEROFF;
 		Atomizer_ConfigureConverters(0, 0);
+		ATOMIZER_TIMER_REFRESH_RESET();
 	}
 }
 

@@ -119,6 +119,15 @@ void Display_SSD_Write(uint8_t isData, const uint8_t *buf, uint32_t len);
  */
 void Display_SSD_SendCommand(uint8_t cmd);
 
+/**
+ * Sets the display contrast (OLED current).
+ * SSD1306: ~0.4uA/LSB
+ * SSD1327: ~1.2uA/LSB
+ *
+ * @param contrast Contrast (0 - 255).
+ */
+void Display_SSD_SetContrast(uint8_t contrast);
+
 #ifdef __cplusplus
 }
 #endif

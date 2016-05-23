@@ -269,14 +269,14 @@ void Display_PutText(int x, int y, const char *txt, const Font_Info_t *font) {
 			continue;
 		}
 
-		// Handle "kerning"
-		if (i != 0 && font->kerning != 0) {
-			curX += font->kerning;
-		}
-
 		// Skip unknown characters
 		if(txt[i] < font->startChar || txt[i] > font->endChar) {
 			continue;
+		}
+
+		// Handle "kerning"
+		if (i != 0 && font->kerning != 0) {
+			curX += font->kerning;
 		}
 
 		// Calculate character index and pointer to bitmap

@@ -170,6 +170,12 @@ void Display_PutText(int x, int y, const char *txt, const Font_Info_t *font);
  */
 uint8_t *Display_GetFramebuffer();
 
+/*
+ * Sets the contrast
+ * char is between 0 - 256
+ */
+void Display_SetContrast(uint8_t contrast);
+
 #ifdef __cplusplus
 }
 #endif

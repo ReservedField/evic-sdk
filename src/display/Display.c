@@ -33,6 +33,7 @@
  */
 
 #include <string.h>
+#include <stdlib.h>
 #include <M451Series.h>
 #include <Display.h>
 #include <Display_SSD.h>
@@ -269,4 +270,9 @@ void Display_PutText(int x, int y, const char *txt, const Font_Info_t *font) {
 
 uint8_t *Display_GetFramebuffer() {
 	return Display_framebuf;
+}
+
+void Display_SetContrast(uint8_t contrast) {
+	Display_SSD_SendCommand(SSD_SET_CONTRAST_LEVEL);
+	Display_SSD_SendCommand(contrast);
 }

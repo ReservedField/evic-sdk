@@ -417,4 +417,5 @@ const Font_Info_t Font_DejaVuSansMono_8pt_FontInfo = {
 	8, /* Width, in pixels, of space character */
 	Font_DejaVuSansMono_8pt_Descriptors, /* Character descriptor array */
 	Font_DejaVuSansMono_8pt_Bitmaps, /* Character bitmap array */
+	0, /* kerning */
 };

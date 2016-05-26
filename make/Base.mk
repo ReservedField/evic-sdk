@@ -80,7 +80,8 @@ OBJCOPY := arm-none-eabi-objcopy
 
 BINDIR := bin
 
-INCDIRS := -I$(NUVOSDK)/CMSIS/Include \
+INCDIRS := $(foreach d,$(shell arm-none-eabi-gcc -x c -v -E /dev/null 2>&1 | sed -n -e '/<\.\.\.>/,/End/ p' | tail -n +2 | head -n -1 | sed 's/^\s*//'),-I$d) \
+	-I$(NUVOSDK)/CMSIS/Include \
 	-I$(NUVOSDK)/Device/Nuvoton/M451Series/Include \
 	-I$(NUVOSDK)/StdDriver/inc \
 	-I$(EVICSDK)/include

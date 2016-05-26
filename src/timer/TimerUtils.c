@@ -19,6 +19,7 @@
 
 #include <M451Series.h>
 #include <TimerUtils.h>
+#include <Thread.h>
 
 /**
  * Structure for holding timeout status.
@@ -219,21 +220,25 @@ void Timer_DeleteTimer(int8_t index) {
 	Timer_callbackPtr[index] = NULL;
 }
 
-void Timer_DelayUs(uint32_t delay) {
-	CLK_SysTickDelay(delay);
-}
-
 void Timer_DelayMs(uint32_t delay) {
 	uint8_t delayRem;
 
-	// We do 233000us delays, which is nearly the maximum
-	// Maximizing single delay time increases precision
-	delayRem = delay % 233;
-	delay = delay / 233;
+	if(!(SysTick->CTRL & SysTick_CTRL_ENABLE_Msk)) {
+		// SysTick isn't enabled. This means the scheduler
+		// hasn't been started yet, so we use SysTick.
+		// We do 233000us delays, which is nearly the maximum.
+		// Maximizing single delay time increases precision.
+		delayRem = delay % 233;
+		delay = delay / 233;
 
-	while(delay--) {
-		CLK_SysTickDelay(233000);
+		while(delay--) {
+			CLK_SysTickDelay(233000);
+		}
+
+		CLK_SysTickDelay(delayRem * 1000);
 	}
-
-	CLK_SysTickDelay(delayRem * 1000);
+	else {
+		// Scheduler is working: hand delay to thread library
+		Thread_DelayMs(delay);
+	}
 }

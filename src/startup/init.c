@@ -25,6 +25,7 @@
 #include <Button.h>
 #include <ADC.h>
 #include <Atomizer.h>
+#include <Thread.h>
 
 /**
  * PLL clock: 72MHz.
@@ -36,9 +37,6 @@
  * System control registers must be unlocked.
  */
 void Sys_Init() {
-	// TODO: why is SYS_UnlockReg() needed? Should be already unlocked.
-	SYS_UnlockReg();
-
 	// HIRC clock (internal RC 22.1184MHz)
 	CLK_EnableXtalRC(CLK_PWRCTL_HIRCEN_Msk);
 	CLK_WaitClockReady(CLK_STATUS_HIRCSTB_Msk);
@@ -114,4 +112,7 @@ void Sys_Init() {
 
 	// Initialize display
 	Display_Init();
+
+	// Initialize thread manager
+	Thread_Init();
 }

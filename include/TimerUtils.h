@@ -81,17 +81,49 @@ void Timer_DeleteTimer(int8_t index);
 
 /**
  * Delays for the specified time.
- *
- * @param delay Delay in microseconds. Valid range is 0 - 233016.
- */
-void Timer_DelayUs(uint32_t delay);
-
-/**
- * Delays for the specified time.
+ * Do not call from interrupt/callback context.
  *
  * @param delay Delay in milliseconds.
  */
 void Timer_DelayMs(uint32_t delay);
+
+/* Always inline, no extern version. */
+#define TIMERUTILS_INLINE __attribute__((always_inline)) static inline
+
+/**
+ * Delays for the specified time.
+ * Busy loops wasting CPU cycles, so it's only
+ * appropriate for small delays (e.g. < 1ms).
+ *
+ * @param delay Delay in microseconds.
+ */
+TIMERUTILS_INLINE void Timer_DelayUs(uint16_t delay) {
+	// Clock is 72MHz and every subs + bne iteration takes 3 cycles.
+	// The last iteration would take only 2 cycles due to the bne not
+	// being taken, so a nop is inserted to bring it up to 3.
+	// We multiply delay by 72 / 3 = 24 to get the number of iterations.
+	// Multiplication is broken into:
+	//  - delay += delay << 1 (i.e. delay = delay * 3)
+	//  - delay  = delay << 3 (i.e. delay = delay * 8)
+	// This takes the same cycles and space as mov + mul, but it doesn't
+	// use an extra register to store the constant multiplier.
+	// We subtract 4 cycles to the total for the checks and calculations
+	// (non-taken cbz, movs, muls, subs).
+	asm volatile("@ Timer_DelayUs\n\t"
+		"cbz  %0, 2f\n\t"             // 2 cycles taken, 1 cycle not taken
+		"add  %0, %0, %0, lsl #1\n\t" // 1 cycle
+		"lsl  %0, %0, #3\n\t"         // 1 cycle
+		"subs %0, %0, #4\n"           // 1 cycle
+	"1:\n\t"
+		"subs %0, %0, #1\n\t"         // 1 cycle
+		"bne  1b\n\t"                 // 2 cycles taken, 1 cycle not taken
+		"nop\n"                       // 1 cycle
+	"2:"
+	: "+&r" (delay)
+	: : "cc");
+}
+
+#undef TIMERUTILS_INLINE
 
 #ifdef __cplusplus
 }

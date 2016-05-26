@@ -18,8 +18,6 @@ NUVOSDK = $(EVICSDK)/nuvoton-sdk/Library
 # changing EVICSDK later.
 OBJS := $(OBJS)
 
-CPU := cortex-m4
-
 # We need to find out if on cygwin or not
 ifeq ($(OS),Windows_NT)
 	ifeq (, $(findstring cygwin, $(shell gcc -dumpmachine)))
@@ -86,21 +84,29 @@ INCDIRS := $(foreach d,$(shell arm-none-eabi-gcc -x c -v -E /dev/null 2>&1 | sed
 	-I$(NUVOSDK)/StdDriver/inc \
 	-I$(EVICSDK)/include
 
-LDSCRIPT := $(EVICSDK)/linker/linker.ld
-
 LIBDIRS := -L$(ARMGCC)/arm-none-eabi/lib \
 	-L$(ARMGCC)/arm-none-eabi/newlib \
 	-L$(ARMGCC)/lib/arm-none-eabi/newlib \
 	-L$(ARMGCC)/gcc/arm-none-eabi/$(GCC_VERSION) \
 	-L$(ARMGCC)/lib/gcc/arm-none-eabi/$(GCC_VERSION) \
-	-L$(EVICSDK)/lib
+	-L$(EVICSDK)/lib \
+	-L$(EVICSDK)/linker
 
-CFLAGS += -Wall -mcpu=$(CPU) -mthumb -Os -fdata-sections -ffunction-sections
+CPUFLAGS := -mcpu=cortex-m4 -mthumb
+
+ifneq ($(EVICSDK_FPU_SUPPORT),)
+	CPUFLAGS += -mfloat-abi=hard -mfpu=fpv4-sp-d16
+	LDSCRIPT := $(EVICSDK)/linker/fpu.ld
+else
+	LDSCRIPT := $(EVICSDK)/linker/nofpu.ld
+endif
+
+CFLAGS += -Wall $(CPUFLAGS) -Os -fdata-sections -ffunction-sections
 CFLAGS += $(INCDIRS)
 
 CPPFLAGS += -fno-exceptions -fno-rtti
 
-ASFLAGS += -mcpu=$(CPU)
+ASFLAGS += $(CPUFLAGS)
 
 LDFLAGS += $(LIBDIRS)
 LDFLAGS += -nostdlib -nostartfiles -T$(LDSCRIPT) --gc-sections

@@ -46,21 +46,21 @@ static const uint8_t Display_SSD1306_initCmds[] = {
 void Display_SSD1306_PowerOn() {
 	DISPLAY_SSD_VDD = 1;
 	DISPLAY_SSD_VCC = 1;
-	Timer_DelayUs(1000);
+	Timer_DelayMs(1);
 	DISPLAY_SSD_RESET = 0;
-	Timer_DelayUs(1000);
+	Timer_DelayMs(1);
 	DISPLAY_SSD_RESET = 1;
-	Timer_DelayUs(1000);
+	Timer_DelayMs(1);
 }
 
 void Display_SSD1306_PowerOff() {
 	Display_SSD_SendCommand(SSD_DISPLAY_OFF);
 	DISPLAY_SSD_VCC = 0;
-	Timer_DelayUs(100000);
+	Timer_DelayMs(100);
 	DISPLAY_SSD_VDD = 0;
-	Timer_DelayUs(100000);
+	Timer_DelayMs(100);
 	DISPLAY_SSD_RESET = 0;
-	Timer_DelayUs(100000);
+	Timer_DelayMs(100);
 }
 
 void Display_SSD1306_SendInitCmds() {

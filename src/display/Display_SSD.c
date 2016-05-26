@@ -97,7 +97,7 @@ void Display_SSD_Init() {
 	Display_SSD_SetOn(1);
 
 	// Delay 20ms
-	Timer_DelayUs(20000);
+	Timer_DelayMs(20);
 }
 
 void Display_SSD_SetOn(uint8_t isOn) {

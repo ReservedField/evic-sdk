@@ -49,6 +49,12 @@
 /* Page is erased */
 #define DATAFLASH_PAGEFLAG_CLEAN 0x04
 
+/* Aligns size to 4-byte boundary */
+#define DATAFLASH_ALIGN(size) (((size) + 3) & ~3)
+
+/* Offset of the most recent update in a block, given decoded count and aligned struct size */
+#define DATAFLASH_MRUPD_OFFSET(count, size) (4 + ((count) >= 32 ? 31 : ((count) - 1)) * (size))
+
 /**
  * Structure to hold block information.
  */
@@ -157,8 +163,10 @@ static int8_t Dataflash_GetStructPageIndex(const Dataflash_StructInfo_t *structI
  * @param blockInfo  Pointer to receive block info.
  */
 static void Dataflash_ReadPageBlockInfo(uint8_t page, const Dataflash_StructInfo_t *structInfo, Dataflash_BlockInfo_t *blockInfo) {
+	uint16_t structSizeAlign;
 	uint32_t addr, blockAddr, endAddr, countWord;
 
+	structSizeAlign = DATAFLASH_ALIGN(structInfo->size);
 	addr = blockAddr = DATAFLASH_READ_BASEADDR() + page * FMC_FLASH_PAGE_SIZE + 4;
 	endAddr = addr + FMC_FLASH_PAGE_SIZE - 4;
 	while(addr < endAddr) {
@@ -170,8 +178,10 @@ static void Dataflash_ReadPageBlockInfo(uint8_t page, const Dataflash_StructInfo
 			break;
 		}
 
-		// Count == 33, advance (up to endAddr)
-		addr += 4 + 33 * ((structInfo->size + 3) & ~3);
+		// Count == 33: block is exhausted, advance (up to endAddr)
+		// Should never get to endAddr in a well-formed dataflash,
+		// since last block in page won't go higher than 32.
+		addr += 4 + 33 * structSizeAlign;
 	}
 
 	// blockAddr points to the most recent block
@@ -457,6 +467,7 @@ uint8_t Dataflash_GetMagicList(uint32_t *magicList) {
 uint8_t Dataflash_ReadStruct(const Dataflash_StructInfo_t *structInfo, void *dst) {
 	Dataflash_PageInfo_t *pageInfo;
 	int8_t pageIndex;
+	uint16_t structSizeAlign;
 	uint32_t addr;
 
 	if((structInfo->magic & DATAFLASH_MASK_MAGIC) == DATAFLASH_STRUCT_INVALID_MAGIC ||
@@ -480,8 +491,9 @@ uint8_t Dataflash_ReadStruct(const Dataflash_StructInfo_t *structInfo, void *dst
 		pageInfo->flag = DATAFLASH_PAGEFLAG_INFO;
 	}
 
-	// Most recent update is at index (pageInfo->blockInfo.count - 1)
-	addr = pageInfo->blockInfo.addr + 4 + (pageInfo->blockInfo.count - 1) * ((structInfo->size + 3) & ~3);
+	// Read out most recent update
+	structSizeAlign = DATAFLASH_ALIGN(structInfo->size);
+	addr = pageInfo->blockInfo.addr + DATAFLASH_MRUPD_OFFSET(pageInfo->blockInfo.count, structSizeAlign);
 	Dataflash_Read(dst, addr, structInfo->size);
 
 	DATAFLASH_FMC_CLOSE();
@@ -556,7 +568,7 @@ uint8_t Dataflash_UpdateStruct(const Dataflash_StructInfo_t *structInfo, void *s
 
 	DATAFLASH_FMC_OPEN();
 	baseAddr = DATAFLASH_READ_BASEADDR();
-	structSizeAlign = (structInfo->size + 3) & ~3;
+	structSizeAlign = DATAFLASH_ALIGN(structInfo->size);
 	allocPage = 1;
 
 	// Find most recent GOOD page for this struct
@@ -566,7 +578,7 @@ uint8_t Dataflash_UpdateStruct(const Dataflash_StructInfo_t *structInfo, void *s
 		blockInfo = &Dataflash_pageInfo[oldPage].blockInfo;
 
 		// Check if we can take shortcuts
-		dstAddr = blockInfo->addr + 4 + (blockInfo->count - 1) * structSizeAlign;
+		dstAddr = blockInfo->addr + DATAFLASH_MRUPD_OFFSET(blockInfo->count, structSizeAlign);
 		if(Dataflash_Compare(dstAddr, src, structInfo->size, &owFlag)) {
 			// Data is identical, no need to update
 			DATAFLASH_FMC_CLOSE();
@@ -581,24 +593,24 @@ uint8_t Dataflash_UpdateStruct(const Dataflash_StructInfo_t *structInfo, void *s
 		else {
 			// We need to create a new update
 			// Check whether an update can fit in this page
-			// If blockInfo->count == 33 we'll need to create a new block (extra 4 bytes)
-			dstAddr += structSizeAlign + (blockInfo->count == 33 ? 4 : 0);
+			// If blockInfo->count == 32 we'll need to create a new block (extra 4 bytes)
+			dstAddr += structSizeAlign + (blockInfo->count == 32 ? 4 : 0);
 			endAddr = baseAddr + (oldPage + 1) * FMC_FLASH_PAGE_SIZE;
 			if(dstAddr + structSizeAlign <= endAddr) {
 				// Fits in this page
 				allocPage = 0;
 
-				if(blockInfo->count == 33) {
+				// Increment struct counter
+				// If count was 32 marks the block as exhausted
+				blockInfo->count++;
+				FMC_Write(blockInfo->addr, Dataflash_UnaryEncode(blockInfo->count));
+
+				if(blockInfo->count == 32) {
 					// Will create a new block
 					// Counter word is already erased (i.e. 1)
 					// dstAddr will skip over the counter word
 					blockInfo->addr = dstAddr - 4;
 					blockInfo->count = 1;
-				}
-				else {
-					// Increment struct counter
-					blockInfo->count++;
-					FMC_Write(blockInfo->addr, Dataflash_UnaryEncode(blockInfo->count));
 				}
 			}
 		}

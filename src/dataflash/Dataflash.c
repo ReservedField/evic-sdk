@@ -181,7 +181,7 @@ static void Dataflash_ReadPageBlockInfo(uint8_t page, const Dataflash_StructInfo
 		// Count == 33: block is exhausted, advance (up to endAddr)
 		// Should never get to endAddr in a well-formed dataflash,
 		// since last block in page won't go higher than 32.
-		addr += 4 + 33 * structSizeAlign;
+		addr += 4 + 32 * structSizeAlign;
 	}
 
 	// blockAddr points to the most recent block

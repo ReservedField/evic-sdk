@@ -824,5 +824,5 @@ uint8_t Atomizer_ReadBoardTemp() {
 	// Interpolate
 	lowerBound = Atomizer_boardTempTable[i];
 	higherBound = Atomizer_boardTempTable[i - 1];
-	return 5 * (i - 1) + (thermRes - lowerBound) * 5 / (higherBound - lowerBound);
+	return 5 * i - (thermRes - lowerBound) * 5 / (higherBound - lowerBound);
 }

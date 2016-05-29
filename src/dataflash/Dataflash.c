@@ -605,7 +605,7 @@ uint8_t Dataflash_UpdateStruct(const Dataflash_StructInfo_t *structInfo, void *s
 				blockInfo->count++;
 				FMC_Write(blockInfo->addr, Dataflash_UnaryEncode(blockInfo->count));
 
-				if(blockInfo->count == 32) {
+				if(blockInfo->count == 33) {
 					// Will create a new block
 					// Counter word is already erased (i.e. 1)
 					// dstAddr will skip over the counter word

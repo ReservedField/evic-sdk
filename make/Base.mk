@@ -88,12 +88,18 @@ INCDIRS := $(foreach d,$(shell arm-none-eabi-gcc -x c -v -E /dev/null 2>&1 | sed
 
 LDSCRIPT := $(EVICSDK)/linker/linker.ld
 
+ifeq ($(shell uname),Darwin)
+LIBDIRS := -L$(ARMGCC)/arm-none-eabi/lib \
+	-L$(ARMGCC)/lib/gcc/arm-none-eabi/$(shell arm-none-eabi-gcc -dumpversion) \
+	-L$(EVICSDK)/lib
+else
 LIBDIRS := -L$(ARMGCC)/arm-none-eabi/lib \
 	-L$(ARMGCC)/arm-none-eabi/newlib \
 	-L$(ARMGCC)/lib/arm-none-eabi/newlib \
 	-L$(ARMGCC)/gcc/arm-none-eabi/$(GCC_VERSION) \
 	-L$(ARMGCC)/lib/gcc/arm-none-eabi/$(GCC_VERSION) \
 	-L$(EVICSDK)/lib
+endif
 
 CFLAGS += -Wall -mcpu=$(CPU) -mthumb -Os -fdata-sections -ffunction-sections
 CFLAGS += $(INCDIRS)

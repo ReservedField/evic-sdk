@@ -40,14 +40,13 @@ PendSV_Handler:
 	VSTMDBNE R0!, {S16-S31}
 	MSRNE    PSP, R0
 
-	@ Clear any exclusive lock held by the old thread, memory barrier
-	CLREX
-	DMB
-
 	@ Call Thread_Schedule(PSP)
 	@ Returns new PSP
 	LDR      R1, =Thread_Schedule
 	BLX      R1
+
+	@ Clear any exclusive lock held by the old thread
+	CLREX
 
 	@ Pop S16-S31, R4-R11 from new PSP and restore PSP
 	VLDMIA   R0!, {S16-S31}

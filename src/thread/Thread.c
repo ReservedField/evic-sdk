@@ -63,8 +63,6 @@
 	Queue_PushBack(&Thread_readyQueue, tcb); \
 	Thread_IrqRestore(primask); } while(0)
 
-/* Thread_TCB_t size, aligned to 8-byte boundary. */
-#define THREAD_TCB_SIZE_ALIGN ((sizeof(Thread_TCB_t) + 7) & ~7)
 /* Thread_Context_t size, aligned to 8-byte boundary. */
 #define THREAD_CTX_SIZE_ALIGN ((sizeof(Thread_Context_t) + 7) & ~7)
 
@@ -77,6 +75,14 @@
 /* Busy waits for the current thread to become ready again. */
 #define THREAD_WAIT_READY() do {} while( \
 	!(*((volatile uint8_t *) &Thread_curTcb->state) & THREAD_STATE_MSK_READY))
+
+/* Base 2 exponent for stack guard size. Must be 5 <= EXP <= 32. */
+#define THREAD_STACKGUARD_SIZE_EXP 5
+/* Stack guard size, in bytes. Guaranteed to be 8-byte aligned.
+ * The stack guard address must be aligned to its size. */
+#define THREAD_STACKGUARD_SIZE     (1 << THREAD_STACKGUARD_SIZE_EXP)
+/* Stack guard region number for MPU. */
+#define THREAD_STACKGUARD_REGNUM   0
 
 /**
  * Thread context as pushed to stack.
@@ -255,6 +261,48 @@ static uint8_t Thread_UpdateReadyQueueFromChrono() {
 }
 
 /**
+ * Sets up memory protection for the stack guard.
+ * Must be called from ISR context with IRQs disabled.
+ * This is an internal function.
+ *
+ * @param guardPtr Pointer to beginning of stack guard.
+ *                 Must be aligned to stack guard size.
+ */
+static void Thread_SetupStackGuard(void *guardPtr) {
+	uint32_t attrAndSize;
+
+	// No need for pre-update memory barrier because the
+	// stack guard is strongly-ordered.
+
+	attrAndSize =
+		(1 << MPU_RASR_XN_Pos    ) | // Instruction fetch disabled
+		(0 << MPU_RASR_AP_Pos    ) | // No access permissions
+		(0 << MPU_RASR_TEX_Pos   ) | // Non-cacheable
+		(0 << MPU_RASR_S_Pos     ) | // Shareable (ignored)
+		(0 << MPU_RASR_C_Pos     ) | // Non-normal
+		(0 << MPU_RASR_B_Pos     ) | // Strongly-ordered
+		(0 << MPU_RASR_SRD_Pos   ) | // No subregions
+		(1 << MPU_RASR_ENABLE_Pos) | // Enabled
+		((THREAD_STACKGUARD_SIZE_EXP - 1) << MPU_RASR_SIZE_Pos); // Size = 2^(SIZE+1)
+
+	// Since our attributes and size are constant, we don't
+	// need to disable the region before updating the base
+	// address: it'll be invalid only at first setup, and the
+	// region isn't yet enabled at that point.
+
+	// Switch to stack guard region
+	MPU->RNR = THREAD_STACKGUARD_REGNUM << MPU_RNR_REGION_Pos;
+	// Configure base address
+	MPU->RBAR = (uint32_t) guardPtr;
+	// Configure attributes and size
+	MPU->RASR = attrAndSize;
+
+	// No need for post-update memory barrier and pipeline flush
+	// because we're always returning from an exception when the
+	// thread gets control back (this must be called from ISR).
+}
+
+/**
  * Schedules the next thread. Called from PendSV.
  * This is an internal function.
  *
@@ -330,8 +378,17 @@ void *Thread_Schedule(void *sp) {
 	}
 	Thread_IrqRestore(primask);
 
-	// Switch to next thread and reset quantum
-	Thread_curTcb = nextTcb;
+	if(nextTcb != Thread_curTcb) {
+		// Switch to next thread
+		Thread_curTcb = nextTcb;
+		// Configure stack guard: stack is at the beginning
+		// of the allocated block.
+		primask = Thread_IrqDisable();
+		Thread_SetupStackGuard(Thread_curTcb->blockPtr);
+		Thread_IrqRestore(primask);
+	}
+
+	// Reset quantum
 	Thread_curTcb->info.preemptTime = Thread_sysTick + THREAD_QUANTUM;
 
 	return Thread_curTcb->stackPtr;
@@ -392,6 +449,12 @@ void Thread_Init() {
 	Thread_criticalCount = 0;
 	Thread_sysTick = 0;
 
+	// Configure MPU for stack guard
+	MPU->CTRL =
+		(1 << MPU_CTRL_PRIVDEFENA_Pos) | // Use default map as background
+		(0 << MPU_CTRL_HFNMIENA_Pos  ) | // Disable MPU for fault handlers
+		(1 << MPU_CTRL_ENABLE_Pos    ) ; // Enable MPU
+
 	// Set lowest priority for PendSV
 	// While NVIC_SetPriority works with system interrupts,
 	// it considers priority to always be 4 bits like NVIC
@@ -411,16 +474,17 @@ Thread_Error_t Thread_Create(Thread_t *thread, Thread_EntryPtr_t entry, void *ar
 	Thread_TCB_t *tcb;
 	Thread_Context_t *ctx;
 
-	// Align stack size to 8-byte boundary and reserve
-	// extra aligned space for the context push
+	// Align stack size to 8-byte boundary, reserving
+	// extra space for context push and stack guard
 	stackSize = (stackSize + 7) & ~7;
 	stackSize += THREAD_CTX_SIZE_ALIGN;
+	stackSize += THREAD_STACKGUARD_SIZE;
 
 	// Allocate space for TCB and stack. TCB is below thread
 	// stack (i.e. at higher addresses). Stack must be 8-byte
-	// aligned, so we align the allocation and use the aligned
-	// TCB size.
-	block = memalign(8, THREAD_TCB_SIZE_ALIGN + stackSize);
+	// aligned and stack guard must be size-aligned, so align
+	// allocation to stack guard size (which is 8-byte aligned).
+	block = memalign(THREAD_STACKGUARD_SIZE, stackSize + sizeof(Thread_TCB_t));
 	if(block == NULL) {
 		return NO_MEMORY;
 	}

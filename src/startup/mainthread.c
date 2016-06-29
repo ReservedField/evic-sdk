@@ -17,12 +17,16 @@
  * Copyright (C) 2016 ReservedField
  */
 
+#include <stdint.h>
 #include <M451Series.h>
 #include <Thread.h>
 
 extern void __libc_init_array();
 extern void __libc_fini_array();
 extern int main();
+
+// Weak: address will be NULL if not defined by application code
+extern uint16_t Startup_mainThreadStackSize __attribute__((weak));
 
 /**
  * Main thread.
@@ -52,6 +56,12 @@ void *Startup_MainThread(void *args) {
  */
 void Startup_CreateMainThread() {
 	Thread_t mainThread;
+	uint16_t stackSize;
 
-	Thread_Create(&mainThread, Startup_MainThread, NULL, 1024);
+	stackSize = THREAD_DEFAULT_STACKSIZE;
+	if(&Startup_mainThreadStackSize != NULL) {
+		stackSize = Startup_mainThreadStackSize;
+	}
+
+	Thread_Create(&mainThread, Startup_MainThread, NULL, stackSize);
 }

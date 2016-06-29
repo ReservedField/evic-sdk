@@ -33,6 +33,19 @@ extern "C" {
 #define THREAD_SYSTICK_MS 1
 
 /**
+ * Default stack size for the main thread.
+ */
+#define THREAD_DEFAULT_STACKSIZE 1024
+
+/**
+ * Defines the stack size for the main thread.
+ * This must be used outside of any function. If this
+ * macro isn't used, the stack size will default to
+ * THREAD_DEFAULT_STACKSIZE.
+ */
+#define THREAD_MAIN_STACKSIZE(size) uint16_t Startup_mainThreadStackSize = (size)
+
+/**
  * Type for thread handles.
  */
 typedef uint32_t Thread_t;

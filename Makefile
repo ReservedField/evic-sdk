@@ -59,6 +59,10 @@ AEABI_OBJS := src/aeabi/aeabi_memset-thumb2.o \
 OUTDIR := lib
 DOCDIR := doc
 
+ifneq ($(EVICSDK_FAULT_HANDLER),)
+	OBJS_CRT0 += src/startup/fault.o
+endif
+
 # We need to find out if on cygwin or not
 ifeq ($(OS),Windows_NT)
 	ifeq (, $(findstring cygwin, $(shell gcc -dumpmachine)))

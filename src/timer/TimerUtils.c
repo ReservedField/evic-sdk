@@ -101,25 +101,29 @@ TIMER_DEFINE_IRQ_HANDLER(2);
 TIMER_DEFINE_IRQ_HANDLER(3);
 
 /**
- * Finds a slot for a new timer and sets it up.
+ * Assigns a slot for a new timer and sets the timer and callback info up.
  * The timer will not be started yet.
  * For best accuracy, the frequency should be a divisor of 12MHz.
  * This is an internal function.
  *
  * @param freq         Timer frequency, in Hz.
  * @param isPeriodic   True if the timer is periodic, false if one-shot.
+ * @param callback     Timer callback function.
+ * @param callbackData Optional argument to pass to the callback function.
  *
  * @return A positive index for the newly created timer, or a negative
  *         value if there are no timer slots available.
  */
-static int8_t Timer_AssignSlot(uint32_t freq, uint8_t isPeriodic) {
+static int8_t Timer_AssignSlot(uint32_t freq, uint8_t isPeriodic, Timer_Callback_t callback, uint32_t callbackData) {
 	uint8_t i;
+	uint32_t primask;
+
+	primask = Thread_IrqDisable();
 
 	// Find an unused timer
 	for(i = 0; i < 4 && Timer_callbackPtr[i] != NULL; i++);
-
 	if(i == 4) {
-		// All timers are in use
+		Thread_IrqRestore(primask);
 		return -1;
 	}
 
@@ -127,6 +131,17 @@ static int8_t Timer_AssignSlot(uint32_t freq, uint8_t isPeriodic) {
 	TIMER_Open(Timer_TimerPtr[i], isPeriodic ? TIMER_PERIODIC_MODE : TIMER_ONESHOT_MODE, freq);
 	TIMER_EnableInt(Timer_TimerPtr[i]);
 	NVIC_EnableIRQ(Timer_IrqNum[i]);
+
+	// The callback pointer is set here to avoid using a "poison" non-NULL
+	// pointer to synchronize concurrent AssignSlot calls (before the caller
+	// would have a chance to set it to a non-NULL value).
+	Timer_callbackPtr[i] = callback;
+
+	Thread_IrqRestore(primask);
+
+	// Callback data is lumped in here because it's common for both kinds of
+	// timers. There's no need to set it inside the critical section.
+	Timer_callbackData[i] = callbackData;
 
 	return i;
 }
@@ -139,14 +154,12 @@ int8_t Timer_CreateTimer(uint32_t freq, uint8_t isPeriodic, Timer_Callback_t cal
 	}
 
 	// Get a timer slot
-	timerIndex = Timer_AssignSlot(freq, isPeriodic);
+	timerIndex = Timer_AssignSlot(freq, isPeriodic, callback, callbackData);
 	if(timerIndex < 0) {
 		return timerIndex;
 	}
 
-	// Setup callback and info
-	Timer_callbackPtr[timerIndex] = callback;
-	Timer_callbackData[timerIndex] = callbackData;
+	// Mark info as 0 (not a timeout)
 	Timer_info &= ~(1 << timerIndex);
 
 	TIMER_Start(Timer_TimerPtr[timerIndex]);
@@ -171,7 +184,7 @@ int8_t Timer_CreateTimeout(uint16_t timeout, uint8_t isPeriodic, Timer_Callback_
 
 	// We want to minimize the timer frequency.
 	// Frequency must also evenly divide 12MHz for maximum precision.
-	// Since timeout is in ms, the minimum frequency is 1KHz.
+	// Since timeout is in ms, the maximum frequency is 1KHz.
 	// If N divides both timeout and 1Khz, we can use 1KHz / N
 	// as the frequency and timeout / N as the counter target.
 	// If N divides 1KHz, it also divides 12MHz, so the precision
@@ -191,14 +204,12 @@ int8_t Timer_CreateTimeout(uint16_t timeout, uint8_t isPeriodic, Timer_Callback_
 	}
 
 	// Get a timer slot
-	timerIndex = Timer_AssignSlot(timerFreq, isPeriodic);
+	timerIndex = Timer_AssignSlot(timerFreq, isPeriodic, callback, callbackData);
 	if(timerIndex < 0) {
 		return timerIndex;
 	}
 
-	// Setup callback, info and timeout status
-	Timer_callbackPtr[timerIndex] = callback;
-	Timer_callbackData[timerIndex] = callbackData;
+	// Mark info as 1 (timeout) and setup timeout status
 	Timer_info |= 1 << timerIndex;
 	Timer_timeoutData[timerIndex].tickCounter = 0;
 	Timer_timeoutData[timerIndex].tickTarget = tickCount;
@@ -217,6 +228,7 @@ void Timer_DeleteTimer(int8_t index) {
 	TIMER_Close(Timer_TimerPtr[index]);
 	NVIC_DisableIRQ(Timer_IrqNum[index]);
 	TIMER_DisableInt(Timer_TimerPtr[index]);
+	// Atomic, must be last to avoid races with AssignSlot()
 	Timer_callbackPtr[index] = NULL;
 }
 

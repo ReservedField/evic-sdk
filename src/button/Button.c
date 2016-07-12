@@ -30,16 +30,17 @@
 
 #include <M451Series.h>
 #include <Button.h>
+#include <Thread.h>
 
 /**
  * Button callback function pointers.
  */
-static Button_Callback_t Button_callbackPtr[3] = {NULL};
+static volatile Button_Callback_t Button_callbackPtr[3] = {NULL, NULL, NULL};
 
 /**
  * Button callback masks.
  */
-static uint8_t Button_callbackMask[3];
+static volatile uint8_t Button_callbackMask[3];
 
 /**
  * Global button state.
@@ -53,7 +54,8 @@ extern void GPD7_IRQHandler();
 
 /**
  * Updates the global button state for the specified
- * buttons.
+ * buttons. Access to the global button state must be
+ * externally synchronized.
  * This is an internal function.
  *
  * @param mask Button mask specifing which buttons to update.
@@ -76,6 +78,9 @@ static void Button_UpdateState(uint8_t mask) {
 static void Button_IRQHandler() {
 	int i;
 	uint8_t mask;
+
+	// All button ISRs have the same priority, so global
+	// state is already synchronized.
 
 	// Dirty hack: invoke soft PD.7 interrupt handler
 	if(GPIO_GET_INT_FLAG(PD, BIT7)) {
@@ -128,27 +133,32 @@ void Button_Init() {
 }
 
 uint8_t Button_GetState() {
+	// Atomic
 	return Button_state;
 }
 
 int8_t Button_CreateCallback(Button_Callback_t callback, uint8_t buttonMask) {
 	int i;
+	uint32_t primask;
 
 	if(callback == NULL) {
 		return -1;
 	}
 
+	primask = Thread_IrqDisable();
+
 	// Find an unused callback
 	for(i = 0; i < 3 && Button_callbackPtr[i] != NULL; i++);
 	if(i == 3) {
+		Thread_IrqRestore(primask);
 		return -1;
 	}
 
-	// Button_callbackPtr[i] must be set as last
-	// to avoid race conditions.
+	// Setup callback
 	Button_callbackMask[i] = buttonMask;
 	Button_callbackPtr[i] = callback;
 
+	Thread_IrqRestore(primask);
 	return i;
 }
 
@@ -158,5 +168,6 @@ void Button_DeleteCallback(int8_t index) {
 		return;
 	}
 
+	// Atomic
 	Button_callbackPtr[index] = NULL;
 }

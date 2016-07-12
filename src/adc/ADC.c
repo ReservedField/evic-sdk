@@ -19,6 +19,7 @@
 
 #include <M451Series.h>
 #include <ADC.h>
+#include <Thread.h>
 
 /**
  * \file
@@ -62,14 +63,13 @@ ADC_DEFINE_IRQ_HANDLER(3);
 
 void ADC_UpdateCache(const uint8_t moduleNum[], uint8_t len, uint8_t isBlocking) {
 	uint8_t i, j, finishFlag;
-
-	// Enter critical section
-	__set_PRIMASK(1);
+	uint32_t primask;
 
 	for(i = 0; i < len; i++) {
 		// Find interrupt number for module number
 		for(j = 0; j < 4 && moduleNum[i] != ADC_moduleNum[j]; j++);
 
+		primask = Thread_IrqDisable();
 		if(!(EADC_GET_PENDING_CONV(EADC) & (1 << moduleNum[i]))) {
 			// Configure module
 			EADC_ConfigSampleModule(EADC, moduleNum[i], EADC_SOFTWARE_TRIGGER, moduleNum[i]);
@@ -81,10 +81,8 @@ void ADC_UpdateCache(const uint8_t moduleNum[], uint8_t len, uint8_t isBlocking)
 			// Start conversion
 			EADC_START_CONV(EADC, 1 << moduleNum[i]);
 		}
+		Thread_IrqRestore(primask);
 	}
-
-	// Exit critical section
-	__set_PRIMASK(0);
 
 	if(isBlocking) {
 		// Wait for modules to finish

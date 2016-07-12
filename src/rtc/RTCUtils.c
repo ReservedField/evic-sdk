@@ -19,14 +19,16 @@
 
 #include <M451Series.h>
 #include <RTCUtils.h>
+#include <Thread.h>
 
 /**
  * True if RTC_Open has already been called.
  */
-static uint8_t RTCUtils_isRTCOpen = 0;
+static volatile uint8_t RTCUtils_isRTCOpen = 0;
 
 void RTCUtils_SetDateTime(const RTCUtils_DateTime_t *dateTime) {
 	S_RTC_TIME_DATA_T rtcData;
+	uint32_t primask;
 
 	// Populate RTC data
 	rtcData.u32Year      = 2000 + dateTime->year;
@@ -38,6 +40,9 @@ void RTCUtils_SetDateTime(const RTCUtils_DateTime_t *dateTime) {
 	rtcData.u32Second    = dateTime->second;
 	rtcData.u32TimeScale = RTC_CLOCK_24;
 
+	// Protect against concurrent SetDateTime and GetDateTime
+	primask = Thread_IrqDisable();
+
 	if(!RTCUtils_isRTCOpen) {
 		// Enable LXT clock
 		SYS_UnlockReg();
@@ -48,23 +53,30 @@ void RTCUtils_SetDateTime(const RTCUtils_DateTime_t *dateTime) {
 
 		// Initialize RTC with supplied data
 		RTC_Open(&rtcData);
+		// Atomic, set as last to minimize CS in GetDateTime
 		RTCUtils_isRTCOpen = 1;
 	}
 	else {
 		// Update RTC data
 		RTC_SetDateAndTime(&rtcData);
 	}
+
+	Thread_IrqRestore(primask);
 }
 
 void RTCUtils_GetDateTime(RTCUtils_DateTime_t *dateTime) {
 	S_RTC_TIME_DATA_T rtcData;
+	uint32_t primask;
 
+	// Atomic (RTC can't be closed)
 	if(!RTCUtils_isRTCOpen) {
 		return;
 	}
 
-	// Grab RTC data
+	// Grab RTC data (protect against concurrent SetDateTime)
+	primask = Thread_IrqDisable();
 	RTC_GetDateAndTime(&rtcData);
+	Thread_IrqRestore(primask);
 
 	// Populate dateTime
 	dateTime->year      = rtcData.u32Year - 2000;

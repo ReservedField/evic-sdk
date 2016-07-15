@@ -21,6 +21,7 @@
 #include <M451Series.h>
 #include <Display.h>
 #include <Font.h>
+#include <Button.h>
 
 /**
  * Hard fault:
@@ -44,6 +45,17 @@
  *   <LR>
  *   <PC>
  *   <PSR>
+ * Pressing left/right, high register dump:
+ *   <R4>
+ *   <R5>
+ *   <R6>
+ *   <R7>
+ *   <R8>
+ *   <R9>
+ *   <R10>
+ *   <R11>
+ * Pressing fire resumes execution (only guaranteed
+ * for UDF instruction).
  */
 
 // MemManage fault status
@@ -54,32 +66,54 @@
 #define FAULT_GET_UFSR()  ((SCB->CFSR >> 16) & 0xFFFF)
 
 /**
+ * Gets the button state, like Button_GetState().
+ * This is needed because the normal Button library
+ * is interrupt-driven, and we're blocking inside
+ * a higher priority interrupt.
+ * This is an internal function.
+ *
+ * @return Button state.
+ */
+static uint8_t Fault_GetButtonState() {
+	uint8_t state;
+
+	state  = PE0 ? 0 : BUTTON_MASK_FIRE;
+	state |= PD2 ? 0 : BUTTON_MASK_RIGHT;
+	state |= PD3 ? 0 : BUTTON_MASK_LEFT;
+
+	return state;
+}
+
+/**
  * Dumps registers to display.
  * This is an internal function.
  *
- * @param yOff  Y coordinate to start putting text at.
- * @param stack Pointer to the stack where the registers
- *              have been pushed.
+ * @param y      Y coordinate to start putting text at.
+ * @param stack  Pointer to the stack where the registers
+ *               have been pushed.
+ * @param isHigh True to print R4-R11, false to print the
+ *               low registers.
  */
-static void Fault_DumpRegisters(uint8_t y, uint32_t *stack) {
+static void Fault_DumpRegisters(uint8_t y, uint32_t *stack, uint8_t isHigh) {
 	char buf[9];
-	uint8_t i;
+	int8_t i;
 
 	for(i = 0; i < 8; i++) {
-		siprintf(buf, "%08lx", stack[i]);
+		// XXX I have no idea why I need to start from -1 for high regs
+		siprintf(buf, "%08lx", stack[isHigh ? i - 1 : 8 + i]);
 		Display_PutText(0, y, buf, FONT_DEJAVU_8PT);
 		y += FONT_DEJAVU_8PT->height;
 	}
 }
 
 /**
- * Handles an hard fault.
+ * Dump fault info to display, along with the low registers.
  * This is an internal function.
  *
  * @param stack Pointer to the stack where the registers
  *              have been pushed.
  */
- void Fault_HandleHardFault(uint32_t *stack) {
+static void Fault_DumpFaultLow(uint32_t *stack) {
 	char buf[16];
 	uint8_t mmfsr, bfsr;
 	uint16_t ufsr;
@@ -104,12 +138,77 @@ static void Fault_DumpRegisters(uint8_t y, uint32_t *stack) {
 		siprintf(buf, "???");
 	}
 
-	Display_Clear();
 	Display_PutText(0, 0, buf, FONT_DEJAVU_8PT);
-	Fault_DumpRegisters(FONT_DEJAVU_8PT->height * 2, stack);
+	Fault_DumpRegisters(FONT_DEJAVU_8PT->height * 2, stack, 0);
+}
+
+/**
+ * Generates a pure busy CPU delay,
+ * without using SysTick or timers.
+ *
+ * @param delay Delay (in milliseconds).
+ */
+static void Fault_Delay(uint16_t delay) {
+	uint32_t counter;
+
+	// 1 iteration = 3 clock cycles (@ 72MHz)
+	// The non-loop overhead is negligible
+	counter = delay * 24000;
+	asm volatile("Fault_Delay_loop%=:\n\t"
+		"SUBS  %0, #1\n\t"
+		"BNE   Fault_Delay_loop%="
+	: "+r" (counter));
+}
+
+/**
+ * Handles a hard fault.
+ * This is an internal function.
+ *
+ * @param stack Pointer to the stack where the registers
+ *              have been pushed.
+ */
+ void Fault_HandleHardFault(uint32_t *stack) {
+	uint8_t isHigh, btnState, oldBtnState, pressRelease;
+
+	Display_Clear();
+	Fault_DumpFaultLow(stack);
 	Display_Update();
 
-	while(1);
+	isHigh = 0;
+	oldBtnState = BUTTON_MASK_NONE;
+	while(1) {
+		btnState = Fault_GetButtonState();
+		pressRelease = (btnState ^ oldBtnState) & oldBtnState;
+
+		if(pressRelease & BUTTON_MASK_FIRE) {
+			// Advance PC to next instruction
+			// This only works for 16-bit Thumb, but it's ok since
+			// we only guarantee it to work for UDF
+			stack[14] += 2;
+			break;
+		}
+		if(pressRelease & BUTTON_MASK_RIGHT || pressRelease & BUTTON_MASK_LEFT) {
+			isHigh ^= 1;
+			Display_Clear();
+			if(isHigh) {
+				Fault_DumpRegisters(0, stack, 1);
+			}
+			else {
+				Fault_DumpFaultLow(stack);
+			}
+			Display_Update();
+		}
+
+		if(btnState != oldBtnState) {
+			// Debounce
+			Fault_Delay(30);
+			oldBtnState = btnState;
+		}
+	}
+
+	// Some more debouncing to avoid FIRE continuing
+	// the next fault, too
+	Fault_Delay(100);
 }
 
 __attribute__((naked)) void HardFault_Handler() {
@@ -118,6 +217,7 @@ __attribute__((naked)) void HardFault_Handler() {
 		"ITE   EQ\n\t"
 		"MRSEQ R0, MSP\n\t"
 		"MRSNE R0, PSP\n\t"
+		"STMFD R0!, {R4-R11}\n\t"
 		"LDR   R1, =Fault_HandleHardFault\n\t"
 		"BX    R1"
 	);

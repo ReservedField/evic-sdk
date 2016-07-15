@@ -23,38 +23,35 @@ PendSV_Handler:
 	@ preempt other interrupt handlers. This means it will only
 	@ preempt thread code, or will tailchain to an interrupt
 	@ that preempted thread code. In other words, when we get here
-	@ we can easily context switch between threads.
+	@ we can easily context switch between threads. Since we never
+	@ preempt ISRs, we always work with the PSP.
 	.thumb_func
 
-	@ Check Thread_curTcb
-	LDR      R0, =Thread_curTcb
-	LDR      R1, [R0]
-	TEQ      R1, #0
+	@ Call Thread_Schedule()
+	@ We can delay the context push because the ABI enforces
+	@ routines to save and restore R4-R11 and S16-S31.
+	@ Return: R0 = new ctx (or NULL), R1 = old ctx (or NULL)
+	LDR     R0, =Thread_Schedule
+	BLX     R0
 
-	@ If Thread_curTcb != NULL, push old context to PSP
-	@ Hardware push: FPSCR, S15-S0, xPSR, PC, LR, R12, R3-R0
-	@ Software push: R4-R11, S16-S31
-	ITTTT    NE
-	MRSNE    R0, PSP
-	STMFDNE  R0!, {R4-R11}
-	VSTMDBNE R0!, {S16-S31}
-	MSRNE    PSP, R0
+	@ If needed, save old thread context
+	TEQ     R1, #0
+	ITTT    NE
+	MRSNE   R2, PSP
+	STMNE   R1!, {R2, R4-R11}
+	VSTMNE  R1!, {S16-S31}
 
-	@ Call Thread_Schedule(PSP)
-	@ Returns new PSP
-	LDR      R1, =Thread_Schedule
-	BLX      R1
-
-	@ Clear any exclusive lock held by the old thread
-	CLREX
-
-	@ Pop S16-S31, R4-R11 from new PSP and restore PSP
-	VLDMIA   R0!, {S16-S31}
-	LDMFD    R0!, {R4-R11}
-	MSR      PSP, R0
+	@ If needed, switch context
+	@ Also clear any exclusive lock held by the old thread
+	TEQ     R0, #0
+	ITTTT   NE
+	LDMNE   R0!, {R2, R4-R11}
+	VLDMNE  R0!, {S16-S31}
+	MSRNE   PSP, R2
+	CLREXNE
 
 	@ Return to thread mode, use PSP, restore FP state
-	LDR      LR, =0xFFFFFFED
+	LDR     LR, =0xFFFFFFED
 
 	@ Resume thread
-	BX       LR
+	BX      LR

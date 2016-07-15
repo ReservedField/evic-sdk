@@ -63,11 +63,14 @@
 	Queue_PushBack(&Thread_readyQueue, tcb); \
 	Thread_IrqRestore(primask); } while(0)
 
-/* Thread_Context_t size, aligned to 8-byte boundary. */
-#define THREAD_CTX_SIZE_ALIGN ((sizeof(Thread_Context_t) + 7) & ~7)
+/* Thread_StackedContext_t size, aligned to 8-byte boundary. */
+#define THREAD_HWCTX_SIZE_ALIGN ((sizeof(Thread_StackedContext_t) + 7) & ~7)
 
 /* Default PSR for new threads, only thumb flag set. */
 #define THREAD_DEFAULT_PSR 0x01000000
+
+/* Creates the return value for Thread_Schedule(). */
+#define THREAD_MAKE_SCHEDRET(newCtx, oldCtx) ((((uint64_t)(uint32_t) (oldCtx)) << 32) | ((uint32_t) (newCtx)))
 
 /* Marks the scheduler as pending by flagging PendSV. */
 #define THREAD_PEND_SCHED() do { SCB->ICSR |= SCB_ICSR_PENDSVSET_Msk; } while(0)
@@ -85,16 +88,10 @@
 #define THREAD_STACKGUARD_REGNUM   0
 
 /**
- * Thread context as pushed to stack.
+ * Hardware-pushed thread context.
  */
 typedef struct {
-#ifdef EVICSDK_FPU_SUPPORT
-	/**< Software-pushed FPU registers: S16-S31. */
-	uint32_t swS[16];
-#endif
-	/**< Software-pushed registers: R4-R11. */
-	uint32_t swR[8];
-	/**< Hardware-pushed registers: R0-R3, R12, LR, PC, PSR. */
+	/* Hardware-pushed registers: R0-R3, R12, LR, PC, PSR. */
 	uint32_t r0;
 	uint32_t r1;
 	uint32_t r2;
@@ -104,16 +101,32 @@ typedef struct {
 	uint32_t pc;
 	uint32_t psr;
 #ifdef EVICSDK_FPU_SUPPORT
-	/**< Hardware-pushed FPU registers: S0-S15, FPSCR. */
+	/* Hardware-pushed FPU registers: S0-S15, FPSCR. */
 	uint32_t s[16];
 	uint32_t fpscr;
 #endif
-} Thread_Context_t;
+} Thread_StackedContext_t;
+
+/**
+ * Software-saved thread context.
+ * Keep in sync with context switcher.
+ */
+typedef struct {
+	/**< Saved stack pointer. */
+	uint32_t sp;
+	/**< Software-saved registers: R4-R11. */
+	uint32_t r[8];
+#ifdef EVICSDK_FPU_SUPPORT
+	/**< Software-saved FPU registers: S16-S31. */
+	uint32_t s[16];
+#endif
+} Thread_SoftwareContext_t;
 
 /**
  * Thread control block.
- * Field order is optimized to reduce memory
- * usage, be careful when changing it.
+ * Field order is arranged first to minimize
+ * memory usage, and then by logic grouping.
+ * Be mindful when changing it.
  */
 typedef struct Thread_TCB {
 	/**< Next TCB in queue. */
@@ -122,8 +135,8 @@ typedef struct Thread_TCB {
 	uint32_t magic;
 	/**< Pointer to the allocated memory block. */
 	void *blockPtr;
-	/**< Saved stack pointer. */
-	void *stackPtr;
+	/**< Software-saved thread context. */
+	Thread_SoftwareContext_t ctx;
 	/**< State-specific info field. */
 	union {
 		/**< Executing: system time for preemption. */
@@ -247,9 +260,8 @@ static void Thread_ChronoQueueInsert(Queue_t *queue, Thread_TCB_t *tcb) {
  */
 static uint8_t Thread_UpdateReadyQueueFromChrono() {
 	Thread_TCB_t *tcb;
-	uint8_t found;
+	uint8_t found = 0;
 
-	found = 0;
 	while((tcb = Thread_chronoQueue.head) != NULL && tcb->info.chronoTime <= Thread_sysTick) {
 		// Wake up this thread (always removing from front)
 		Queue_Remove(&Thread_chronoQueue, NULL, tcb);
@@ -306,18 +318,22 @@ static void Thread_SetupStackGuard(void *guardPtr) {
  * Schedules the next thread. Called from PendSV.
  * This is an internal function.
  *
- * @param sp Stack pointer to save for the current thread.
- *
- * @return Stack pointer to restore for the new thread.
+ * @return The lower 32 bits are the address of the software-saved
+ *         context for the new thread. If NULL, no context switch
+ *         is performed. The higher 32 bits are the address of the
+ *         software-saved context for the old thread. If NULL, the
+ *         old context isn't saved.
  */
-void *Thread_Schedule(void *sp) {
+uint64_t Thread_Schedule() {
 	Thread_TCB_t *nextTcb;
+	Thread_SoftwareContext_t *newCtx = NULL, *oldCtx = NULL;
+	uint8_t isCurReady;
 	uint32_t primask;
 
 	if(Thread_criticalCount > 0) {
 		// Current thread is in a critical section, resume it
 		// Scheduler will be invoked again on section exit
-		return sp;
+		return THREAD_MAKE_SCHEDRET(NULL, NULL);
 	}
 
 	// Since no thread is in a critical section we have free
@@ -331,25 +347,13 @@ void *Thread_Schedule(void *sp) {
 
 	if(Thread_curTcb != NULL && Thread_curTcb->info.preemptTime > Thread_sysTick) {
 		// Nothing to do
-		return sp;
-	}
-
-	// Thread_curTcb will be NULL only if this is the first
-	// run (from startup code) or if the current thread has
-	// been deleted. In both cases we don't want to save state.
-	if(Thread_curTcb != NULL) {
-		// Save stack pointer for current thread
-		Thread_curTcb->stackPtr = sp;
-
-		if(Thread_curTcb->state & THREAD_STATE_MSK_READY) {
-			// Current thread hasn't been suspended
-			// Push it to back of ready queue (round-robin)
-			THREAD_READY(Thread_curTcb);
-		}
+		return THREAD_MAKE_SCHEDRET(NULL, NULL);
 	}
 
 	primask = Thread_IrqDisable();
-	while((nextTcb = Queue_PopFront(&Thread_readyQueue)) == NULL) {
+	isCurReady = (Thread_curTcb != NULL && Thread_curTcb->state & THREAD_STATE_MSK_READY);
+	// Short-circuit order is *very* important here
+	while((nextTcb = Queue_PopFront(&Thread_readyQueue)) == NULL && !isCurReady) {
 		// No ready threads to schedule.
 		// Instead of having an idle thread, we make use of
 		// the fact that we're running in a low priority
@@ -360,11 +364,10 @@ void *Thread_Schedule(void *sp) {
 		//    will be released by delayed threads: we keep
 		//    updating the ready queue from the chrono list;
 		//  - all threads are waiting on each other or on semas
-		//    that will be released by other waiting threads:
-		//    this is a deadlock, so scheduler dies here;
-		//  - all threads have been terminated: system death.
-		// In case of scheduler or system death only ISRs will
-		// run from now on.
+		//    that will be released by other waiting threads,
+		//    resulting in a deadlock: scheduler death;
+		//  - all threads have terminated: scheduler death.
+		// If the scheduler dies, only ISRs will run from now on.
 		// To touch the ready queue we need to disable IRQs,
 		// but we can't keep them disabled, otherwise SysTick
 		// won't run. We re-enable interrupts and keep calling
@@ -378,9 +381,27 @@ void *Thread_Schedule(void *sp) {
 	}
 	Thread_IrqRestore(primask);
 
-	if(nextTcb != Thread_curTcb) {
+	// nextTcb can be NULL only if the current thread is ready and
+	// no other thread is. In that case, we'll just resume it.
+	if(nextTcb != NULL) {
+		// Thread_curTcb will be NULL only if this is the first
+		// run (from startup code) or if the current thread has
+		// been deleted. In both cases we don't want to save state.
+		if(Thread_curTcb != NULL) {
+			// Save old context
+			oldCtx = &Thread_curTcb->ctx;
+
+			if(isCurReady) {
+				// Current thread hasn't been suspended
+				// Push it to back of ready queue (round-robin)
+				THREAD_READY(Thread_curTcb);
+			}
+		}
+
 		// Switch to next thread
 		Thread_curTcb = nextTcb;
+		newCtx = &Thread_curTcb->ctx;
+
 		// Configure stack guard: stack is at the beginning
 		// of the allocated block.
 		primask = Thread_IrqDisable();
@@ -391,7 +412,7 @@ void *Thread_Schedule(void *sp) {
 	// Reset quantum
 	Thread_curTcb->info.preemptTime = Thread_sysTick + THREAD_QUANTUM;
 
-	return Thread_curTcb->stackPtr;
+	return THREAD_MAKE_SCHEDRET(newCtx, oldCtx);
 }
 
 /**
@@ -472,12 +493,12 @@ void Thread_Init() {
 Thread_Error_t Thread_Create(Thread_t *thread, Thread_EntryPtr_t entry, void *args, uint16_t stackSize) {
 	uint8_t *block;
 	Thread_TCB_t *tcb;
-	Thread_Context_t *ctx;
+	Thread_StackedContext_t *ctx;
 
-	// Align stack size to 8-byte boundary, reserving
-	// extra space for context push and stack guard
+	// Align stack size to 8-byte boundary, reserving extra
+	// space for hardware-pushed context and stack guard
 	stackSize = (stackSize + 7) & ~7;
-	stackSize += THREAD_CTX_SIZE_ALIGN;
+	stackSize += THREAD_HWCTX_SIZE_ALIGN;
 	stackSize += THREAD_STACKGUARD_SIZE;
 
 	// Allocate space for TCB and stack. TCB is below thread
@@ -498,12 +519,12 @@ Thread_Error_t Thread_Create(Thread_t *thread, Thread_EntryPtr_t entry, void *ar
 	*thread = (Thread_t) tcb;
 
 	// Setup initial thread context and stack
-	ctx = (Thread_Context_t *) (block + stackSize - THREAD_CTX_SIZE_ALIGN);
+	ctx = (Thread_StackedContext_t *) (block + stackSize - THREAD_HWCTX_SIZE_ALIGN);
 	ctx->r0 = (uint32_t) args;
 	ctx->lr = (uint32_t) Thread_ExitProc;
 	ctx->pc = (uint32_t) entry;
 	ctx->psr = THREAD_DEFAULT_PSR;
-	tcb->stackPtr = ctx;
+	tcb->ctx.sp = (uint32_t) ctx;
 
 	// Push new thread to back of ready queue
 	THREAD_READY(tcb);

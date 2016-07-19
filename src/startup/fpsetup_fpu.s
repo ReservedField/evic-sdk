@@ -20,13 +20,11 @@
 .global Startup_FpSetup
 .thumb_func
 Startup_FpSetup:
-	@ Disable lazy stacking, enable FPU state saving
-	@ (ASPEN = 1, LSPEN = 0, i.e. FPCCR[31:30] = 10)
-	@ TODO: use lazy stacking to improve interrupt latency
+	@ Enable lazy stacking
+	@ (ASPEN = 1, LSPEN = 1, i.e. FPCCR[31:30] = 11)
 	LDR R0, =0xE000EF34
 	LDR R1, [R0]
-	BIC R1, R1, #(0x1 << 30)
-	ORR R1, R1, #(0x2 << 30)
+	ORR R1, R1, #(0x3 << 30)
 	STR R1, [R0]
 
 	@ Enable FPU (enable CP10/CP11, i.e. CPACR[23:20] = 1111)

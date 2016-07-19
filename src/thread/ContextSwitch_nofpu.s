@@ -50,6 +50,4 @@ PendSV_Handler:
 
 	@ Return to thread mode, use PSP, no FP state
 	LDR     LR, =0xFFFFFFFD
-
-	@ Resume thread
 	BX      LR

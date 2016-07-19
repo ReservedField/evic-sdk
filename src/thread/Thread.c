@@ -17,6 +17,11 @@
  * Copyright (C) 2016 ReservedField
  */
 
+/*
+ * NOTE: this file is always compiled without hardware FPU support, to avoid
+ * issues with FPU context switching.
+ */
+
 #include <stdlib.h>
 #include <malloc.h>
 #include <M451Series.h>
@@ -194,11 +199,10 @@ static Queue_t Thread_chronoQueue;
 
 /**
  * Current thread TCB.
- * Accessed by threads and scheduler.
  * This must be NULL even before Thread_Init().
  * Synchronization: global critical section.
  */
-Thread_TCB_t *Thread_curTcb = NULL;
+static Thread_TCB_t *Thread_curTcb = NULL;
 
 /**
  * Critical section counter. Zero when not in a critical section.
@@ -210,6 +214,24 @@ static volatile uint32_t Thread_criticalCount;
  * Wraps around at 49 days, 17:02:47.296.
  */
 volatile uint32_t Thread_sysTick;
+
+#ifdef EVICSDK_FPU_SUPPORT
+/**
+ * Pointer to software-saved FPU state (Thread_SoftwareContex_t.s)
+ * of the thread that held FPU last. Will be saved when another
+ * thread uses the FPU. NULL if no thread holds the FPU state.
+ * Shared with the UsageFault handler.
+ */
+uint32_t *Thread_fpuHolderCtx = NULL;
+
+/**
+ * Pointer to software-saved FPU state (Thread_SoftwareContext_t.s)
+ * for the current thread. Will be restored when the current thread
+ * uses the FPU. NULL if the current thread has no FPU state.
+ * Shared with the UsageFault handler.
+ */
+uint32_t *Thread_fpuCurCtx = NULL;
+#endif
 
 /**
  * Inserts a thread into a queue ordered by info.chronoTime.
@@ -401,12 +423,23 @@ uint64_t Thread_Schedule() {
 		// Switch to next thread
 		Thread_curTcb = nextTcb;
 		newCtx = &Thread_curTcb->ctx;
+#ifdef EVICSDK_FPU_SUPPORT
+		Thread_fpuCurCtx = Thread_curTcb->ctx.s;
+#endif
 
 		// Configure stack guard: stack is at the beginning
 		// of the allocated block.
 		primask = Thread_IrqDisable();
 		Thread_SetupStackGuard(Thread_curTcb->blockPtr);
 		Thread_IrqRestore(primask);
+
+#ifdef EVICSDK_FPU_SUPPORT
+		// Disable FPU (CP10/CP11), i.e. CPACR[23:20] = 0000
+		SCB->CPACR &= ~(0xFUL << 20);
+		// Ensure write completed, flush pipeline
+		__DMB();
+		__ISB();
+#endif
 	}
 
 	// Reset quantum
@@ -488,6 +521,11 @@ void Thread_Init() {
 	SysTick->VAL = 0;
 	SysTick->CTRL = SysTick_CTRL_CLKSOURCE_Msk | SysTick_CTRL_TICKINT_Msk;
 	NVIC_SetPriority(SysTick_IRQn, 0 << 2);
+
+#ifdef EVICSDK_FPU_SUPPORT
+	// Enable UsageFault for lazy stacking
+	SCB->SHCSR |= SCB_SHCSR_USGFAULTENA_Msk;
+#endif
 }
 
 Thread_Error_t Thread_Create(Thread_t *thread, Thread_EntryPtr_t entry, void *args, uint16_t stackSize) {

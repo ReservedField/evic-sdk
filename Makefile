@@ -24,8 +24,6 @@ OBJS := $(NUVOSDK)/Device/Nuvoton/M451Series/Source/system_M451Series.o \
 	src/startup/init.o \
 	src/startup/mainthread.o \
 	src/startup/sleep.o \
-	src/thread/Thread.o \
-	src/thread/Queue.o \
 	src/sysinfo/SysInfo.o \
 	src/dataflash/Dataflash.o \
 	src/display/Display_SSD.o \
@@ -40,6 +38,9 @@ OBJS := $(NUVOSDK)/Device/Nuvoton/M451Series/Source/system_M451Series.o \
 	src/adc/ADC.o \
 	src/battery/Battery.o \
 	src/atomizer/Atomizer.o
+
+OBJS_NOFPU := src/thread/Thread.o \
+	src/thread/Queue.o
 
 ifneq ($(EVICSDK_FPU_SUPPORT),)
 	FPUSPEC := fpu
@@ -61,6 +62,9 @@ DOCDIR := doc
 
 ifneq ($(EVICSDK_FAULT_HANDLER),)
 	OBJS_CRT0 += src/startup/fault.o
+endif
+ifneq ($(EVICSDK_FPU_SUPPORT),)
+	OBJS_CRT0 += src/thread/UsageFault_fpu.o
 endif
 
 # We need to find out if on cygwin or not
@@ -119,14 +123,17 @@ ifneq ($(ARMGCC),)
 	ifdef NEED_FIXPATH
 		ifeq ($(WIN_CYG), 0)
 			OBJS_FIXPATH := $(OBJS)
+			OBJS_NOFPU_FIXPATH := $(OBJS_NOFPU)
 			OBJS_CRT0_FIXPATH := $(OBJS_CRT0)
 		else
 			OBJS_FIXPATH := $(shell cygpath -w $(OBJS))
+			OBJS_NOFPU_FIXPATH := $(shell cygpath -w $(OBJS_NOFPU))
 			OBJS_CRT0_FIXPATH := $(shell cygpath -w $(OBJS_CRT0))
 			EVICSDK := $(shell cygpath -w $(EVICSDK))
 		endif
 	else
 		OBJS_FIXPATH := $(OBJS)
+		OBJS_NOFPU_FIXPATH := $(OBJS_NOFPU)
 		OBJS_CRT0_FIXPATH := $(OBJS_CRT0)
 	endif
 endif
@@ -151,34 +158,35 @@ INCDIRS := $(foreach d,$(shell arm-none-eabi-gcc -x c -v -E /dev/null 2>&1 | sed
 	-I$(NUVOSDK)/StdDriver/inc \
 	-Iinclude
 
-CPUFLAGS := -mcpu=cortex-m4 -mthumb
+CPUFLAGS_NOFPU := -mcpu=cortex-m4 -mthumb
 
 ifneq ($(EVICSDK_FPU_SUPPORT),)
-	CPUFLAGS += -mfloat-abi=hard -mfpu=fpv4-sp-d16
+	CPUFLAGS := $(CPUFLAGS_NOFPU) -mfloat-abi=hard -mfpu=fpv4-sp-d16
 	CFLAGS += -DEVICSDK_FPU_SUPPORT
 	TARGET := libevicsdk_fpu
 else
+	CPUFLAGS := $(CPUFLAGS_NOFPU)
 	TARGET := libevicsdk
 endif
 
 TARGET_CRT0 := $(TARGET)_crt0
 
-CFLAGS += -Wall $(CPUFLAGS) -Os -fdata-sections -ffunction-sections
+CFLAGS += -Wall -Os -fdata-sections -ffunction-sections
 CFLAGS += $(INCDIRS)
-
-ASFLAGS := $(CPUFLAGS)
 
 all: env_check gen_tag $(TARGET_CRT0).o $(TARGET).a
 
+$(OBJS_NOFPU_FIXPATH): CPUFLAGS := $(CPUFLAGS_NOFPU)
+
 %.o: %.c
-	$(CC) $(CFLAGS) -c $< -o $@
+	$(CC) $(CPUFLAGS) $(CFLAGS) -c $< -o $@
 
 %.o: %.s 
-	$(AS) $(ASFLAGS) -o $@ $<
+	$(AS) $(CPUFLAGS) $(ASFLAGS) -o $@ $<
 
-$(TARGET).a: $(OBJS_FIXPATH)
+$(TARGET).a: $(OBJS_FIXPATH) $(OBJS_NOFPU_FIXPATH)
 	test -d $(OUTDIR) || mkdir $(OUTDIR)
-	$(AR) -rv $(OUTDIR)/$(TARGET).a $(OBJS_FIXPATH)
+	$(AR) -rv $(OUTDIR)/$(TARGET).a $(OBJS_FIXPATH) $(OBJS_NOFPU_FIXPATH)
 
 $(TARGET_CRT0).o: $(OBJS_CRT0_FIXPATH)
 	test -d $(OUTDIR) || mkdir $(OUTDIR)
@@ -188,7 +196,7 @@ docs:
 	doxygen
 
 clean:
-	rm -rf $(OBJS) $(OBJS_CRT0) $(AEABI_OBJS) $(OUTDIR)/$(TARGET).a $(OUTDIR)/$(TARGET_CRT0).o $(OUTDIR) $(DOCDIR)
+	rm -rf $(OBJS) $(OBJS_NOFPU) $(OBJS_CRT0) $(AEABI_OBJS) $(OUTDIR)/$(TARGET).a $(OUTDIR)/$(TARGET_CRT0).o $(OUTDIR) $(DOCDIR)
 
 env_check:
 ifeq ($(ARMGCC),)

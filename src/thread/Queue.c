@@ -17,6 +17,11 @@
  * Copyright (C) 2016 ReservedField
  */
 
+/*
+ * NOTE: this file is always compiled without hardware FPU support, to avoid
+ * issues with FPU context switching (Thread.c uses this queue implementation).
+ */
+
 #include <stdlib.h>
 #include <Queue.h>
 

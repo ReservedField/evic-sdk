@@ -108,8 +108,15 @@ CPPFLAGS += -fno-exceptions -fno-rtti
 
 ASFLAGS += $(CPUFLAGS)
 
+# Yes, I know what I'm doing with --no-warn-mismatch.
+# The thread library is compiled without FPU support to avoid issues with FPU
+# context switching, which would normally result in a linker error due to
+# different ABIs (soft/hard) when the SDK is compiled with FPU support. Since
+# no function in the thread library accepts FP arguments, they will work fine
+# together. Of course this trainwrecks when SDK is compiled with FPU support
+# and APROM is not. Oh well...
 LDFLAGS += $(LIBDIRS)
-LDFLAGS += -nostdlib -nostartfiles -T$(LDSCRIPT) --gc-sections
+LDFLAGS += -nostdlib -nostartfiles -T$(LDSCRIPT) --gc-sections --no-warn-mismatch
 
 all: env_check $(TARGET).bin
 

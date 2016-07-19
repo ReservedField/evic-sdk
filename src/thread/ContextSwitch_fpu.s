@@ -36,22 +36,19 @@ PendSV_Handler:
 
 	@ If needed, save old thread context
 	TEQ     R1, #0
-	ITTT    NE
+	ITT     NE
 	MRSNE   R2, PSP
 	STMNE   R1!, {R2, R4-R11}
-	VSTMNE  R1!, {S16-S31}
 
 	@ If needed, switch context
 	@ Also clear any exclusive lock held by the old thread
 	TEQ     R0, #0
-	ITTTT   NE
+	ITTT    NE
 	LDMNE   R0!, {R2, R4-R11}
-	VLDMNE  R0!, {S16-S31}
 	MSRNE   PSP, R2
 	CLREXNE
 
-	@ Return to thread mode, use PSP, restore FP state
-	LDR     LR, =0xFFFFFFED
-
-	@ Resume thread
+	@ Return to thread mode, use PSP, no FP state
+	@ TODO: not sure about EXC_RETURN[4] = 1
+	LDR     LR, =0xFFFFFFFD
 	BX      LR

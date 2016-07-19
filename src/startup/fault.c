@@ -170,6 +170,12 @@ static void Fault_Delay(uint16_t delay) {
  void Fault_HandleHardFault(uint32_t *stack) {
 	uint8_t isHigh, btnState, oldBtnState, pressRelease;
 
+#ifdef EVICSDK_FPU_SUPPORT
+	// Re-enable UsageFault for the thread library
+	// in case this is an escalated usage fault
+	SCB->SHCSR |= SCB_SHCSR_USGFAULTENA_Msk;
+#endif
+
 	Display_Clear();
 	Fault_DumpFaultLow(stack);
 	Display_Update();

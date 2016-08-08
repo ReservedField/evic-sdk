@@ -64,6 +64,8 @@
 #define FAULT_GET_BFSR()  ((SCB->CFSR >> 8) & 0xFF)
 // Usage fault status
 #define FAULT_GET_UFSR()  ((SCB->CFSR >> 16) & 0xFFFF)
+// Reset fault status
+#define FAULT_RESET_CFSR() do { SCB->CFSR = 0; } while(0)
 
 /**
  * Gets the button state, like Button_GetState().
@@ -125,14 +127,14 @@ static void Fault_DumpFaultLow(uint32_t *stack) {
 	if(!(SCB->HFSR & SCB_HFSR_FORCED_Msk)) {
 		siprintf(buf, "HARD\n%08lx", SCB->HFSR);
 	}
-	else if(ufsr != 0) {
-		siprintf(buf, "USAGE\n%04x", ufsr);
-	}
 	else if(bfsr != 0) {
 		siprintf(buf, "BUS %02x\n%08lx", bfsr, SCB->BFAR);
 	}
 	else if(mmfsr != 0) {
 		siprintf(buf, "MEM %02x\n%08lx", mmfsr, SCB->MMFAR);
+	}
+	else if(ufsr != 0) {
+		siprintf(buf, "USAGE\n%04x", ufsr);
 	}
 	else {
 		siprintf(buf, "???");
@@ -215,6 +217,8 @@ static void Fault_Delay(uint16_t delay) {
 	// Some more debouncing to avoid FIRE continuing
 	// the next fault, too
 	Fault_Delay(100);
+
+	FAULT_RESET_CFSR();
 }
 
 __attribute__((naked)) void HardFault_Handler() {

@@ -20,13 +20,20 @@
 .global Startup_FpSetup
 .thumb_func
 Startup_FpSetup:
-	@ Enable lazy stacking
-	@ (ASPEN = 1, LSPEN = 1, i.e. FPCCR[31:30] = 11)
 	LDR R0, =0xE000EF34
 	LDR R1, [R0]
-	ORR R1, R1, #(0x3 << 30)
+#ifdef EVICSDK_FPU_SUPPORT
+	@ Enable lazy stacking
+	@ (ASPEN = 1, LSPEN = 1, i.e. FPCCR[31:30] = 11)
+	ORR R1, #(0x3 << 30)
+#else
+	@ Disable lazy stacking, disable FPU state saving
+	@ (ASPEN = 0, LSPEN = 0, i.e. FPCCR[31:30] = 00)
+	BIC R1, #(0x3 << 30)
+#endif
 	STR R1, [R0]
 
+#ifdef EVICSDK_FPU_SUPPORT
 	@ Enable FPU (enable CP10/CP11, i.e. CPACR[23:20] = 1111)
 	LDR R0, =0xE000ED88
 	LDR R1, [R0]
@@ -36,5 +43,6 @@ Startup_FpSetup:
 	@ FPU enabled: sync barrier, flush pipeline
 	DSB
 	ISB
+#endif
 
 	BX  LR

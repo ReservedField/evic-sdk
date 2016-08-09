@@ -42,16 +42,10 @@ OBJS := $(NUVOSDK)/Device/Nuvoton/M451Series/Source/system_M451Series.o \
 OBJS_NOFPU := src/thread/Thread.o \
 	src/thread/Queue.o
 
-ifneq ($(EVICSDK_FPU_SUPPORT),)
-	FPUSPEC := fpu
-else
-	FPUSPEC := nofpu
-endif
-
 TAGNAME := src/startup/evicsdk_tag
 OBJS_CRT0 := src/startup/startup.o \
-	src/startup/fpsetup_$(FPUSPEC).o \
-	src/thread/ContextSwitch_$(FPUSPEC).o \
+	src/startup/fpsetup.o \
+	src/thread/ContextSwitch.o \
 	$(TAGNAME).o
 
 AEABI_OBJS := src/aeabi/aeabi_memset-thumb2.o \
@@ -163,6 +157,7 @@ CPUFLAGS_NOFPU := -mcpu=cortex-m4 -mthumb
 ifneq ($(EVICSDK_FPU_SUPPORT),)
 	CPUFLAGS := $(CPUFLAGS_NOFPU) -mfloat-abi=hard -mfpu=fpv4-sp-d16
 	CFLAGS += -DEVICSDK_FPU_SUPPORT
+	ASFLAGS += -DEVICSDK_FPU_SUPPORT
 	TARGET := libevicsdk_fpu
 else
 	CPUFLAGS := $(CPUFLAGS_NOFPU)
@@ -181,8 +176,8 @@ $(OBJS_NOFPU_FIXPATH): CPUFLAGS := $(CPUFLAGS_NOFPU)
 %.o: %.c
 	$(CC) $(CPUFLAGS) $(CFLAGS) -c $< -o $@
 
-%.o: %.s 
-	$(AS) $(CPUFLAGS) $(ASFLAGS) -o $@ $<
+%.o: %.s
+	$(CC) $(CPUFLAGS) $(ASFLAGS) -c -x assembler-with-cpp $< -o $@
 
 $(TARGET).a: $(OBJS_FIXPATH) $(OBJS_NOFPU_FIXPATH)
 	test -d $(OUTDIR) || mkdir $(OUTDIR)

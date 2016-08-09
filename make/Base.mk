@@ -97,6 +97,7 @@ CPUFLAGS := -mcpu=cortex-m4 -mthumb
 ifneq ($(EVICSDK_FPU_SUPPORT),)
 	CPUFLAGS += -mfloat-abi=hard -mfpu=fpv4-sp-d16
 	CFLAGS += -DEVICSDK_FPU_SUPPORT
+	ASFLAGS += -DEVICSDK_FPU_SUPPORT
 	LDSCRIPT := $(EVICSDK)/linker/fpu.ld
 else
 	LDSCRIPT := $(EVICSDK)/linker/nofpu.ld
@@ -128,7 +129,7 @@ all: env_check $(TARGET).bin
 	$(CC) $(CFLAGS) $(CPPFLAGS) -c $< -o $@
 
 %.o: %.s
-	$(AS) $(ASFLAGS) -o $@ $<
+	$(CC) $(ASFLAGS) -c -x assembler-with-cpp $< -o $@
 
 $(TARGET).elf: $(OBJS_FIXPATH)
 	test -d $(BINDIR) || mkdir $(BINDIR)

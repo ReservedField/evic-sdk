@@ -32,8 +32,12 @@ PendSV_Handler:
 	@ Call Thread_Schedule(EXC_RETURN)
 	@ We can delay the context push because the ABI enforces
 	@ routines to save and restore R4-R11 and S16-S31.
+	@ EXC_RETURN is ignored if FPU support is disabled, save
+	@ a cycle there for the no-FPU build.
 	@ Return: R0 = new ctx (or NULL), R1 = old ctx (or NULL)
+#ifdef EVICSDK_FPU_SUPPORT
 	MOV     R0, LR
+#endif
 	LDR     R1, =Thread_Schedule
 	BLX     R1
 

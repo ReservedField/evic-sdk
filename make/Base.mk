@@ -96,6 +96,7 @@ CPUFLAGS := -mcpu=cortex-m4 -mthumb
 
 ifneq ($(EVICSDK_FPU_SUPPORT),)
 	CPUFLAGS += -mfloat-abi=hard -mfpu=fpv4-sp-d16
+	CFLAGS += -DEVICSDK_FPU_SUPPORT
 	LDSCRIPT := $(EVICSDK)/linker/fpu.ld
 else
 	LDSCRIPT := $(EVICSDK)/linker/nofpu.ld

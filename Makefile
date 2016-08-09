@@ -44,7 +44,6 @@ OBJS_NOFPU := src/thread/Thread.o \
 
 TAGNAME := src/startup/evicsdk_tag
 OBJS_CRT0 := src/startup/startup.o \
-	src/startup/fpsetup.o \
 	src/thread/ContextSwitch.o \
 	$(TAGNAME).o
 

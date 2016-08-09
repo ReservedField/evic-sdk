@@ -160,12 +160,33 @@ Reset_Handler:
 	@ Select INV type for HXT (CLK_PWRCTL[12] = 0)
 	LDR   R0, =0x40000200
 	LDR   R1, [R0]
-	BIC   R1, R1, #0x1000
+	BIC   R1, #0x1000
 	STR   R1, [R0]
 
-	@ Setup FPU and floating-point stacking
-	LDR   R0, =Startup_FpSetup
-	BLX   R0
+	LDR   R0, =0xE000EF34
+	LDR   R1, [R0]
+#ifdef EVICSDK_FPU_SUPPORT
+	@ Enable lazy stacking
+	@ (ASPEN = 1, LSPEN = 1, i.e. FPCCR[31:30] = 11)
+	ORR   R1, #(0x3 << 30)
+#else
+	@ Disable lazy stacking, disable FPU state saving
+	@ (ASPEN = 0, LSPEN = 0, i.e. FPCCR[31:30] = 00)
+	BIC   R1, #(0x3 << 30)
+#endif
+	STR   R1, [R0]
+
+#ifdef EVICSDK_FPU_SUPPORT
+	@ Enable FPU (enable CP10/CP11, i.e. CPACR[23:20] = 1111)
+	LDR   R0, =0xE000ED88
+	LDR   R1, [R0]
+	ORR   R1, R1, #(0xF << 20)
+	STR   R1, [R0]
+
+	@ FPU enabled: sync barrier, flush pipeline
+	DSB
+	ISB
+#endif
 
 	@ Copy .data to RAM. Symbols defined by linker script:
 	@ Data_Start_ROM: start of .data section in ROM

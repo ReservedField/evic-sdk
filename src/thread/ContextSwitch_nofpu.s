@@ -27,6 +27,8 @@ PendSV_Handler:
 	@ preempt ISRs, we always work with the PSP.
 	.thumb_func
 
+	PUSH    {LR}
+
 	@ Call Thread_Schedule()
 	@ We can delay the context push because the ABI enforces
 	@ routines to save and restore R4-R11.
@@ -34,20 +36,20 @@ PendSV_Handler:
 	LDR     R0, =Thread_Schedule
 	BLX     R0
 
+	POP     {LR}
+
 	@ If needed, save old thread context
 	TEQ     R1, #0
 	ITT     NE
 	MRSNE   R2, PSP
-	STMNE   R1!, {R2, R4-R11}
+	STMNE   R1, {R2, R4-R11, LR}
 
 	@ If needed, switch context
 	@ Also clear any exclusive lock held by the old thread
 	TEQ     R0, #0
 	ITTT    NE
-	LDMNE   R0!, {R2, R4-R11}
+	LDMNE   R0, {R2, R4-R11, LR}
 	MSRNE   PSP, R2
 	CLREXNE
 
-	@ Return to thread mode, use PSP, no FP state
-	LDR     LR, =0xFFFFFFFD
 	BX      LR

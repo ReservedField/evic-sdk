@@ -1,24 +1,35 @@
-# We make the following assumptions on Windows:
-# arm-none-eabi gcc and binutils are compiled for Windows,
-# so if you are using Cygwin, we will need path translations
-# NUVOSDK must be lazily evaluated, so that we can later
-# change EVICSDK when building include paths.
+# This file is part of eVic SDK.
+#
+# eVic SDK is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# eVic SDK is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with eVic SDK.  If not, see <http://www.gnu.org/licenses/>.
+#
+# Copyright (C) 2016 ReservedField
 
-# Small fix to bug where cygpath -w mistranslates paths with mixed slashes (/, \)
-EVICSDK := $(subst \,/,$(EVICSDK))
-NUVOSDK = $(EVICSDK)/nuvoton-sdk/Library
+include $(EVICSDK)/make/Helper.mk
+include $(EVICSDK)/make/Common.mk
 
-OBJS := $(NUVOSDK)/Device/Nuvoton/M451Series/Source/system_M451Series.o \
-	$(NUVOSDK)/StdDriver/src/clk.o \
-	$(NUVOSDK)/StdDriver/src/fmc.o \
-	$(NUVOSDK)/StdDriver/src/gpio.o \
-	$(NUVOSDK)/StdDriver/src/spi.o \
-	$(NUVOSDK)/StdDriver/src/sys.o \
-	$(NUVOSDK)/StdDriver/src/timer.o \
-	$(NUVOSDK)/StdDriver/src/rtc.o \
-	$(NUVOSDK)/StdDriver/src/usbd.o \
-	$(NUVOSDK)/StdDriver/src/eadc.o \
-	$(NUVOSDK)/StdDriver/src/pwm.o \
+# Output targets.
+TARGET_SDK := libevicsdk
+TARGET_NUVO := libnuvosdk
+TARGET_CRT0 := evicsdk-crt0
+
+# SDK objects that are always compiled as no-FPU.
+OBJS_SDK_NOFPU := \
+	src/thread/Thread.o \
+	src/thread/Queue.o
+
+# SDK objects.
+OBJS_SDK := \
 	src/startup/initfini.o \
 	src/startup/sbrk.o \
 	src/startup/init.o \
@@ -37,176 +48,196 @@ OBJS := $(NUVOSDK)/Device/Nuvoton/M451Series/Source/system_M451Series.o \
 	src/usb/USB_VirtualCOM.o \
 	src/adc/ADC.o \
 	src/battery/Battery.o \
-	src/atomizer/Atomizer.o
+	src/atomizer/Atomizer.o \
+	$(OBJS_SDK_NOFPU)
 
-OBJS_NOFPU := src/thread/Thread.o \
-	src/thread/Queue.o
+# SDK objects only compiled in debug builds.
+OBJS_SDK_DBG := src/startup/fault.o
 
-TAGNAME := src/startup/evicsdk_tag
-OBJS_CRT0 := src/startup/startup.o \
-	src/thread/ContextSwitch.o \
-	$(TAGNAME).o
-
-AEABI_OBJS := src/aeabi/aeabi_memset-thumb2.o \
+# SDK objects to build in case of missing __aeabi functions.
+OBJS_SDK_AEABI := \
+	src/aeabi/aeabi_memset-thumb2.o \
 	src/aeabi/aeabi_memclr.o
 
-OUTDIR := lib
+# Nuvoton SDK roots (relative).
+NUVOSDK_LOCAL := nuvoton-sdk/Library
+NUVOSDK_DEVSRC := $(NUVOSDK_LOCAL)/Device/Nuvoton/M451Series/Source
+NUVOSDK_STDSRC := $(NUVOSDK_LOCAL)/StdDriver/src
+
+# Nuvoton SDK objects.
+OBJS_NUVO := \
+	$(NUVOSDK_DEVSRC)/system_M451Series.o \
+	$(NUVOSDK_STDSRC)/clk.o \
+	$(NUVOSDK_STDSRC)/fmc.o \
+	$(NUVOSDK_STDSRC)/gpio.o \
+	$(NUVOSDK_STDSRC)/spi.o \
+	$(NUVOSDK_STDSRC)/sys.o \
+	$(NUVOSDK_STDSRC)/timer.o \
+	$(NUVOSDK_STDSRC)/rtc.o \
+	$(NUVOSDK_STDSRC)/usbd.o \
+	$(NUVOSDK_STDSRC)/eadc.o \
+	$(NUVOSDK_STDSRC)/pwm.o
+
+# SDK tag object file.
+SDKTAG_OBJ := src/startup/sdktag.o
+
+# Crt0 objects.
+OBJS_CRT0 := \
+	src/startup/startup.o \
+	src/thread/ContextSwitch.o \
+	$(SDKTAG_OBJ) \
+	$(if $(EVICSDK_FPU_DISABLE),,src/thread/UsageFault_fpu.o)
+
+# Extra C/C++ flags for SDK/crt0 compilation.
+# TODO: fixup warnings for GCC and Clang before enabling this.
+#       Also need -Wno-bitwise-op-parentheses for Clang + Nuvo SDK.
+#CCFLAGS_EXTRA := -Wall
+
+# Find path to libc. Using find would be better, but on Cygwin we'd have to
+# convert the native style library paths to Cygwin style. This hack avoids it
+# by (ab)using binutils to do the search.
+LIBC_PATH_FIXBU := $(shell \
+	arm-none-eabi-ld --verbose $(foreach d,$(ARM_LIBDIRS_FIXBU),-L$d) -lc \
+		$(NULLDEV_TC) 2>&1 | \
+	sed -n 's/attempt to open \(.*libc\.a\) succeeded/\1/p' | head -1)
+ifndef LIBC_PATH_FIXBU
+$(error Could not detect libc path)
+endif
+ifdef EVICSDK_MAKE_DEBUG
+$(info Libc path (raw): $(LIBC_PATH_FIXBU))
+$(info Libc path (canonical): \
+	$(call path-canon,$(call unfixpath-tc,$(LIBC_PATH_FIXBU))))
+endif
+
+# Old newlib versions don't have __aeabi_memset* and __aeabi_memclr* (added in
+# commit 24e054c). If this is the case, we bake our __aeabi objects into the
+# SDK to avoid undefined references (especially with Clang).
+AEABI_COUNT := $(shell arm-none-eabi-nm -g $(LIBC_PATH_FIXBU) | \
+	grep -Ec 'T __aeabi_mem(set|clr)[48]?$$')
+ifndef AEABI_COUNT
+$(error Could not detect state of __aeabi symbols)
+endif
+$(if $(EVICSDK_MAKE_DEBUG),$(info __aeabi count: $(AEABI_COUNT)))
+ifeq ($(AEABI_COUNT),0)
+	OBJS_SDK += $(OBJS_SDK_AEABI)
+else ifneq ($(AEABI_COUNT),6)
+$(error Libc is exporting only part of __aeabi symbols)
+endif
+
+# Generates the SDK tag from git. Since this is an expensive operation, the
+# result is cached after the first invocation.
+get-sdktag = $(or $(__SDKTAG),$(eval __SDKTAG := $(__get-sdktag))$(__SDKTAG))
+__get-sdktag = evic-sdk-$(or $(strip $(shell \
+		git describe --abbrev --dirty --always --tags 2> $(NULLDEV))),unknown)
+$(if $(EVICSDK_MAKE_DEBUG),$(info SDK tag: $(get-sdktag)))
+
+# All objects, excluding debug-only objects.
+OBJS_ALL := $(OBJS_SDK) $(OBJS_NUVO) $(OBJS_CRT0)
+# All debug-only objects.
+OBJS_ALL_DBG := $(OBJS_SDK_DBG)
+
+# Documentation output directory.
 DOCDIR := doc
 
-ifneq ($(EVICSDK_FAULT_HANDLER),)
-	OBJS_CRT0 += src/startup/fault.o
-endif
-ifneq ($(EVICSDK_FPU_SUPPORT),)
-	OBJS_CRT0 += src/thread/UsageFault_fpu.o
-endif
+# Output directory clean template.
+clean-sdkdir-tmpl = $(call clean-dir-tmpl,$1,$2,$(SDKDIR))
+# Library output path template. Extra argument: library name.
+lib-tmpl = $(call sdkdir-tmpl,$1,$2)/$3.a
+# SDK library output path template.
+sdk-tmpl = $(call lib-tmpl,$1,$2,$(TARGET_SDK))
+# Nuvoton SDK library output path template.
+nuvo-tmpl = $(call lib-tmpl,$1,$2,$(TARGET_NUVO))
+# Crt0 object output path template
+crt0-tmpl = $(call sdkdir-tmpl,$1,$2)/$(TARGET_CRT0).o
 
-# We need to find out if on cygwin or not
-ifeq ($(OS),Windows_NT)
-	ifeq (, $(findstring cygwin, $(shell gcc -dumpmachine)))
-		WIN_CYG := 0
-	else
-		WIN_CYG := 1
-	endif
-	
-endif
+# Object targets for all devices and flavors.
+objs-all := $(call tmpl-all,objs-tmpl,$(OBJS_ALL)) \
+	$(call tmpl-flavor,objs-tmpl,$(BUILD_FLAVOR_DBG),$(OBJS_ALL_DBG))
+# SDK library output paths for all devices and flavors.
+sdk-all := $(call tmpl-all,sdk-tmpl)
+# SDK library output paths for all devices, debug flavor.
+sdk-dbg := $(call tmpl-flavor,sdk-tmpl,$(BUILD_FLAVOR_DBG))
+# Nuvoton SDK library output paths for all device and flavors.
+nuvo-all := $(call tmpl-all,nuvo-tmpl)
+# All library output paths for all devices and flavors.
+lib-all := $(sdk-all) $(nuvo-all)
+# Crt0 object output paths for all devices and flavors.
+crt0-all := $(call tmpl-all,crt0-tmpl)
+# No-FPU objects for all devices and flavors.
+nofpu-objs-all := $(call tmpl-all,objs-tmpl,$(OBJS_SDK_NOFPU))
+# SDK tag object for all devices and flavors.
+sdktag-all := $(call tmpl-all,objs-tmpl,$(SDKTAG_OBJ))
 
-ifeq ($(shell $(CC) -v 2>&1 | grep -c "clang version"), 1)
-	CC_IS_CLANG := 1
-endif
+# Cache all needed paths for fixpath.
+$(call fixpath-cache, \
+	$(call objs-fixpath-cache,$(OBJS_ALL)) \
+	$(call objs-fixpath-cache,$(OBJS_ALL_DBG),$(BUILD_FLAVOR_DBG)) \
+	$(lib-all) $(crt0-all))
 
-ifeq ($(ARMGCC),)
-	ARMGCC := $(shell cd $(shell arm-none-eabi-gcc --print-search-dir | grep 'libraries' | \
-		tr '=$(if $(filter Windows_NT,$(OS)),;,:)' '\n' | \
-		grep -E '/arm-none-eabi/lib/?$$' | head -1)/../.. && pwd)
-endif
+# Add outputs to clean templates.
+CLEAN_PATH_TMPL += clean-sdkdir-tmpl
 
-ifeq ($(OS),Windows_NT)
-	# Always fix binutils path
-	ifneq ($(ARMGCC),)
-		# If using cygwin, use cygpath
-		ifeq ($(WIN_CYG),1)
-			ARMGCC := $(shell cygpath -w $(ARMGCC))
-		endif
-		
-	endif
-	
-	ifndef CC_IS_CLANG
-		NEED_FIXPATH := 1
-	endif
-endif
+# Enable secondary expansion.
+.SECONDEXPANSION:
 
-ifneq ($(ARMGCC),)
-	ifdef CC_IS_CLANG
-		CFLAGS += -target armv7em-none-eabi -fshort-enums
+# Rule to archive prerequisite objects into a library.
+$(lib-all): | $$(@D)
+	$(call info-cmd,LIB)
+	@$(call trace, \
+		$(AR) -rc $(call fixpath-bu,$@) $(call fixpath-bu,$^))
 
-		AEABI_COUNT := $(shell arm-none-eabi-nm -g $(ARMGCC)/arm-none-eabi/lib/armv7e-m/libc.a | grep -Ec 'T __aeabi_mem(set|clr)[48]?$$')
-		ifeq ($(AEABI_COUNT), 0)
-			# __aeabi_memset* and __aeabi_memclr* are not exported by libc
-			# We provide our own implementations
-			OBJS += $(AEABI_OBJS)
-		else ifneq ($(AEABI_COUNT), 6)
-			# Only part of __aeabi_memset* and __aeabi_memclr* are exported by libc
-			# This should never happen, bail out in env_check
-			AEABI_ERROR := 1
-		endif
-	else
-		CC := arm-none-eabi-gcc
-	endif
-	
-	ifdef NEED_FIXPATH
-		ifeq ($(WIN_CYG), 0)
-			OBJS_FIXPATH := $(OBJS)
-			OBJS_NOFPU_FIXPATH := $(OBJS_NOFPU)
-			OBJS_CRT0_FIXPATH := $(OBJS_CRT0)
-		else
-			OBJS_FIXPATH := $(shell cygpath -w $(OBJS))
-			OBJS_NOFPU_FIXPATH := $(shell cygpath -w $(OBJS_NOFPU))
-			OBJS_CRT0_FIXPATH := $(shell cygpath -w $(OBJS_CRT0))
-			EVICSDK := $(shell cygpath -w $(EVICSDK))
-		endif
-	else
-		OBJS_FIXPATH := $(OBJS)
-		OBJS_NOFPU_FIXPATH := $(OBJS_NOFPU)
-		OBJS_CRT0_FIXPATH := $(OBJS_CRT0)
-	endif
-endif
+# Build SDK objects for SDK library.
+$(sdk-all): $$(call tmpl-build,objs-tmpl,$$(OBJS_SDK))
+# Build debug-only SDK objects for debug SDK builds.
+$(sdk-dbg): $$(call tmpl-build,objs-tmpl,$$(OBJS_SDK_DBG))
 
-ifeq ($(WIN_CYG),0)
-	SDKTAG := $(shell git describe --abbrev --dirty --always --tags 2> NUL ) # Fix for Windows w/o cygwin (NUL instead of /dev/null)
-else
-	SDKTAG := $(shell git describe --abbrev --dirty --always --tags 2> /dev/null ) 
-endif
-ifeq ($(SDKTAG),)
-	SDKTAG := unknown
-endif
+# Build Nuvoton SDK objects for Nuvoton SDK library.
+$(nuvo-all): $$(call tmpl-build,objs-tmpl,$$(OBJS_NUVO))
 
-AS := arm-none-eabi-as
-LD := arm-none-eabi-ld
-AR := arm-none-eabi-ar
-OBJCOPY := arm-none-eabi-objcopy
+# Rule to link crt0 objects into a partially linked object.
+$(crt0-all): $$(call tmpl-build,objs-tmpl,$$(OBJS_CRT0)) | $$(@D)
+	$(call info-cmd,LNK)
+	@$(call trace, \
+		$(LD) -r $(call fixpath-bu,$^) -o $(call fixpath-bu,$@))
 
-INCDIRS := $(foreach d,$(shell arm-none-eabi-gcc -x c -v -E /dev/null 2>&1 | sed -n -e '/<\.\.\.>/,/End/ p' | tail -n +2 | head -n -1 | sed 's/^\s*//'),-I$d) \
-	-I$(NUVOSDK)/CMSIS/Include \
-	-I$(NUVOSDK)/Device/Nuvoton/M451Series/Include \
-	-I$(NUVOSDK)/StdDriver/inc \
-	-Iinclude
+# Define EVICSDK_SDKTAG for the SDK tag target (asm).
+$(sdktag-all): ASFLAGS += -DEVICSDK_SDKTAG=\"$(get-sdktag)\"
+# Always rebuild SDK tag (.PHONY doesn't play well with pattern rules).
+$(sdktag-all): .FORCE
 
-CPUFLAGS_NOFPU := -mcpu=cortex-m4 -mthumb
+# Build no-FPU objects with no-FPU CPU flags.
+$(nofpu-objs-all): CPUFLAGS := $(CPUFLAGS_NOFPU)
 
-ifneq ($(EVICSDK_FPU_SUPPORT),)
-	CPUFLAGS := $(CPUFLAGS_NOFPU) -mfloat-abi=hard -mfpu=fpv4-sp-d16
-	CFLAGS += -DEVICSDK_FPU_SUPPORT
-	ASFLAGS += -DEVICSDK_FPU_SUPPORT
-	TARGET := libevicsdk_fpu
-else
-	CPUFLAGS := $(CPUFLAGS_NOFPU)
-	TARGET := libevicsdk
-endif
+# Set extra C/C++ flags for SDK/crt0 objects.
+# TODO: see CCFLAGS_EXTRA.
+#$(sdk-all) $(crt0-all): CFLAGS += $(CCFLAGS_EXTRA)
+#$(sdk-all) $(crt0-all): CXXFLAGS += $(CCFLAGS_EXTRA)
 
-TARGET_CRT0 := $(TARGET)_crt0
+# Device-flavor target: build all outputs.
+$(devfla-all): \
+	$$(call tmpl-build,crt0-tmpl) \
+	$$(call tmpl-build,nuvo-tmpl) \
+	$$(call tmpl-build,sdk-tmpl)
 
-CFLAGS += -Wall -Os -fdata-sections -ffunction-sections
-CFLAGS += $(INCDIRS)
-
-all: env_check gen_tag $(TARGET_CRT0).o $(TARGET).a
-
-$(OBJS_NOFPU_FIXPATH): CPUFLAGS := $(CPUFLAGS_NOFPU)
-
-%.o: %.c
-	$(CC) $(CPUFLAGS) $(CFLAGS) -c $< -o $@
-
-%.o: %.s
-	$(CC) $(CPUFLAGS) $(ASFLAGS) -c -x assembler-with-cpp $< -o $@
-
-$(TARGET).a: $(OBJS_FIXPATH) $(OBJS_NOFPU_FIXPATH)
-	test -d $(OUTDIR) || mkdir $(OUTDIR)
-	$(AR) -rv $(OUTDIR)/$(TARGET).a $(OBJS_FIXPATH) $(OBJS_NOFPU_FIXPATH)
-
-$(TARGET_CRT0).o: $(OBJS_CRT0_FIXPATH)
-	test -d $(OUTDIR) || mkdir $(OUTDIR)
-	$(LD) -r $(OBJS_CRT0_FIXPATH) -o $(OUTDIR)/$(TARGET_CRT0).o
-
+# Rule to build documentation via doxygen.
 docs:
 	doxygen
 
-clean:
-	rm -rf $(OBJS) $(OBJS_NOFPU) $(OBJS_CRT0) $(AEABI_OBJS) $(OUTDIR)/$(TARGET).a $(OUTDIR)/$(TARGET_CRT0).o $(OUTDIR) $(DOCDIR)
+# Rule to clean documentation.
+clean-docs:
+	rm -rf $(DOCDIR)
 
-env_check:
-ifeq ($(ARMGCC),)
-	$(error You must set the ARMGCC environment variable)
-endif
-ifneq ($(AEABI_ERROR),)
-	$(error Your libc is exporting only part of __aeabi symbols)
-endif
+# Set BUILD_* for output targets.
+$(call build-vars-rules,sdk-tmpl)
+$(call build-vars-rules,nuvo-tmpl)
+$(call build-vars-rules,crt0-tmpl)
 
-gen_tag:
-	@rm -f $(TAGNAME).s $(TAGNAME).o
-ifeq ($(WIN_CYG),0)
-		@printf ".section .evicsdk_tag\n.asciz \"evic-sdk-$(SDKTAG)\"\n" > $(TAGNAME).s
-else
-		@printf '.section .evicsdk_tag\n.asciz "evic-sdk-$(SDKTAG)"\n' > $(TAGNAME).s
-endif
+# Generate directory targets.
+$(call mkdir-rules,objs-dirs-tmpl,$(OBJS_ALL) $(OBJS_ALL_DBG))
+$(call mkdir-rules,sdkdir-tmpl)
 
+# Set object directories as order-only prerequisites for object targets.
+$(objs-all): | $$(@D)
 
-.PHONY: all clean docs env_check gen_tag
+.FORCE:
+.PHONY: .FORCE docs

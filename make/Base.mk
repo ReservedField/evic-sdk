@@ -1,154 +1,153 @@
-# Supported vars:
-# TARGET
-# OBJS
-# CFLAGS
-# CPPFLAGS
-# ASFLAGS
-# LDFLAGS
+# This file is part of eVic SDK.
+#
+# eVic SDK is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# eVic SDK is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with eVic SDK.  If not, see <http://www.gnu.org/licenses/>.
+#
+# Copyright (C) 2016 ReservedField
 
-# We make the following assumptions on Windows:
-# arm-none-eabi gcc and binutils are compiled for Windows,
-# so if you are using Cygwin, we will need path translations
-# NUVOSDK must be lazily evaluated, so that we can later
-# change EVICSDK when building include paths.
+# Supported variables:
+# TARGET: output target name.
+# OBJS: objects to compile.
+# INCDIRS: include directories.
+# INCDIRS_C: include directories (C only).
+# INCDIRS_CXX: include directories (C++ only).
+# LIBDIRS: library directories.
+# CFLAGS: C compiler flags.
+# CXXFLAGS: C++ compiler flags.
+# ASFLAGS: assembler flags.
+# LDFLAGS: linker flags.
 
-NUVOSDK = $(EVICSDK)/nuvoton-sdk/Library
+ifndef __evicsdk_make_base_inc
+__evicsdk_make_base_inc := 1
 
-# Force OBJS immediate expansion, since we'll be
-# changing EVICSDK later.
-OBJS := $(OBJS)
+include $(EVICSDK)/make/Helper.mk
+include $(EVICSDK)/make/Common.mk
 
-# We need to find out if on cygwin or not
-ifeq ($(OS),Windows_NT)
-	ifeq (, $(findstring cygwin, $(shell gcc -dumpmachine)))
-		WIN_CYG := 0
-	else
-		WIN_CYG := 1
-	endif
-	
-endif
-
-ifeq ($(shell $(CC) -v 2>&1 | grep -c "clang version"), 1)
-	CC_IS_CLANG := 1
-endif
-
-ifeq ($(ARMGCC),)
-    ARMGCC := $(shell cd $(shell arm-none-eabi-gcc --print-search-dir | grep 'libraries' | \
-        tr '=$(if $(filter Windows_NT,$(OS)),;,:)' '\n' | \
-        grep -E '/arm-none-eabi/lib/?$$' | head -1)/../.. && pwd)
-endif
-
-ifeq ($(OS),Windows_NT)
-	# Always fix binutils path
-	ifneq ($(ARMGCC),)
-		# If using cygwin, use cygpath
-		ifeq ($(WIN_CYG),1)
-			ARMGCC := $(shell cygpath -w $(ARMGCC))
-		endif
-		
-	endif
-	
-	ifndef CC_IS_CLANG
-		NEED_FIXPATH := 1
-	endif
-endif
-
-ifdef CC_IS_CLANG
-	CFLAGS += -target armv7em-none-eabi -fshort-enums
-else
-	CC := arm-none-eabi-gcc
-endif
-
-ifdef NEED_FIXPATH
-		ifeq ($(WIN_CYG), 0)
-			OBJS_FIXPATH := $(OBJS)
-		else
-			OBJS_FIXPATH := $(shell cygpath -w $(OBJS))
-			EVICSDK := $(shell cygpath -w $(EVICSDK))
-		endif
-	else
-		OBJS_FIXPATH := $(OBJS)
-endif
-
-GCC_VERSION := $(shell arm-none-eabi-gcc -dumpversion)
-
-AS := arm-none-eabi-as
-LD := arm-none-eabi-ld
-OBJCOPY := arm-none-eabi-objcopy
-
+# Binary output directory.
 BINDIR := bin
 
-INCDIRS := $(foreach d,$(shell arm-none-eabi-gcc -x c -v -E /dev/null 2>&1 | sed -n -e '/<\.\.\.>/,/End/ p' | tail -n +2 | head -n -1 | sed 's/^\s*//'),-I$d) \
-	-I$(NUVOSDK)/CMSIS/Include \
-	-I$(NUVOSDK)/Device/Nuvoton/M451Series/Include \
-	-I$(NUVOSDK)/StdDriver/inc \
-	-I$(EVICSDK)/include
+# Linker script.
+LDSCRIPT := $(EVICSDK)/linker/linker.ld
 
-LIBDIRS := -L$(ARMGCC)/arm-none-eabi/lib \
-	-L$(ARMGCC)/arm-none-eabi/newlib \
-	-L$(ARMGCC)/lib/arm-none-eabi/newlib \
-	-L$(ARMGCC)/gcc/arm-none-eabi/$(GCC_VERSION) \
-	-L$(ARMGCC)/lib/gcc/arm-none-eabi/$(GCC_VERSION) \
-	-L$(EVICSDK)/lib \
-	-L$(EVICSDK)/linker
+# Binary output directory template.
+bindir-tmpl = $(call dir-tmpl,$1,$2,$(BINDIR))
+# Binary output directory clean template.
+clean-bindir-tmpl = $(call clean-dir-tmpl,$1,$2,$(BINDIR))
+# ELF output path template.
+elf-tmpl = $(call bindir-tmpl,$1,$2)/$(TARGET).elf
+# Binary output path template. Extra argument: binary name.
+bin-tmpl = $(call bindir-tmpl,$1,$2)/$3.bin
+# Unecrypted binary output path template.
+bin-dec-tmpl = $(call bin-tmpl,$1,$2,$(TARGET)_dec)
+# Encrypted binary output path template.
+bin-enc-tmpl = $(call bin-tmpl,$1,$2,$(TARGET))
+# Linker map output path template.
+ldmap-tmpl = $(call bindir-tmpl,$1,$2)/$(TARGET).map
 
-CPUFLAGS := -mcpu=cortex-m4 -mthumb
+# Object targets for all devices and flavors.
+objs-all := $(call tmpl-all,objs-tmpl,$(OBJS))
+# ELF targets for all devices and flavors.
+elf-all := $(call tmpl-all,elf-tmpl)
+# ELF targets for all devices, debug flavor.
+elf-dbg := $(call tmpl-flavor,elf-tmpl,$(BUILD_FLAVOR_DBG))
+# ELF targets for all devices, release flavor.
+elf-rel := $(call tmpl-flavor,elf-tmpl,$(BUILD_FLAVOR_REL))
+# Unencrypted binary targets for all devices and flavors.
+bin-dec-all := $(call tmpl-all,bin-dec-tmpl)
+# Unencrypted binary targets for all devices, release flavor.
+bin-dec-rel := $(call tmpl-flavor,bin-dec-tmpl,$(BUILD_FLAVOR_REL))
+# Encrypted binary targets for all devices and flavors.
+bin-enc-all := $(call tmpl-all,bin-enc-tmpl)
+# Linker map output paths for all device, debug flavor.
+ldmap-dbg := $(call tmpl-flavor,ldmap-tmpl,$(BUILD_FLAVOR_DBG))
+# SDK output directories for all devices and flavors.
+sdk-all := $(call tmpl-all,sdkdir-tmpl,$(EVICSDK))
 
-ifneq ($(EVICSDK_FPU_SUPPORT),)
-	CPUFLAGS += -mfloat-abi=hard -mfpu=fpv4-sp-d16
-	CFLAGS += -DEVICSDK_FPU_SUPPORT
-	ASFLAGS += -DEVICSDK_FPU_SUPPORT
-	LDSCRIPT := $(EVICSDK)/linker/fpu.ld
-else
-	LDSCRIPT := $(EVICSDK)/linker/nofpu.ld
-endif
+# Cache all needed paths for fixpath.
+$(call fixpath-cache, \
+	$(call objs-fixpath-cache,$(OBJS)) \
+	$(elf-all) $(bin-dec-all) $(bin-enc-all) $(ldmap-dbg) $(sdk-all) \
+	$(LIBDIRS) $(LDSCRIPT))
 
-CFLAGS += -Wall $(CPUFLAGS) -Os -fdata-sections -ffunction-sections
-CFLAGS += $(INCDIRS)
+# Set up linker flags.
+# We're linking with --no-warn-mismatch because the thread library is compiled
+# without FPU support to avoid issues with FPU context switching, which would
+# normally result in a linker error due to different FP ABIs (soft/hard). Since
+# no function in the thread library accepts FP arguments or calls FP library
+# functions, they will work fine together. This may trainwreck if SDK and APROM
+# are compiled with different FP ABIs, but no-FPU builds are just a rarely used
+# debugging tool, so it's good enough.
+LDFLAGS += \
+	-T$(call fixpath-bu,$(LDSCRIPT)) \
+	-nostdlib -nostartfiles --gc-sections --no-warn-mismatch
+# We keep -L flags separated because we want to specify them before LDFLAGS so
+# that -l flags work correctly. Also, we're going to add the SDK library path
+# to this on a device/flavor basis.
+LDFLAGS_LIBDIRS := \
+	$(foreach d,$(ARM_LIBDIRS_FIXBU) $(call fixpath-bu,$(LIBDIRS)),-L$d)
 
-CPPFLAGS += -fno-exceptions -fno-rtti
+# Objcopy flags for converting ELF to unencrypted binary.
+OBJCOPYFLAGS += -O binary -j .text -j .data
 
-ASFLAGS += $(CPUFLAGS)
+# Add binaries to clean templates.
+CLEAN_PATH_TMPL += clean-bindir-tmpl
 
-# Yes, I know what I'm doing with --no-warn-mismatch.
-# The thread library is compiled without FPU support to avoid issues with FPU
-# context switching, which would normally result in a linker error due to
-# different ABIs (soft/hard) when the SDK is compiled with FPU support. Since
-# no function in the thread library accepts FP arguments, they will work fine
-# together. Of course this trainwrecks when SDK is compiled with FPU support
-# and APROM is not. Oh well...
-LDFLAGS += $(LIBDIRS)
-LDFLAGS += -nostdlib -nostartfiles -T$(LDSCRIPT) --gc-sections --no-warn-mismatch
+# Enable secondary expansion.
+.SECONDEXPANSION:
 
-all: env_check $(TARGET).bin
+# Set BUILD_* for all our targets.
+$(call build-vars-rules,elf-tmpl)
+$(call build-vars-rules,bin-dec-tmpl)
+$(call build-vars-rules,bin-enc-tmpl)
 
-%.o: %.c
-	$(CC) $(CFLAGS) -c $< -o $@
+# Rule to link objects into an ELF.
+$(elf-all): $$(call tmpl-build,objs-tmpl,$$(OBJS)) | $$(@D)
+	$(call info-cmd,LD)
+	@$(call trace, \
+		$(LD) $(call fixpath-bu,$^) $(LDFLAGS_LIBDIRS) $(LDFLAGS) \
+			-o $(call fixpath-bu,$@))
 
-%.o: %.cpp
-	$(CC) $(CFLAGS) $(CPPFLAGS) -c $< -o $@
+# Add the SDK to LDFLAGS_LIBDIRS for all ELF targets.
+$(elf-all): LDFLAGS_LIBDIRS += \
+	-L$(call fixpath-bu,$(call tmpl-build,sdkdir-tmpl,$(EVICSDK)))
 
-%.o: %.s
-	$(CC) $(ASFLAGS) -c -x assembler-with-cpp $< -o $@
+# Generate a linker map for debug ELF targets.
+$(elf-dbg): LDFLAGS += -Map=$(call fixpath-bu,$(call tmpl-build,ldmap-tmpl))
 
-$(TARGET).elf: $(OBJS_FIXPATH)
-	test -d $(BINDIR) || mkdir $(BINDIR)
-	$(LD) $(OBJS_FIXPATH) $(LDFLAGS) -o $(BINDIR)/$(TARGET).elf
+# Rule to generate an unencrypted binary from the ELF.
+$(bin-dec-all): $$(call tmpl-build,elf-tmpl) | $$(@D)
+	$(call info-cmd,BIN)
+	@$(call trace, \
+		$(OBJCOPY) $(OBJCOPYFLAGS) $(call fixpath-bu,$<) $(call fixpath-bu,$@))
 
-$(TARGET)_unencrypted.bin: $(TARGET).elf
-	$(OBJCOPY) -O binary -j .text -j .data $(BINDIR)/$(TARGET).elf $(BINDIR)/$(TARGET)_unencrypted.bin
-	rm -f $(BINDIR)/$(TARGET).elf
+# Rule to generate an encrypted binary from the unencrypted one.
+$(bin-enc-all): $$(call tmpl-build,bin-dec-tmpl) | $$(@D)
+	$(call info-cmd,ENC)
+# Silence evic-convert, errors will still get through.
+	@$(call trace, \
+		evic-convert $< -o $@ > $(NULLDEV))
 
-$(TARGET).bin: $(TARGET)_unencrypted.bin
-	evic convert $(BINDIR)/$(TARGET)_unencrypted.bin -o $(BINDIR)/$(TARGET).bin
-	rm -f $(BINDIR)/$(TARGET)_unencrypted.bin
+# Device-flavor target rule: build encrypted binary.
+$(devfla-all): $$(call tmpl-build,bin-enc-tmpl)
 
-clean:
-	rm -rf $(OBJS) $(BINDIR)
+# Set object directories as order-only prerequisites for object targets.
+$(objs-all): | $$(@D)
 
-env_check:
-ifeq ($(ARMGCC),)
-	$(error You must set the ARMGCC environment variable)
-endif
+# Generate directory targets.
+$(call mkdir-rules,objs-dirs-tmpl,$(OBJS))
+$(call mkdir-rules,bindir-tmpl)
 
-.PHONY: all clean env_check
+# Mark all release ELFs and unencrypted binaries as intermediate files.
+.INTERMEDIATE: $(elf-rel) $(bin-dec-rel)
+
+endif # __evicsdk_make_base_inc

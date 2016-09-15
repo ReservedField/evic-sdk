@@ -111,11 +111,12 @@ $(call build-vars-rules,bin-dec-tmpl)
 $(call build-vars-rules,bin-enc-tmpl)
 
 # Rule to link objects into an ELF.
-$(elf-all): $$(call tmpl-build,objs-tmpl,$$(OBJS)) | $$(@D)
+$(elf-all): $$(call tmpl-build,sdkdir-tmpl,$(EVICSDK)) \
+            $$(call tmpl-build,objs-tmpl,$$(OBJS)) | $$(@D)
 	$(call info-cmd,LD)
 	@$(call trace, \
-		$(LD) $(call fixpath-bu,$^) $(LDFLAGS_LIBDIRS) $(LDFLAGS) \
-			-o $(call fixpath-bu,$@))
+		$(LD) $(call fixpath-bu,$(wordlist 2,$(words $^),$^)) \
+		$(LDFLAGS_LIBDIRS) $(LDFLAGS) -o $(call fixpath-bu,$@))
 
 # Add the SDK to LDFLAGS_LIBDIRS for all ELF targets.
 $(elf-all): LDFLAGS_LIBDIRS += \

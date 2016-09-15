@@ -269,7 +269,7 @@ the linker map are targets (so you could `make bin/dbg/DEVICE/TARGET.elf`, for e
 Note that APROMs for a certain device and flavor combination are built against the SDK for that
 same device and flavor, so you'll need to have that SDK built for it to succeed. If you see linker
 errors about missing `evicsdk-crt0.o`, `-levicsdk` or `-lnuvosdk`, or you get
-`No rule to make target 'EVICSDK/lib/FLAVOR/DEVICE'`, chances are you don't have the needed SDK built.
+`No SDK found for DEVICE-FLAVOR`, chances are you don't have the needed SDK built.
 
 #### Parallel make
 

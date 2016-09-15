@@ -148,6 +148,10 @@ $(objs-all): | $$(@D)
 $(call mkdir-rules,objs-dirs-tmpl,$(OBJS))
 $(call mkdir-rules,bindir-tmpl)
 
+# If this is remade the SDK output directory doesn't exist.
+$(sdk-all):
+	$(error No SDK found for $(BUILD_DEVICE)-$(BUILD_FLAVOR))
+
 # Mark all release ELFs and unencrypted binaries as intermediate files.
 .INTERMEDIATE: $(elf-rel) $(bin-dec-rel)
 

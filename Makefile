@@ -51,9 +51,6 @@ OBJS_SDK := \
 	src/atomizer/Atomizer.o \
 	$(OBJS_SDK_NOFPU)
 
-# SDK objects only compiled in debug builds.
-OBJS_SDK_DBG := src/startup/fault.o
-
 # SDK objects to build in case of missing __aeabi functions.
 OBJS_SDK_AEABI := \
 	src/aeabi/aeabi_memset-thumb2.o \
@@ -87,6 +84,9 @@ OBJS_CRT0 := \
 	src/thread/ContextSwitch.o \
 	$(SDKTAG_OBJ) \
 	$(if $(EVICSDK_FPU_DISABLE),,src/thread/UsageFault_fpu.o)
+
+# Crt0 objects only compiled in debug builds.
+OBJS_CRT0_DBG := src/startup/fault.o
 
 # Extra C/C++ flags for SDK/crt0 compilation.
 # TODO: fixup warnings for GCC and Clang before enabling this.
@@ -134,7 +134,7 @@ $(if $(EVICSDK_MAKE_DEBUG),$(info SDK tag: $(get-sdktag)))
 # All objects, excluding debug-only objects.
 OBJS_ALL := $(OBJS_SDK) $(OBJS_NUVO) $(OBJS_CRT0)
 # All debug-only objects.
-OBJS_ALL_DBG := $(OBJS_SDK_DBG)
+OBJS_ALL_DBG := $(OBJS_CRT0_DBG)
 
 # Documentation output directory.
 DOCDIR := doc
@@ -155,14 +155,14 @@ objs-all := $(call tmpl-all,objs-tmpl,$(OBJS_ALL)) \
 	$(call tmpl-flavor,objs-tmpl,$(BUILD_FLAVOR_DBG),$(OBJS_ALL_DBG))
 # SDK library output paths for all devices and flavors.
 sdk-all := $(call tmpl-all,sdk-tmpl)
-# SDK library output paths for all devices, debug flavor.
-sdk-dbg := $(call tmpl-flavor,sdk-tmpl,$(BUILD_FLAVOR_DBG))
 # Nuvoton SDK library output paths for all device and flavors.
 nuvo-all := $(call tmpl-all,nuvo-tmpl)
 # All library output paths for all devices and flavors.
 lib-all := $(sdk-all) $(nuvo-all)
 # Crt0 object output paths for all devices and flavors.
 crt0-all := $(call tmpl-all,crt0-tmpl)
+# Crt0 object output paths for all devices, debug flavor.
+crt0-dbg := $(call tmpl-flavor,crt0-tmpl,$(BUILD_FLAVOR_DBG))
 # No-FPU objects for all devices and flavors.
 nofpu-objs-all := $(call tmpl-all,objs-tmpl,$(OBJS_SDK_NOFPU))
 # SDK tag object for all devices and flavors.
@@ -188,8 +188,6 @@ $(lib-all): | $$(@D)
 
 # Build SDK objects for SDK library.
 $(sdk-all): $$(call tmpl-build,objs-tmpl,$$(OBJS_SDK))
-# Build debug-only SDK objects for debug SDK builds.
-$(sdk-dbg): $$(call tmpl-build,objs-tmpl,$$(OBJS_SDK_DBG))
 
 # Build Nuvoton SDK objects for Nuvoton SDK library.
 $(nuvo-all): $$(call tmpl-build,objs-tmpl,$$(OBJS_NUVO))
@@ -199,6 +197,8 @@ $(crt0-all): $$(call tmpl-build,objs-tmpl,$$(OBJS_CRT0)) | $$(@D)
 	$(call info-cmd,LNK)
 	@$(call trace, \
 		$(LD) -r $(call fixpath-bu,$^) -o $(call fixpath-bu,$@))
+# Build debug-only crt0 objects for debug builds.
+$(crt0-dbg): $$(call tmpl-build,objs-tmpl,$$(OBJS_CRT0_DBG))
 
 # Define EVICSDK_SDKTAG for the SDK tag target (asm).
 $(sdktag-all): ASFLAGS += -DEVICSDK_SDKTAG=\"$(get-sdktag)\"

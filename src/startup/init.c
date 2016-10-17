@@ -55,7 +55,7 @@ void Sys_Init() {
 	// Enable 72MHz optimization
 	FMC_EnableFreqOptimizeMode(FMC_FTCTL_OPTIMIZE_72MHZ);
 
-	// Core clock: PLL
+	// Core clock: PLL @ 144MHz, HCLK @ 72MHz
 	CLK_SetCoreClock(PLL_CLOCK);
 	CLK_WaitClockReady(CLK_STATUS_PLLSTB_Msk);
 
@@ -73,8 +73,8 @@ void Sys_Init() {
 	CLK_EnableModuleClock(TMR2_MODULE);
 	CLK_EnableModuleClock(TMR3_MODULE);
 
-	// PWM clock: PCLK0
-	CLK_SetModuleClock(PWM0_MODULE, CLK_CLKSEL2_PWM0SEL_PCLK0, 0);
+	// PWM clock: PLL
+	CLK_SetModuleClock(PWM0_MODULE, CLK_CLKSEL2_PWM0SEL_PLL, 0);
 	CLK_EnableModuleClock(PWM0_MODULE);
 
 	// USBD clock

@@ -45,14 +45,25 @@ static const uint8_t ADC_moduleNum[4] = {
 /**
  * Cached ADC conversion results for interrupts 0-3.
  */
-static volatile uint16_t ADC_convResult[4] = {0};
+static volatile uint16_t ADC_convResult[4];
+
+/**
+ * Filter function pointers for interrupts 0-3.
+ * NULL when the filter isn't set.
+ */
+static volatile ADC_Filter_t ADC_filterPtr[4];
+
+/**
+ * Filter user-defined data for interrupts 0-3.
+ */
+static volatile uint32_t ADC_filterData[4];
 
 /**
  * Convenience macro to define ADC IRQ handlers.
  */
 #define ADC_DEFINE_IRQ_HANDLER(n) void ADC0 ## n ## _IRQHandler() { \
-	ADC_convResult[n] = EADC_GET_CONV_DATA(EADC, ADC_moduleNum[n]); \
-	EADC_DISABLE_SAMPLE_MODULE_INT(EADC, n, 1 << ADC_moduleNum[n]); \
+	uint16_t value = EADC_GET_CONV_DATA(EADC, ADC_moduleNum[n]); \
+	ADC_convResult[n] = ADC_filterPtr[n] ? ADC_filterPtr[n](value, ADC_filterData[n]) : value; \
 	EADC_CLR_INT_FLAG(EADC, 1 << n); \
 }
 
@@ -61,23 +72,38 @@ ADC_DEFINE_IRQ_HANDLER(1);
 ADC_DEFINE_IRQ_HANDLER(2);
 ADC_DEFINE_IRQ_HANDLER(3);
 
+/**
+ * Finds the interrupt number for a module number.
+ * This is an internal function.
+ *
+ * @param moduleNum Module number.
+ *
+ * @return Interrupt number, or a negative value if not found.
+ */
+static int8_t ADC_LookupIntNum(uint8_t moduleNum) {
+	int8_t i;
+
+	// Reversed so that it goes to -1 on failure
+	for(i = 3; i >= 0 && moduleNum != ADC_moduleNum[i]; i--);
+
+	return i;
+}
+
 void ADC_UpdateCache(const uint8_t moduleNum[], uint8_t len, uint8_t isBlocking) {
-	uint8_t i, j, finishFlag;
+	int8_t intNum;
+	uint8_t i, finishFlag;
 	uint32_t primask;
 
 	for(i = 0; i < len; i++) {
-		// Find interrupt number for module number
-		for(j = 0; j < 4 && moduleNum[i] != ADC_moduleNum[j]; j++);
+		if((intNum = ADC_LookupIntNum(moduleNum[i])) < 0) {
+			continue;
+		}
 
 		primask = Thread_IrqDisable();
 		if(!(EADC_GET_PENDING_CONV(EADC) & (1 << moduleNum[i]))) {
-			// Configure module
+			// Configure module to a sane state
 			EADC_ConfigSampleModule(EADC, moduleNum[i], EADC_SOFTWARE_TRIGGER, moduleNum[i]);
-
-			// Enable interrupt
-			EADC_CLR_INT_FLAG(EADC, 1 << j);
-			EADC_ENABLE_SAMPLE_MODULE_INT(EADC, j, 1 << moduleNum[i]);
-
+			EADC_CLR_INT_FLAG(EADC, 1 << intNum);
 			// Start conversion
 			EADC_START_CONV(EADC, 1 << moduleNum[i]);
 		}
@@ -100,13 +126,8 @@ void ADC_UpdateCache(const uint8_t moduleNum[], uint8_t len, uint8_t isBlocking)
 }
 
 uint16_t ADC_GetCachedResult(uint8_t moduleNum) {
-	uint8_t i;
-
-	// Find interrupt number for module number
-	for(i = 0; i < 4 && moduleNum != ADC_moduleNum[i]; i++);
-
-	// Atomic
-	return ADC_convResult[i];
+	int8_t intNum = ADC_LookupIntNum(moduleNum);
+	return intNum < 0 ? 0 : ADC_convResult[intNum];
 }
 
 void ADC_Init() {
@@ -139,6 +160,7 @@ void ADC_Init() {
 	// Enable interrupts
 	for(i = 0; i < 4; i++) {
 		EADC_ENABLE_INT(EADC, 1 << i);
+		EADC_ENABLE_SAMPLE_MODULE_INT(EADC, i, 1 << ADC_moduleNum[i]);
 		NVIC_EnableIRQ(irqNum[i]);
 	}
 }
@@ -146,4 +168,19 @@ void ADC_Init() {
 uint16_t ADC_Read(uint8_t moduleNum) {
 	ADC_UpdateCache((uint8_t []) {moduleNum}, 1, 1);
 	return ADC_GetCachedResult(moduleNum);
+}
+
+void ADC_SetFilter(uint8_t moduleNum, ADC_Filter_t filter, uint32_t filterData) {
+	int8_t intNum;
+
+	if((intNum = ADC_LookupIntNum(moduleNum)) < 0) {
+		return;
+	}
+
+	// To avoid races: disable old -> update data -> enable new
+	ADC_filterPtr[intNum] = NULL;
+	if(filter != NULL) {
+		ADC_filterData[intNum] = filterData;
+		ADC_filterPtr[intNum] = filter;
+	}
 }

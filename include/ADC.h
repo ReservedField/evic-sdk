@@ -67,6 +67,17 @@ extern "C" {
 #define ADC_MODULE_VBAT 0x12
 
 /**
+ * Function pointer type for ADC filters.
+ * Invoked from an interrupt handler, keep it as fast as possible.
+ *
+ * @param value      Read ADC value.
+ * @param filterData Optional filter data passed to ADC_SetFilter().
+ *
+ * @return Filtered ADC value.
+ */
+typedef uint16_t (*ADC_Filter_t)(uint16_t value, uint32_t filterData);
+
+/**
  * Initializes the ADC.
  * System control registers must be unlocked.
  */
@@ -98,6 +109,16 @@ uint16_t ADC_GetCachedResult(uint8_t moduleNum);
  * @return ADC conversion result.
  */
 uint16_t ADC_Read(uint8_t moduleNum);
+
+/**
+ * Sets a filter for an ADC module.
+ *
+ * @param moduleNum  One of ADC_MODULE_*.
+ * @param filter     ADC filter function, or NULL to disable.
+ * @param filterData Optional data to pass to the filter function.
+ *                   Ignored when disabling.
+ */
+void ADC_SetFilter(uint8_t moduleNum, ADC_Filter_t filter, uint32_t filterData);
 
 #ifdef __cplusplus
 }

@@ -337,9 +337,9 @@ static uint16_t Atomizer_MedianFilter(uint16_t value, Atomizer_MedianFilterCtx_t
 	ctx->buf[ctx->idx] = value;
 	ctx->idx = (ctx->idx + 1) % ATOMIZER_MEDIANFILTER_WINDOW;
 
-	// Selection sort
+	// Selection sort. We only need to sort the first half.
 	memcpy(sortBuf, ctx->buf, sizeof(sortBuf));
-	for(i = 0; i < ATOMIZER_MEDIANFILTER_WINDOW; i++) {
+	for(i = 0; i < (ATOMIZER_MEDIANFILTER_WINDOW + 1) / 2; i++) {
 		minIdx = i;
 		for(j = i + 1; j < ATOMIZER_MEDIANFILTER_WINDOW; j++) {
 			if(sortBuf[j] < sortBuf[minIdx]) {

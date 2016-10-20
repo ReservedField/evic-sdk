@@ -66,23 +66,23 @@ typedef uint32_t Thread_Mutex_t;
  */
 typedef enum {
 	/**< No error. */
-	SUCCESS = 0,
+	TD_SUCCESS = 0,
 	/**< Couldn't allocate memory. */
-	NO_MEMORY = -1,
+	TD_NO_MEMORY = -1,
 	/**< A try operation failed. */
-	TRY_FAIL = -2,
+	TD_TRY_FAIL = -2,
 	/**< An invalid value was passed. */
-	INVALID_VALUE = -3,
+	TD_INVALID_VALUE = -3,
 	/**< An invalid thread handle was passed. */
-	INVALID_THREAD = -100,
+	TD_INVALID_THREAD = -100,
 	/**< Attempted to join an already joined thread. */
-	ALREADY_JOINED = -101,
+	TD_ALREADY_JOINED = -101,
 	/**< An invalid semaphore handle was passed. */
-	INVALID_SEMA = -200,
+	TD_INVALID_SEMA = -200,
 	/**< An invalid mutex handle was passed. */
-	INVALID_MUTEX = -300,
+	TD_INVALID_MUTEX = -300,
 	/**< Bad mutex unlock: already unlocked, or locked by a different thread. */
-	MUTEX_BAD_UNLOCK = -301
+	TD_MUTEX_BAD_UNLOCK = -301
 } Thread_Error_t;
 
 /**
@@ -114,8 +114,8 @@ void Thread_Init();
  * @param args      Arguments parameter to be passed to entry.
  * @param stackSize Stack size, in bytes.
  *
- * @return SUCCESS or NO_MEMORY. In case of error, the value of
- *         thread is undefined.
+ * @return TD_SUCCESS or TD_NO_MEMORY. In case of error
+ *         the value of thread is undefined.
  */
 Thread_Error_t Thread_Create(Thread_t *thread, Thread_EntryPtr_t entry, void *args, uint16_t stackSize);
 
@@ -129,13 +129,13 @@ void Thread_Yield();
  * Waits for another thread to complete.
  * Each thread can only have one other thread waiting on it.
  * Attempting to join a thread that already has another thread
- * waiting on it will fail with ALREADY_JOINED.
+ * waiting on it will fail with TD_ALREADY_JOINED.
  *
  * @param thread Handle of the thread to wait for.
  * @param ret    Pointer to receive the return value of the
  *               joined thread.
  *
- * @return SUCCESS, INVALID_THREAD or ALREADY_JOINED.
+ * @return TD_SUCCESS, TD_INVALID_THREAD or TD_ALREADY_JOINED.
  */
 Thread_Error_t Thread_Join(Thread_t thread, void **ret);
 
@@ -168,7 +168,7 @@ void Thread_CriticalExit();
  * @param sema  Pointer to receive semaphore handle.
  * @param count Initial count (must not be negative).
  *
- * @return SUCCESS, INVALID_VALUE (negative count) or NO_MEMORY.
+ * @return TD_SUCCESS, TD_INVALID_VALUE (negative count) or TD_NO_MEMORY.
  *         In case of error the value of sema is undefined.
  */
 Thread_Error_t Thread_SemaphoreCreate(Thread_Semaphore_t *sema, int32_t count);
@@ -178,7 +178,7 @@ Thread_Error_t Thread_SemaphoreCreate(Thread_Semaphore_t *sema, int32_t count);
  *
  * @param sema Semaphore handle.
  *
- * @return SUCCESS or INVALID_SEMA.
+ * @return TD_SUCCESS or TD_INVALID_SEMA.
  */
 Thread_Error_t Thread_SemaphoreDestroy(Thread_Semaphore_t sema);
 
@@ -188,7 +188,7 @@ Thread_Error_t Thread_SemaphoreDestroy(Thread_Semaphore_t sema);
  *
  * @param sema Semaphore handle.
  *
- * @return SUCCESS or INVALID_SEMA.
+ * @return TD_SUCCESS or TD_INVALID_SEMA.
  */
 Thread_Error_t Thread_SemaphoreDown(Thread_Semaphore_t sema);
 
@@ -198,7 +198,7 @@ Thread_Error_t Thread_SemaphoreDown(Thread_Semaphore_t sema);
  *
  * @param sema Semaphore handle.
  *
- * @return SUCCESS, INVALID_SEMA or TRY_FAIL.
+ * @return TD_SUCCESS, TD_INVALID_SEMA or TD_TRY_FAIL.
  */
 Thread_Error_t Thread_SemaphoreTryDown(Thread_Semaphore_t sema);
 
@@ -207,7 +207,7 @@ Thread_Error_t Thread_SemaphoreTryDown(Thread_Semaphore_t sema);
  *
  * @param sema Semaphore handle.
  *
- * @return SUCCESS or INVALID_SEMA.
+ * @return TD_SUCCESS or TD_INVALID_SEMA.
  */
 Thread_Error_t Thread_SemaphoreUp(Thread_Semaphore_t sema);
 
@@ -217,8 +217,8 @@ Thread_Error_t Thread_SemaphoreUp(Thread_Semaphore_t sema);
  * @param sema  Semaphore handle.
  * @param count Pointer to receive the count.
  *
- * @return SUCCESS or INVALID_SEMA. In case of error the
- *         value of count is undefined.
+ * @return TD_SUCCESS or TD_INVALID_SEMA. In case of
+ *         error the value of count is undefined.
  */
 Thread_Error_t Thread_SemaphoreGetCount(Thread_Semaphore_t sema, int32_t *count);
 
@@ -228,8 +228,8 @@ Thread_Error_t Thread_SemaphoreGetCount(Thread_Semaphore_t sema, int32_t *count)
  *
  * @param mutex Pointer to receive mutex handle.
  *
- * @return SUCCESS or NO_MEMORY. In case of error the
- *         value of mutex is undefined.
+ * @return TD_SUCCESS or TD_NO_MEMORY. In case of
+ *         error the value of mutex is undefined.
  */
 Thread_Error_t Thread_MutexCreate(Thread_Mutex_t *mutex);
 
@@ -238,7 +238,7 @@ Thread_Error_t Thread_MutexCreate(Thread_Mutex_t *mutex);
  *
  * @param mutex Mutex handle.
  *
- * @return SUCCESS or INVALID_MUTEX.
+ * @return TD_SUCCESS or TD_INVALID_MUTEX.
  */
 Thread_Error_t Thread_MutexDestroy(Thread_Mutex_t mutex);
 
@@ -248,7 +248,7 @@ Thread_Error_t Thread_MutexDestroy(Thread_Mutex_t mutex);
  *
  * @param mutex Mutex handle.
  *
- * @return SUCCESS or INVALID_MUTEX.
+ * @return TD_SUCCESS or TD_INVALID_MUTEX.
  */
 Thread_Error_t Thread_MutexLock(Thread_Mutex_t mutex);
 
@@ -258,7 +258,7 @@ Thread_Error_t Thread_MutexLock(Thread_Mutex_t mutex);
  *
  * @param mutex Mutex handle.
  *
- * @return SUCCESS, INVALID_MUTEX or TRY_FAIL.
+ * @return TD_SUCCESS, TD_INVALID_MUTEX or TD_TRY_FAIL.
  */
 Thread_Error_t Thread_MutexTryLock(Thread_Mutex_t mutex);
 
@@ -268,7 +268,7 @@ Thread_Error_t Thread_MutexTryLock(Thread_Mutex_t mutex);
  *
  * @param mutex Mutex handle.
  *
- * @return SUCCESS or MUTEX_BAD_UNLOCK.
+ * @return TD_SUCCESS or TD_MUTEX_BAD_UNLOCK.
  */
 Thread_Error_t Thread_MutexUnlock(Thread_Mutex_t mutex);
 
@@ -279,7 +279,7 @@ Thread_Error_t Thread_MutexUnlock(Thread_Mutex_t mutex);
  * @param isLocked Pointer to receive state. Will be set to true
  *                 if the mutex is locked, false if unlocked.
  *
- * @return SUCCESS or INVALID_MUTEX. In case of error the value
+ * @return TD_SUCCESS or TD_INVALID_MUTEX. In case of error the value
  *         of isLocked is undefined.
  */
 Thread_Error_t Thread_MutexGetState(Thread_Mutex_t mutex, uint8_t *isLocked);

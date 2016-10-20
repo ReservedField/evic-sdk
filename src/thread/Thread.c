@@ -622,7 +622,7 @@ Thread_Error_t Thread_Create(Thread_t *thread, Thread_EntryPtr_t entry, void *ar
 	// allocation to stack guard size (which is 8-byte aligned).
 	block = memalign(THREAD_STACKGUARD_SIZE, stackSize + sizeof(Thread_TCB_t));
 	if(block == NULL) {
-		return NO_MEMORY;
+		return TD_NO_MEMORY;
 	}
 
 	// Setup TCB
@@ -654,7 +654,7 @@ Thread_Error_t Thread_Create(Thread_t *thread, Thread_EntryPtr_t entry, void *ar
 		THREAD_PEND_SCHED();
 	}
 
-	return SUCCESS;
+	return TD_SUCCESS;
 }
 
 void Thread_Yield() {
@@ -676,12 +676,12 @@ Thread_Error_t Thread_Join(Thread_t thread, void **ret) {
 
 	if(!THREAD_CHECK_TCB(thread)) {
 		Thread_CriticalExit();
-		return INVALID_THREAD;
+		return TD_INVALID_THREAD;
 	}
 
 	tcb = (Thread_TCB_t *) thread;
 	if(tcb->join.tcb != NULL) {
-		return ALREADY_JOINED;
+		return TD_ALREADY_JOINED;
 	}
 
 	// Setup ourselves as the joined thread
@@ -696,7 +696,7 @@ Thread_Error_t Thread_Join(Thread_t thread, void **ret) {
 	// CriticalExit pended the scheduler, wait for suspend/wakeup
 	THREAD_WAIT_READY();
 
-	return SUCCESS;
+	return TD_SUCCESS;
 }
 
 void Thread_DelayMs(uint32_t delay) {
@@ -786,14 +786,14 @@ static void Thread_SemaphoreInit(Thread_SemaphoreInternal_t *sema, int32_t count
  * @param sema   Semaphore.
  * @param doFree True to free the memory pointed by sema.
  *
- * @return SUCCESS or INVALID_SEMA.
+ * @return TD_SUCCESS or TD_INVALID_SEMA.
  */
 static Thread_Error_t Thread_SemaphoreDelete(Thread_SemaphoreInternal_t *sema, uint8_t doFree) {
 	Thread_CriticalEnter();
 
 	if(!THREAD_CHECK_SEMA(sema)) {
 		Thread_CriticalExit();
-		return INVALID_SEMA;
+		return TD_INVALID_SEMA;
 	}
 
 	// Delete semaphore
@@ -804,27 +804,27 @@ static Thread_Error_t Thread_SemaphoreDelete(Thread_SemaphoreInternal_t *sema, u
 
 	Thread_CriticalExit();
 
-	return SUCCESS;
+	return TD_SUCCESS;
 }
 
 Thread_Error_t Thread_SemaphoreCreate(Thread_Semaphore_t *sema, int32_t count) {
 	Thread_SemaphoreInternal_t *sm;
 
 	if(count < 0) {
-		return INVALID_VALUE;
+		return TD_INVALID_VALUE;
 	}
 
 	// Allocate semaphore
 	sm = malloc(sizeof(Thread_SemaphoreInternal_t));
 	if(sm == NULL) {
-		return NO_MEMORY;
+		return TD_NO_MEMORY;
 	}
 
 	// Initialize semaphore
 	Thread_SemaphoreInit(sm, count);
 	*sema = (Thread_Semaphore_t) sm;
 
-	return SUCCESS;
+	return TD_SUCCESS;
 }
 
 Thread_Error_t Thread_SemaphoreDestroy(Thread_Semaphore_t sema) {
@@ -841,7 +841,7 @@ Thread_Error_t Thread_SemaphoreDown(Thread_Semaphore_t sema) {
 
 	if(!THREAD_CHECK_SEMA(sema)) {
 		Thread_CriticalExit();
-		return INVALID_SEMA;
+		return TD_INVALID_SEMA;
 	}
 
 	// Decrement semaphore
@@ -876,7 +876,7 @@ Thread_Error_t Thread_SemaphoreDown(Thread_Semaphore_t sema) {
 		THREAD_WAIT_READY();
 	}
 
-	return SUCCESS;
+	return TD_SUCCESS;
 }
 
 Thread_Error_t Thread_SemaphoreTryDown(Thread_Semaphore_t sema) {
@@ -887,7 +887,7 @@ Thread_Error_t Thread_SemaphoreTryDown(Thread_Semaphore_t sema) {
 
 	if(!THREAD_CHECK_SEMA(sema)) {
 		Thread_CriticalExit();
-		return INVALID_SEMA;
+		return TD_INVALID_SEMA;
 	}
 
 	// Try to down by compare-and-swap
@@ -897,13 +897,13 @@ Thread_Error_t Thread_SemaphoreTryDown(Thread_Semaphore_t sema) {
 		if(oldVal <= 0) {
 			// Can't be downed without waiting
 			Thread_CriticalExit();
-			return TRY_FAIL;
+			return TD_TRY_FAIL;
 		}
 	} while(AtomicOps_CmpSwap((volatile uint32_t *) &sm->count, oldVal, oldVal - 1) != oldVal);
 
 	Thread_CriticalExit();
 
-	return SUCCESS;
+	return TD_SUCCESS;
 }
 
 Thread_Error_t Thread_SemaphoreUp(Thread_Semaphore_t sema) {
@@ -916,7 +916,7 @@ Thread_Error_t Thread_SemaphoreUp(Thread_Semaphore_t sema) {
 
 	if(!THREAD_CHECK_SEMA(sema)) {
 		Thread_CriticalExit();
-		return INVALID_SEMA;
+		return TD_INVALID_SEMA;
 	}
 
 	// Increment semaphore
@@ -938,7 +938,7 @@ Thread_Error_t Thread_SemaphoreUp(Thread_Semaphore_t sema) {
 
 	Thread_CriticalExit();
 
-	return SUCCESS;
+	return TD_SUCCESS;
 }
 
 Thread_Error_t Thread_SemaphoreGetCount(Thread_Semaphore_t sema, int32_t *count) {
@@ -949,7 +949,7 @@ Thread_Error_t Thread_SemaphoreGetCount(Thread_Semaphore_t sema, int32_t *count)
 
 	if(!THREAD_CHECK_SEMA(sema)) {
 		Thread_CriticalExit();
-		return INVALID_SEMA;
+		return TD_INVALID_SEMA;
 	}
 
 	// We internally use negative values to count
@@ -960,7 +960,7 @@ Thread_Error_t Thread_SemaphoreGetCount(Thread_Semaphore_t sema, int32_t *count)
 
 	Thread_CriticalExit();
 
-	return SUCCESS;
+	return TD_SUCCESS;
 }
 
 Thread_Error_t Thread_MutexCreate(Thread_Mutex_t *mutex) {
@@ -969,7 +969,7 @@ Thread_Error_t Thread_MutexCreate(Thread_Mutex_t *mutex) {
 	// Allocate mutex and binary semaphore
 	mtx = malloc(sizeof(Thread_MutexInternal_t));
 	if(mtx == NULL) {
-		return NO_MEMORY;
+		return TD_NO_MEMORY;
 	}
 
 	// Initialize mutex/semaphore to 1 (unlocked)
@@ -977,7 +977,7 @@ Thread_Error_t Thread_MutexCreate(Thread_Mutex_t *mutex) {
 	mtx->owner = NULL;
 	*mutex = (Thread_Mutex_t) mtx;
 
-	return SUCCESS;
+	return TD_SUCCESS;
 }
 
 Thread_Error_t Thread_MutexDestroy(Thread_Mutex_t mutex) {
@@ -985,14 +985,14 @@ Thread_Error_t Thread_MutexDestroy(Thread_Mutex_t mutex) {
 
 	// Destroy semaphore, without freeing memory
 	mtx = (Thread_MutexInternal_t *) mutex;
-	if(Thread_SemaphoreDelete(&mtx->sema, 0) == INVALID_SEMA) {
-		return INVALID_MUTEX;
+	if(Thread_SemaphoreDelete(&mtx->sema, 0) == TD_INVALID_SEMA) {
+		return TD_INVALID_MUTEX;
 	}
 
 	// Destroy mutex
 	free(mtx);
 
-	return SUCCESS;
+	return TD_SUCCESS;
 }
 
 Thread_Error_t Thread_MutexLock(Thread_Mutex_t mutex) {
@@ -1000,12 +1000,12 @@ Thread_Error_t Thread_MutexLock(Thread_Mutex_t mutex) {
 
 	// Down semaphore (blocking) and take ownership
 	mtx = (Thread_MutexInternal_t *) mutex;
-	if(Thread_SemaphoreDown((Thread_Semaphore_t) &mtx->sema) == INVALID_SEMA) {
-		return INVALID_MUTEX;
+	if(Thread_SemaphoreDown((Thread_Semaphore_t) &mtx->sema) == TD_INVALID_SEMA) {
+		return TD_INVALID_MUTEX;
 	}
 	mtx->owner = Thread_curTcb;
 
-	return SUCCESS;
+	return TD_SUCCESS;
 }
 
 Thread_Error_t Thread_MutexTryLock(Thread_Mutex_t mutex) {
@@ -1016,15 +1016,15 @@ Thread_Error_t Thread_MutexTryLock(Thread_Mutex_t mutex) {
 	mtx = (Thread_MutexInternal_t *) mutex;
 	ret = Thread_SemaphoreTryDown((Thread_Semaphore_t) &mtx->sema);
 	switch(ret) {
-		case SUCCESS:
+		case TD_SUCCESS:
 			// Lock succeeded, take ownership
 			mtx->owner = Thread_curTcb;
 			break;
-		case INVALID_SEMA:
-			ret = INVALID_MUTEX;
+		case TD_INVALID_SEMA:
+			ret = TD_INVALID_MUTEX;
 			break;
 		default:
-			ret = TRY_FAIL;
+			ret = TD_TRY_FAIL;
 			break;
 	}
 
@@ -1042,14 +1042,14 @@ Thread_Error_t Thread_MutexUnlock(Thread_Mutex_t mutex) {
 		// already unlocked or we preempted
 		// a Thread_Mutex(Try)Lock, which can
 		// only happen if we don't own the mutex
-		return MUTEX_BAD_UNLOCK;
+		return TD_MUTEX_BAD_UNLOCK;
 	}
 
 	// Release ownership and up semaphore
 	mtx->owner = NULL;
 	Thread_SemaphoreUp((Thread_Semaphore_t) &mtx->sema);
 
-	return SUCCESS;
+	return TD_SUCCESS;
 }
 
 Thread_Error_t Thread_MutexGetState(Thread_Mutex_t mutex, uint8_t *isLocked) {
@@ -1057,10 +1057,10 @@ Thread_Error_t Thread_MutexGetState(Thread_Mutex_t mutex, uint8_t *isLocked) {
 	int32_t count;
 
 	mtx = (Thread_MutexInternal_t *) mutex;
-	if(Thread_SemaphoreGetCount((Thread_Semaphore_t) &mtx->sema, &count) == INVALID_SEMA) {
-		return INVALID_MUTEX;
+	if(Thread_SemaphoreGetCount((Thread_Semaphore_t) &mtx->sema, &count) == TD_INVALID_SEMA) {
+		return TD_INVALID_MUTEX;
 	}
 	*isLocked = (count == 0);
 
-	return SUCCESS;
+	return TD_SUCCESS;
 }

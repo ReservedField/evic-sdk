@@ -724,7 +724,7 @@ void Atomizer_Init() {
 	PWM_SET_CMR(PWM0, ATOMIZER_PWMCH_BOOST, 0);
 
 	// Create our Big Atomizer Lock
-	if(Thread_MutexCreate(&Atomizer_mutex) != SUCCESS) {
+	if(Thread_MutexCreate(&Atomizer_mutex) != TD_SUCCESS) {
 		// No user code has run yet, the heap is messed up
 		asm volatile ("udf");
 	}

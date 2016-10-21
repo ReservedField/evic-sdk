@@ -20,6 +20,7 @@
 #include <string.h>
 #include <M451Series.h>
 #include <Dataflash.h>
+#include <Thread.h>
 
 /* Number of pages in dataflash */
 #define DATAFLASH_PAGE_COUNT DATAFLASH_STRUCT_MAX_COUNT
@@ -85,6 +86,11 @@ static uint8_t Dataflash_mruPage;
  * True if a structure set has been selected.
  */
 static uint8_t Dataflash_structSetSelected;
+
+/**
+ * Dataflash mutex.
+ */
+static Thread_Mutex_t Dataflash_mutex;
 
 /**
  * Decodes a unary-coded word. The decoded value is equal
@@ -384,6 +390,11 @@ void Dataflash_Init() {
 	uint8_t i;
 	uint32_t baseAddr, pageAddr, word;
 
+	if(Thread_MutexCreate(&Dataflash_mutex) != TD_SUCCESS) {
+		// No user code has run yet, the heap is messed up
+		asm volatile ("udf");
+	}
+
 	Dataflash_mruPage = DATAFLASH_PAGE_COUNT - 1;
 	Dataflash_structSetSelected = 0;
 
@@ -431,6 +442,8 @@ uint8_t Dataflash_GetMagicList(uint32_t *magicList) {
 	uint8_t i, j, magicCount, flag;
 	uint32_t magic;
 
+	Thread_MutexLock(Dataflash_mutex);
+
 	magicCount = 0;
 	for(i = 0; i < DATAFLASH_PAGE_COUNT; i++) {
 		flag = Dataflash_pageInfo[i].flag;
@@ -451,6 +464,8 @@ uint8_t Dataflash_GetMagicList(uint32_t *magicList) {
 		}
 	}
 
+	Thread_MutexUnlock(Dataflash_mutex);
+
 	return magicCount;
 }
 
@@ -465,9 +480,12 @@ uint8_t Dataflash_ReadStruct(const Dataflash_StructInfo_t *structInfo, void *dst
 		return 0;
 	}
 
+	Thread_MutexLock(Dataflash_mutex);
+
 	// Find most recent page for struct
 	pageIndex = Dataflash_GetStructPageIndex(structInfo, 0);
 	if(pageIndex < 0) {
+		Thread_MutexUnlock(Dataflash_mutex);
 		return 0;
 	}
 	pageInfo = &Dataflash_pageInfo[pageIndex];
@@ -485,6 +503,7 @@ uint8_t Dataflash_ReadStruct(const Dataflash_StructInfo_t *structInfo, void *dst
 	Dataflash_Read(dst, addr, structInfo->size);
 
 	DATAFLASH_FMC_CLOSE();
+	Thread_MutexUnlock(Dataflash_mutex);
 
 	return 1;
 }
@@ -494,7 +513,7 @@ uint8_t Dataflash_SelectStructSet(Dataflash_StructInfo_t **structInfo, uint8_t c
 	uint32_t magic;
 
 	if(Dataflash_structSetSelected || count > DATAFLASH_STRUCT_MAX_COUNT) {
-		// Already executed or invalid count
+		// Already executed (1) or invalid count
 		return 0;
 	}
 
@@ -504,6 +523,14 @@ uint8_t Dataflash_SelectStructSet(Dataflash_StructInfo_t **structInfo, uint8_t c
 	    structInfo[i]->size <= DATAFLASH_STRUCT_MAX_SIZE; i++);
 	if(i != count) {
 		// Invalid magic or size
+		return 0;
+	}
+
+	Thread_MutexLock(Dataflash_mutex);
+
+	if(Dataflash_structSetSelected) {
+		// Already executed (2)
+		Thread_MutexUnlock(Dataflash_mutex);
 		return 0;
 	}
 
@@ -538,19 +565,23 @@ uint8_t Dataflash_SelectStructSet(Dataflash_StructInfo_t **structInfo, uint8_t c
 
 	DATAFLASH_FMC_CLOSE();
 	Dataflash_structSetSelected = 1;
+	Thread_MutexUnlock(Dataflash_mutex);
 
 	return 1;
 }
 
 uint8_t Dataflash_UpdateStruct(const Dataflash_StructInfo_t *structInfo, void *src) {
 	int8_t oldPage, newPage;
-	uint8_t allocPage, owFlag;
+	uint8_t allocPage, owFlag, ret = 1;
 	uint16_t structSizeAlign;
 	uint32_t baseAddr, endAddr, dstAddr;
 	Dataflash_BlockInfo_t *blockInfo;
 
+	Thread_MutexLock(Dataflash_mutex);
+
 	if(!Dataflash_structSetSelected) {
 		// Dataflash_SelectStructSet() hasn't been called yet
+		Thread_MutexUnlock(Dataflash_mutex);
 		return 0;
 	}
 
@@ -569,8 +600,7 @@ uint8_t Dataflash_UpdateStruct(const Dataflash_StructInfo_t *structInfo, void *s
 		dstAddr = blockInfo->addr + 4 + (blockInfo->count - 1) * structSizeAlign;
 		if(Dataflash_Compare(dstAddr, src, structInfo->size, &owFlag)) {
 			// Data is identical, no need to update
-			DATAFLASH_FMC_CLOSE();
-			return 1;
+			goto success;
 		}
 
 		if(owFlag) {
@@ -609,8 +639,7 @@ uint8_t Dataflash_UpdateStruct(const Dataflash_StructInfo_t *structInfo, void *s
 		newPage = Dataflash_AllocatePage(structInfo, oldPage);
 		if(newPage < 0) {
 			// Allocation failed
-			DATAFLASH_FMC_CLOSE();
-			return 0;
+			goto error;
 		}
 		dstAddr = Dataflash_pageInfo[newPage].blockInfo.addr + 4;
 	}
@@ -618,16 +647,19 @@ uint8_t Dataflash_UpdateStruct(const Dataflash_StructInfo_t *structInfo, void *s
 	// Write update to flash
 	Dataflash_Write(dstAddr, src, structInfo->size);
 
+error:
+	ret = 0;
+success:
 	DATAFLASH_FMC_CLOSE();
-
-	return 1;
+	Thread_MutexUnlock(Dataflash_mutex);
+	return ret;
 }
 
 uint8_t Dataflash_InvalidateStruct(const Dataflash_StructInfo_t *structInfo) {
-	uint8_t ret, i;
+	uint8_t i, ret = 0;
 	uint32_t baseAddr, magicWord, magicMask;
 
-	ret = 0;
+	Thread_MutexLock(Dataflash_mutex);
 	DATAFLASH_FMC_OPEN();
 	baseAddr = DATAFLASH_READ_BASEADDR();
 
@@ -650,15 +682,16 @@ uint8_t Dataflash_InvalidateStruct(const Dataflash_StructInfo_t *structInfo) {
 	}
 
 	DATAFLASH_FMC_CLOSE();
+	Thread_MutexUnlock(Dataflash_mutex);
 
 	return ret;
 }
 
 uint8_t Dataflash_Erase() {
-	uint8_t ret, i;
+	uint8_t i, ret = 1;
 	uint32_t baseAddr;
 
-	ret = 1;
+	Thread_MutexLock(Dataflash_mutex);
 	DATAFLASH_FMC_OPEN();
 	baseAddr = DATAFLASH_READ_BASEADDR();
 
@@ -677,6 +710,7 @@ uint8_t Dataflash_Erase() {
 	}
 
 	DATAFLASH_FMC_CLOSE();
+	Thread_MutexUnlock(Dataflash_mutex);
 
 	return ret;
 }

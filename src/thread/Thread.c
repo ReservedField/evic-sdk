@@ -572,13 +572,6 @@ static void Thread_ExitProc(void *ret) {
 void Thread_Init() {
 	Queue_Init(&Thread_readyQueue);
 	Queue_Init(&Thread_chronoQueue);
-	Thread_curTcb = NULL;
-#ifdef EVICSDK_FPU_SUPPORT
-	Thread_fpuState.holderCtx = NULL;
-	Thread_fpuState.curCtx = NULL;
-#endif
-	Thread_criticalCount = 0;
-	Thread_sysTick = 0;
 
 	// Configure MPU for stack guard
 	MPU->CTRL =
@@ -722,8 +715,8 @@ void Thread_DelayMs(uint32_t delay) {
 }
 
 void Thread_CriticalEnter() {
-	// For internal use only: no-op from ISRs.
-	if(THREAD_GET_IRQN() != 0) {
+	// For internal use only: no-op from ISRs or startup code.
+	if(THREAD_GET_IRQN() != 0 || Thread_curTcb == NULL) {
 		return;
 	}
 
@@ -738,8 +731,8 @@ void Thread_CriticalEnter() {
 }
 
 void Thread_CriticalExit() {
-	// For internal use only: no-op from ISRs.
-	if(THREAD_GET_IRQN() != 0) {
+	// For internal use only: no-op from ISRs or startup code.
+	if(THREAD_GET_IRQN() != 0 || Thread_curTcb == NULL) {
 		return;
 	}
 

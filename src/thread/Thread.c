@@ -715,7 +715,7 @@ void Thread_DelayMs(uint32_t delay) {
 }
 
 void Thread_CriticalEnter() {
-	// For internal use only: no-op from ISRs or startup code.
+	// No-op from ISRs or startup code
 	if(THREAD_GET_IRQN() != 0 || Thread_curTcb == NULL) {
 		return;
 	}
@@ -731,7 +731,7 @@ void Thread_CriticalEnter() {
 }
 
 void Thread_CriticalExit() {
-	// For internal use only: no-op from ISRs or startup code.
+	// No-op from ISRs or startup code
 	if(THREAD_GET_IRQN() != 0 || Thread_curTcb == NULL) {
 		return;
 	}

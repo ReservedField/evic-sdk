@@ -80,7 +80,7 @@ int8_t Timer_CreateTimeout(uint16_t timeout, uint8_t isPeriodic, Timer_Callback_
 void Timer_DeleteTimer(int8_t index);
 
 /**
- * Delays for the specified time.
+ * Delays for the specified time (not ISR-safe).
  * Do not call from interrupt/callback context.
  *
  * @param delay Delay in milliseconds.

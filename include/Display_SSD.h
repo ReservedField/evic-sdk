@@ -19,7 +19,7 @@
  */
 
 /**
- * NOTE: this low-level interface is not thread-safe.
+ * NOTE: this low-level interface is not guaranteed to be thread/ISR-safe.
  */
 
 #ifndef EVICSDK_DISPLAY_SSD_H

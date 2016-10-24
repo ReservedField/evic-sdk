@@ -54,7 +54,7 @@ typedef void (*USB_VirtualCOM_RxCallback_t)();
 void USB_VirtualCOM_Init();
 
 /**
- * Sends data over the USB virtual COM port.
+ * Sends data over the USB virtual COM port (not ISR-safe).
  *
  * @param buf  Data buffer.
  * @param size Number of bytes to send.
@@ -62,7 +62,7 @@ void USB_VirtualCOM_Init();
 void USB_VirtualCOM_Send(const uint8_t *buf, uint32_t size);
 
 /**
- * Sends a string over the USB virtual COM port.
+ * Sends a string over the USB virtual COM port (not ISR-safe).
  *
  * @param str String to send.
  */

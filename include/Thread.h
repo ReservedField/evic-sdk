@@ -92,15 +92,6 @@ typedef enum {
  */
 typedef void *(*Thread_EntryPtr_t)(void *args);
 
-/* Only *FromISR functions are safe to call from interrupt/callback context. */
-#define Thread_SemaphoreTryDownFromISR  Thread_SemaphoreTryDown
-#define Thread_SemaphoreUpFromISR       Thread_SemaphoreUp
-#define Thread_SemaphoreGetCountFromISR Thread_SemaphoreGetCount
-#define Thread_MutexGetStateFromISR     Thread_MutexGetState
-#define Thread_GetSysTicksFromISR       Thread_GetSysTicks
-#define Thread_IrqDisableFromISR        Thread_IrqDisable
-#define Thread_IrqRestoreFromISR        Thread_IrqRestore
-
 /**
  * Initializes the thread manager.
  */
@@ -121,12 +112,12 @@ Thread_Error_t Thread_Create(Thread_t *thread, Thread_EntryPtr_t entry, void *ar
 
 /**
  * Yields this thread back to the scheduler, letting
- * other threads run.
+ * other threads run (not ISR-safe).
  */
 void Thread_Yield();
 
 /**
- * Waits for another thread to complete.
+ * Waits for another thread to complete (not ISR-safe).
  * Each thread can only have one other thread waiting on it.
  * Attempting to join a thread that already has another thread
  * waiting on it will fail with TD_ALREADY_JOINED.
@@ -140,7 +131,8 @@ void Thread_Yield();
 Thread_Error_t Thread_Join(Thread_t thread, void **ret);
 
 /**
- * Delays the current thread for the specified amount of time.
+ * Delays the current thread for the specified amount of time
+ * (not ISR-safe).
  * It is guaranteed that the actual delay time will never be less
  * than the specified time, but it may be longer.
  *
@@ -151,14 +143,14 @@ void Thread_DelayMs(uint32_t delay);
 /**
  * Enters a global critical section, disabling scheduling
  * for other threads.
- * Critical sections can be nested.
+ * Critical sections can be nested. No-op from ISRs.
  */
 void Thread_CriticalEnter();
 
 /**
  * Exits a global critical section, re-enabling scheduling
  * for other threads once the last nested critical section
- * is exited.
+ * is exited. No-op from ISRs.
  */
 void Thread_CriticalExit();
 
@@ -183,7 +175,7 @@ Thread_Error_t Thread_SemaphoreCreate(Thread_Semaphore_t *sema, int32_t count);
 Thread_Error_t Thread_SemaphoreDestroy(Thread_Semaphore_t sema);
 
 /**
- * Decrements the semaphore count.
+ * Decrements the semaphore count (not ISR-safe).
  * If count is zero, waits until another thread increments it.
  *
  * @param sema Semaphore handle.
@@ -243,7 +235,7 @@ Thread_Error_t Thread_MutexCreate(Thread_Mutex_t *mutex);
 Thread_Error_t Thread_MutexDestroy(Thread_Mutex_t mutex);
 
 /**
- * Locks a mutex.
+ * Locks a mutex (not ISR-safe).
  * If the mutex is locked, waits until it's unlocked.
  *
  * @param mutex Mutex handle.
@@ -253,7 +245,7 @@ Thread_Error_t Thread_MutexDestroy(Thread_Mutex_t mutex);
 Thread_Error_t Thread_MutexLock(Thread_Mutex_t mutex);
 
 /**
- * Locks a mutex.
+ * Locks a mutex (not ISR-safe).
  * If the mutex is locked, fails without waiting.
  *
  * @param mutex Mutex handle.
@@ -263,7 +255,7 @@ Thread_Error_t Thread_MutexLock(Thread_Mutex_t mutex);
 Thread_Error_t Thread_MutexTryLock(Thread_Mutex_t mutex);
 
 /**
- * Unlocks a mutex.
+ * Unlocks a mutex (not ISR-safe).
  * Only the thread that locked a mutex can unlock it.
  *
  * @param mutex Mutex handle.

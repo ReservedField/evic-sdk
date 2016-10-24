@@ -193,7 +193,7 @@ uint8_t Atomizer_IsOn();
 Atomizer_Error_t Atomizer_GetError();
 
 /**
- * Reads the atomizer info.
+ * Reads the atomizer info (not ISR-safe).
  * This may power up the atomizer for resistance measuring,
  * depending on the situation. Refresh rate is internally
  * limited, so you can call this as often as you like.

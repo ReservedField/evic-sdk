@@ -18,6 +18,7 @@
  */
 
 #include <string.h>
+#include <ctype.h>
 #include <M451Series.h>
 #include <Display.h>
 #include <Font.h>
@@ -34,7 +35,7 @@
 
 int main() {
 	char tmpBuf[9];
-	uint8_t recvBuf[64], bufPos, i;
+	uint8_t recvBuf[64], bufPos, i, tmp;
 	uint16_t readSize;
 
 	// The virtual COM port is not initialized by default.
@@ -67,8 +68,12 @@ int main() {
 			// Data is available
 			// We read 1 byte at a time because I'm too lazy
 			// to write a real ring buffer for this example
-			readSize = USB_VirtualCOM_Read(recvBuf + bufPos, 1);
-			bufPos = (bufPos + readSize) % 64;
+			readSize = USB_VirtualCOM_Read(&tmp, 1);
+			// Filter out control characters for display
+			if(readSize && isprint(tmp)) {
+				recvBuf[bufPos] = tmp;
+				bufPos = (bufPos + readSize) % 64;
+			}
 		}
 
 		// Display the received data

@@ -313,6 +313,14 @@ The following environment/make variables are available:
   FP bugs. Do *not* use this unless you fully understand what it means (no, it won't make you
   binaries smaller or faster, even if you don't use the FPU).
 
+Thread/ISR safety
+-----------------
+
+Unless otherwise specified by the documentation, SDK functions are thread-safe and ISR-safe.
+A function is thread-safe when it can be used concurrently by multiple threads. ISR-safety, on
+the other hand, is not strictly about interrupt concurrency: it means that the function can be
+called from ISR/callback contexts. Don't call non ISR-safe functions from these contexts.
+
 Reporting bugs
 --------------
 

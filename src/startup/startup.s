@@ -1,3 +1,20 @@
+@ This file is part of eVic SDK.
+@
+@ eVic SDK is free software: you can redistribute it and/or modify
+@ it under the terms of the GNU General Public License as published by
+@ the Free Software Foundation, either version 3 of the License, or
+@ (at your option) any later version.
+@
+@ eVic SDK is distributed in the hope that it will be useful,
+@ but WITHOUT ANY WARRANTY; without even the implied warranty of
+@ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+@ GNU General Public License for more details.
+@
+@ You should have received a copy of the GNU General Public License
+@ along with eVic SDK.  If not, see <http://www.gnu.org/licenses/>.
+@
+@ Copyright (C) 2015-2016 ReservedField
+
 	.syntax unified
 
 	@ Verification strings
@@ -121,13 +138,13 @@ ISR_Vector_Base:
 	.text
 	.align 2
 	.thumb
+	.global Startup_FpSetup
 	.global Reset_Handler
 	.weak   Reset_Handler
-Reset_Handler:
 	.thumb_func
-
+Reset_Handler:
+	@ Unlock write-protected registers
 	LDR   R0, =0x40000100
-	@ Unlock registers
 	LDR   R1, =0x59
 	STR   R1, [R0]
 	LDR   R1, =0x16
@@ -135,73 +152,84 @@ Reset_Handler:
 	LDR   R1, =0x88
 	STR   R1, [R0]
 
-	@ Init POR
-	LDR   R2, =0x40000024
+	@ Disable POR (SYS_PORCTL = 0x55A5)
+	LDR   R0, =0x40000024
 	LDR   R1, =0x00005AA5
-	STR   R1, [R2]
+	STR   R1, [R0]
 
-	@ Select INV type
-	LDR   R2, =0x40000200
-	LDR   R1, [R2]
-	BIC   R1, R1, #0x1000
-	STR   R1, [R2]
+	@ Select INV type for HXT (CLK_PWRCTL[12] = 0)
+	LDR   R0, =0x40000200
+	LDR   R1, [R0]
+	BIC   R1, #0x1000
+	STR   R1, [R0]
+
+	LDR   R0, =0xE000EF34
+	LDR   R1, [R0]
+#ifdef EVICSDK_FPU_SUPPORT
+	@ Enable lazy stacking
+	@ (ASPEN = 1, LSPEN = 1, i.e. FPCCR[31:30] = 11)
+	ORR   R1, #(0x3 << 30)
+#else
+	@ Disable lazy stacking, disable FPU state saving
+	@ (ASPEN = 0, LSPEN = 0, i.e. FPCCR[31:30] = 00)
+	BIC   R1, #(0x3 << 30)
+#endif
+	STR   R1, [R0]
+
+#ifdef EVICSDK_FPU_SUPPORT
+	@ Enable FPU (enable CP10/CP11, i.e. CPACR[23:20] = 1111)
+	LDR   R0, =0xE000ED88
+	LDR   R1, [R0]
+	ORR   R1, #(0xF << 20)
+	STR   R1, [R0]
+
+	@ FPU enabled: sync barrier, flush pipeline
+	DSB
+	ISB
+#endif
 
 	@ Copy .data to RAM. Symbols defined by linker script:
-	@ Data_Start_ROM: start of .data section in ROM
-	@ Data_Start_RAM: start of .data section in RAM
-	@ Data_Size     : size of .data section
-	LDR   R0, =Data_Start_ROM
-	LDR   R1, =Data_Start_RAM
-	LDR   R2, =Data_Size
-	B     Data_Copy_Check
+	@ Data_Size      : size of .data section
+	@ Data_Start_ROM : start of .data section in ROM
+	@ Data_Start_RAM : start of .data section in RAM
+	LDR   R0, =Data_Size
+	CBZ   R0, Data_Copy_End
+	LDR   R1, =Data_Start_ROM
+	LDR   R2, =Data_Start_RAM
 Data_Copy_Loop:
-	LDMIA R0!, {R3}
-	STMIA R1!, {R3}
-	SUBS  R2, R2, #4
-Data_Copy_Check:
-	CMP   R2, #0
+	LDR   R3, [R1], #4
+	STR   R3, [R2], #4
+	SUBS  R0, #4
 	BNE   Data_Copy_Loop
+Data_Copy_End:
 
 	@ Zero out BSS. Symbols defined by linker script:
-	@ BSS_Start: start of .bss section in RAM
-	@ BSS_Size : size of .bss section
-	LDR   R0, =BSS_Start
+	@ BSS_Size  : size of .bss section
+	@ BSS_Start : start of .bss section in RAM
+	@ R0 is already zeroed from the .data copy.
 	LDR   R1, =BSS_Size
-	MOVS  R2, #0
-	B     BSS_Zero_Check
+	CBZ   R1, BSS_Zero_End
+	LDR   R2, =BSS_Start
 BSS_Zero_Loop:
-	STMIA R0!, {R2}
-	SUBS  R1, R1, #4
-BSS_Zero_Check:
-	CMP   R1, #0
+	STR   R0, [R2], #4
+	SUBS  R1, #4
 	BNE   BSS_Zero_Loop
-
-	@ Call SystemInit
-	LDR   R0, =SystemInit
-	BLX   R0
+BSS_Zero_End:
 
 	@ Call Sys_Init
 	LDR   R0, =Sys_Init
 	BLX   R0
 
-	@ Lock registers
+	@ Lock write-protected registers
 	LDR   R0, =0x40000100
 	MOVS  R1, #0
 	STR   R1, [R0]
 
-	@ Call __libc_init_array
-	LDR   R0, =__libc_init_array
+	@ Create main thread
+	LDR   R0, =Startup_CreateMainThread
 	BLX   R0
 
-	@ Call main
-	LDR   R0, =main
-	BLX   R0
-
-	@ Call __libc_fini_array
-	LDR   R0, =__libc_fini_array
-	BLX   R0
-
-	@ Trap the CPU in a infinite loop
+	@ Wait for scheduler
 	B     .
 
 	.pool

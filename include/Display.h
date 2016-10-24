@@ -91,7 +91,7 @@ void Display_Init();
 Display_Type_t Display_GetType();
 
 /**
- * Turns the display on or off.
+ * Turns the display on or off (not ISR-safe).
  * This only acts on the pixels, the display will
  * still be powered. If you want to control the supply
  * rails, use Display_SSD_SetPowerOn().
@@ -101,7 +101,7 @@ Display_Type_t Display_GetType();
 void Display_SetOn(uint8_t isOn);
 
 /**
- * Powers the display on or off.
+ * Powers the display on or off (not ISR-safe).
  * This turns the actual supply rails on/off, cutting
  * off all current draw from the display when off. It is
  * slower than Display_SSD_SetOn().
@@ -118,29 +118,30 @@ void Display_SetPowerOn(uint8_t isPowerOn);
 bool Display_IsFlipped();
 
 /**
- * Flips the display.
+ * Flips the display (not ISR-safe).
  */
 void Display_Flip();
 
 /**
- * Sets whether the display colors are inverted.
+ * Sets whether the display colors are inverted (not ISR-safe).
  *
  * @param invert True for inverted display, false for normal display.
  */
 void Display_SetInverted(bool invert);
 
 /**
- * Sends the framebuffer to the controller and updates the display.
+ * Sends the framebuffer to the controller and updates the display
+ * (not ISR-safe).
  */
 void Display_Update();
 
 /**
- * Clears the framebuffer.
+ * Clears the framebuffer (not ISR-safe).
  */
 void Display_Clear();
 
 /**
- * Copies a bitmap into the framebuffer.
+ * Copies a bitmap into the framebuffer (not ISR-safe).
  *
  * @param x      X coordinate to place the bitmap at.
  * @param y      Y coordinate to place the bitmap at.
@@ -151,7 +152,7 @@ void Display_Clear();
 void Display_PutPixels(int x, int y, const uint8_t *bitmap, int w, int h);
 
 /**
- * Draws a line into the framebuffer.
+ * Draws a line into the framebuffer (not ISR-safe).
  *
  * @param startX X coordinate to start the line at.
  * @param startY Y coordinate to start the line at.
@@ -161,7 +162,7 @@ void Display_PutPixels(int x, int y, const uint8_t *bitmap, int w, int h);
 void Display_PutLine(int startX, int startY, int endX, int endY);
 
 /**
- * Blits text into the framebuffer.
+ * Blits text into the framebuffer (not ISR-safe).
  *
  * @param x    X coordinate to place the text at.
  * @param y    Y coordinato to place the text at.
@@ -181,7 +182,7 @@ void Display_PutText(int x, int y, const char *txt, const Font_Info_t *font);
 uint8_t *Display_GetFramebuffer();
 
 /*
- * Sets the display contrast.
+ * Sets the display contrast (not ISR-safe).
  *
  * @param contrast Contrast (0 - 255).
  */

@@ -1,0 +1,153 @@
+#!/usr/bin/python
+
+# This file is part of eVic SDK.
+#
+# eVic SDK is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# eVic SDK is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with eVic SDK.  If not, see <http://www.gnu.org/licenses/>.
+#
+# Copyright (C) 2016 ReservedField
+
+import sys
+
+ISR_NAMES = [
+	'thread mode', '', 'NMI', 'HardFault', 'MemManage', 'BusFault', 'UsageFault',
+	'', '', '', '', 'SVCall', 'reserved (debug)', '', 'PendSV', 'SysTick', 'BOD',
+	'IRC', 'PWRWU', 'RAMPE', 'CLKFAIL', '', 'RTC', 'TAMPER', 'WDT', 'WWDT', 'EINT0',
+	'EINT1', 'EINT2', 'EINT3', 'EINT4', 'EINT5', 'GPA', 'GPB', 'GPC', 'GPD', 'GPE',
+	'GPF', 'SPI0', 'SPI1', 'BRAKE0', 'PWM0P0', 'PWM0P1', 'PWM0P2', 'BRAKE1', 'PWM1P0',
+	'PWM1P1', 'PWM1P2', 'TMR0', 'TMR1', 'TMR2', 'TMR3', 'UART0', 'UART1', 'I2C0',
+	'I2C1', 'PDMA', 'DAC', 'ADC00', 'ADC01', 'ACMP01', '', 'ADC02', 'ADC03', 'UART2',
+	'UART3', '', 'SPI2', '', 'USBD', 'USBH', 'USBOTG', 'CAN0', '', 'SC0', '', '', '',
+	'', 'TK'
+]
+
+def dump_hard(hfsr):
+	reason = '???'
+	if hfsr & (1 << 1):
+		reason = 'bus fault on vector table read'
+
+	forced = hfsr & (1 << 30)
+
+	print('Hard fault' + (' (forced)' if forced else '') + ': ' + reason)
+
+def dump_usage(ufsr):
+	# We assume the fault resets the system, i.e. no sticky bits
+	reason = '???'
+	if ufsr & (1 << 0):
+		reason = 'undefined instruction'
+	elif ufsr & (1 << 1):
+		reason = 'invalid state'
+	elif ufsr & (1 << 2):
+		reason = 'invalid PC load'
+	elif ufsr & (1 << 3):
+		reason = 'no coprocessor'
+	elif ufsr & (1 << 8):
+		reason = 'unaligned memory access'
+	elif ufsr & (1 << 9):
+		reason = 'division by zero'
+
+	print('Usage fault: ' + reason)
+
+def dump_bus(bfsr, bfar):
+	reason = '???'
+	if bfsr & (1 << 0):
+		reason = 'instruction'
+	elif bfsr & (1 << 1):
+		reason = 'data (precise)'
+	elif bfsr & (1 << 2):
+		reason = 'data (imprecise)'
+	elif bfsr & (1 << 3):
+		reason = 'exception return unstacking'
+	elif bfsr & (1 << 4):
+		reason = 'exception entry stacking'
+	elif bfsr & (1 << 5):
+		reason = 'FP lazy state preservation'
+
+	addr = '???'
+	if bfsr & (1 << 7):
+		addr = '0x{:08x}'.format(bfar)
+
+	print('Bus fault @ ' + addr + ': ' + reason)
+
+def dump_mem(mmfsr, mmfar):
+	reason = '???'
+	if mmfsr & (1 << 0):
+		reason = 'instruction'
+	elif mmfsr & (1 << 1):
+		reason = 'data'
+	elif mmfsr & (1 << 3):
+		reason = 'exception return unstacking'
+	elif mmfsr & (1 << 4):
+		reason = 'exception entry stacking'
+	elif mmfsr & (1 << 5):
+		reason = 'FP lazy state preservation'
+
+	addr = '???'
+	if mmfsr & (1 << 7):
+		addr = '0x{:08x}'.format(mmfar)
+
+	print('Memory access violation @ ' + addr + ': ' + reason)
+
+def dump_regs(regs):
+	reg_names = ['R0', 'R1', 'R2', 'R3', 'R12', 'LR', 'PC', 'PSR']
+
+	for i in range(len(reg_names)):
+		print('{:3} = 0x{:08x}'.format(reg_names[i], regs[i]))
+
+def decode_psr(psr):
+	flags = []
+	if psr & (1 << 31):
+		flags.append('N')
+	if psr & (1 << 30):
+		flags.append('Z')
+	if psr & (1 << 29):
+		flags.append('C')
+	if psr & (1 << 28):
+		flags.append('V')
+	if psr & (1 << 27):
+		flags.append('Q')
+	flags.append('GE={:04b}'.format((psr >> 16) & 0xF))
+
+	isrnum = psr & 0x1FF
+	isr = 'reserved (!)'
+	if isrnum < len(ISR_NAMES) and ISR_NAMES[isrnum] != '':
+		isr = ISR_NAMES[isrnum]
+
+	iciit = ((psr >> 19) & 0xC0) | ((psr >> 10) & 0x3F)
+	iciit_label = 'ICI' if iciit & 0xC3 == 0 else 'IT'
+
+	thumb = psr & (1 << 24)
+
+	print('CPU flags   : ' + ' '.join(flags))
+	print('Current ISR : ' + isr)
+	print('{:3} state   : {:08b}'.format(iciit_label, iciit))
+	print('Thumb bit   : ' + ('1' if thumb else '0 (!)'))
+
+
+dump = [line.strip() for line in sys.stdin.readlines()]
+
+header = dump[0].split(' ')
+if header[0].lower() == 'hard':
+	dump_hard(int(dump[1], 16))
+elif header[0].lower() == 'usage':
+	dump_usage(int(dump[1], 16))
+elif header[0].lower() == 'bus':
+	dump_bus(int(header[1], 16), int(dump[1], 16))
+elif header[0].lower() == 'mem':
+	dump_mem(int(header[1], 16), int(dump[1], 16))
+else:
+	print('???')
+
+regs = [int(reg, 16) for reg in dump[2:]]
+dump_regs(regs)
+decode_psr(regs[7])

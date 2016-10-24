@@ -25,6 +25,7 @@
 #include <Button.h>
 #include <ADC.h>
 #include <Atomizer.h>
+#include <Thread.h>
 
 /**
  * PLL clock: 72MHz.
@@ -36,31 +37,32 @@
  * System control registers must be unlocked.
  */
 void Sys_Init() {
-	// TODO: why is SYS_UnlockReg() needed? Should be already unlocked.
-	SYS_UnlockReg();
-
 	// HIRC clock (internal RC 22.1184MHz)
 	CLK_EnableXtalRC(CLK_PWRCTL_HIRCEN_Msk);
 	CLK_WaitClockReady(CLK_STATUS_HIRCSTB_Msk);
-	
+
+	// LIRC clock (internal RC 10kHz)
+	CLK_EnableXtalRC(CLK_PWRCTL_LIRCEN_Msk);
+	CLK_WaitClockReady(CLK_STATUS_LIRCSTB_Msk);
+
 	// HCLK clock source: HIRC, HCLK source divider: 1
 	CLK_SetHCLK(CLK_CLKSEL0_HCLKSEL_HIRC, CLK_CLKDIV0_HCLK(1));
-	
+
 	// HXT clock (external XTAL 12MHz)
 	CLK_EnableXtalRC(CLK_PWRCTL_HXTEN_Msk);
 	CLK_WaitClockReady(CLK_STATUS_HXTSTB_Msk);
-	
+
 	// Enable 72MHz optimization
 	FMC_EnableFreqOptimizeMode(FMC_FTCTL_OPTIMIZE_72MHZ);
-	
-	// Core clock: PLL
+
+	// Core clock: PLL @ 144MHz, HCLK @ 72MHz
 	CLK_SetCoreClock(PLL_CLOCK);
 	CLK_WaitClockReady(CLK_STATUS_PLLSTB_Msk);
-	
+
 	// SPI0 clock: PCLK0
 	CLK_SetModuleClock(SPI0_MODULE, CLK_CLKSEL2_SPI0SEL_PCLK0, 0);
 	CLK_EnableModuleClock(SPI0_MODULE);
-	
+
 	// TMR0-3 clock: HXT
 	CLK_SetModuleClock(TMR0_MODULE, CLK_CLKSEL1_TMR0SEL_HXT, 0);
 	CLK_SetModuleClock(TMR1_MODULE, CLK_CLKSEL1_TMR1SEL_HXT, 0);
@@ -71,24 +73,24 @@ void Sys_Init() {
 	CLK_EnableModuleClock(TMR2_MODULE);
 	CLK_EnableModuleClock(TMR3_MODULE);
 
-	// PWM clock: PCLK0
-	CLK_SetModuleClock(PWM0_MODULE, CLK_CLKSEL2_PWM0SEL_PCLK0, 0);
+	// PWM clock: PLL
+	CLK_SetModuleClock(PWM0_MODULE, CLK_CLKSEL2_PWM0SEL_PLL, 0);
 	CLK_EnableModuleClock(PWM0_MODULE);
 
 	// USBD clock
 	CLK_SetModuleClock(USBD_MODULE, 0, CLK_CLKDIV0_USB(3));
 	CLK_EnableModuleClock(USBD_MODULE);
-	
+
 	// Enable USB 3.3V LDO
 	SYS->USBPHY = SYS_USBPHY_LDO33EN_Msk;
 
 	// EADC clock: 72Mhz / 8
 	CLK_SetModuleClock(EADC_MODULE, 0, CLK_CLKDIV0_EADC(8));
 	CLK_EnableModuleClock(EADC_MODULE);
-	
+
 	// Enable BOD (reset, 2.2V)
 	SYS_EnableBOD(SYS_BODCTL_BOD_RST_EN, SYS_BODCTL_BODVL_2_2V);
-	
+
 	// Update system core clock
 	SystemCoreClockUpdate();
 
@@ -97,13 +99,12 @@ void Sys_Init() {
 	Dataflash_Init();
 
 	// Setup debounce, used both by buttons and battery presence pin.
-	// Buttons only need 100us, while at least 200us is needed by
+	// Good buttons only need 100us, while at least 200us is needed by
 	// battery presence. The original firmware uses 100ms for battery and
 	// timer-based debounce for buttons, but that's excessive.
-	// 200us will work fine for both. Button debounce isn't really noticeable
-	// up to 128 LIRC clock cycles, so this can be upped if battery presence
-	// is unstable.
-	GPIO_SET_DEBOUNCE_TIME(GPIO_DBCTL_DBCLKSRC_LIRC, GPIO_DBCTL_DBCLKSEL_2);
+	// Older buttons need more debouncing (a few ms). Button debounce
+	// isn't really noticeable up to 128 LIRC clock cycles.
+	GPIO_SET_DEBOUNCE_TIME(GPIO_DBCTL_DBCLKSRC_LIRC, GPIO_DBCTL_DBCLKSEL_32);
 
 	// Initialize I/O
 	Display_SetupSPI();
@@ -114,4 +115,7 @@ void Sys_Init() {
 
 	// Initialize display
 	Display_Init();
+
+	// Initialize thread manager
+	Thread_Init();
 }

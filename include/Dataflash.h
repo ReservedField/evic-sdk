@@ -57,7 +57,7 @@ void Dataflash_Init();
 
 /**
  * Gets a list of magic numbers for structures present
- * int the dataflash.
+ * in the dataflash (not ISR-safe).
  *
  * @param magicList An array at least DATAFLASH_STRUCT_MAX_COUNT
  *                  elements big to receive the magic numbers.
@@ -67,7 +67,7 @@ void Dataflash_Init();
 uint8_t Dataflash_GetMagicList(uint32_t *magicList);
 
 /**
- * Reads a structure from the dataflash.
+ * Reads a structure from the dataflash (not ISR-safe).
  *
  * @param structInfo Structure info.
  * @param dst        Pointer to structure to be filled.
@@ -77,7 +77,7 @@ uint8_t Dataflash_GetMagicList(uint32_t *magicList);
 uint8_t Dataflash_ReadStruct(const Dataflash_StructInfo_t *structInfo, void *dst);
 
 /**
- * Selects the set of dataflash structures to be used from now on.
+ * Selects the set of dataflash structures to be used from now on (not ISR-safe).
  * This can only be called once (further calls will be ignored) and must
  * have been called prior to performing updates (they'll fail otherwise).
  * NOTE: GCC and Clang went big-hammer on multiple-indirection const casts,
@@ -92,7 +92,7 @@ uint8_t Dataflash_ReadStruct(const Dataflash_StructInfo_t *structInfo, void *dst
 uint8_t Dataflash_SelectStructSet(Dataflash_StructInfo_t **structInfo, uint8_t count);
 
 /**
- * Updates/writes a structure in the dataflash.
+ * Updates/writes a structure in the dataflash (not ISR-safe).
  * The dataflash structure set must have already been selected, or
  * this will fail.
  * The update operation is a read-compare-write, i.e. it won't waste flash
@@ -107,7 +107,7 @@ uint8_t Dataflash_SelectStructSet(Dataflash_StructInfo_t **structInfo, uint8_t c
 uint8_t Dataflash_UpdateStruct(const Dataflash_StructInfo_t *structInfo, void *src);
 
 /**
- * Invalidates a structure in the dataflash.
+ * Invalidates a structure in the dataflash (not ISR-safe).
  * This doesn't actually erase the structure, but marks it in a
  * way such that it won't be read by the dataflash routines.
  * NOTE: This is provided for development/debugging only. You should
@@ -123,7 +123,7 @@ uint8_t Dataflash_UpdateStruct(const Dataflash_StructInfo_t *structInfo, void *s
 uint8_t Dataflash_InvalidateStruct(const Dataflash_StructInfo_t *structInfo);
 
 /**
- * Erases the whole dataflash.
+ * Erases the whole dataflash (not ISR-safe).
  * This actually erases all the flash memory belonging to dataflash.
  * NOTE: This is provided for development/debugging only. Do NOT use this
  * in production code. The right way to restore defaults is to push an

@@ -28,9 +28,39 @@ extern "C" {
 #endif
 
 /**
- * Maximum output voltage, in millivolts.
+ * Minimum output voltage, in mV.
  */
-#define ATOMIZER_MAX_VOLTS 9000
+#define ATOMIZER_VOLTAGE_MIN 500
+/**
+ * Maximum output voltage, in mV.
+ */
+#define ATOMIZER_VOLTAGE_MAX 9000
+/**
+ * Maximum output current, in mA.
+ */
+#define ATOMIZER_CURRENT_MAX 25000
+/**
+ * Minimum output power, in mW.
+ */
+#define ATOMIZER_POWER_MIN 1000
+/**
+ * Maximum output power, in mW.
+ */
+#define ATOMIZER_POWER_MAX 75000
+/**
+ * Minimum resistance, in mOhm.
+ */
+#define ATOMIZER_RESISTANCE_MIN 50
+/**
+ * Maximum resistance, in mOhm.
+ */
+#define ATOMIZER_RESISTANCE_MAX 3500
+
+/**
+ * Maximum output voltage, in millivolts.
+ * Deprecated: use ATOMIZER_VOLTAGE_MAX.
+ */
+#define ATOMIZER_MAX_VOLTS ATOMIZER_VOLTAGE_MAX
 
 /**
  * Structure to hold atomizer info.
@@ -163,7 +193,7 @@ uint8_t Atomizer_IsOn();
 Atomizer_Error_t Atomizer_GetError();
 
 /**
- * Reads the atomizer info.
+ * Reads the atomizer info (not ISR-safe).
  * This may power up the atomizer for resistance measuring,
  * depending on the situation. Refresh rate is internally
  * limited, so you can call this as often as you like.

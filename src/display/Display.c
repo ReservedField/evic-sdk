@@ -39,6 +39,7 @@
 #include <Display_SSD.h>
 #include <Font.h>
 #include <SysInfo.h>
+#include <Thread.h>
 
 /**
  * Global framebuffer.
@@ -49,6 +50,21 @@ static uint8_t Display_framebuf[DISPLAY_FRAMEBUFFER_SIZE];
  * Display type. Depends on hardware version.
  */
 static Display_Type_t Display_type;
+
+/**
+ * Display/framebuffer mutex.
+ * TODO: refactor display locking into the lower
+ * layers, only keep framebuffer locking here.
+ */
+static Thread_Mutex_t Display_mutex;
+
+/**
+ * Clears the framebuffer.
+ * This is an internal function.
+ */
+static void Display_ClearUnlocked() {
+	memset(Display_framebuf, 0x00, DISPLAY_FRAMEBUFFER_SIZE);
+}
 
 void Display_SetupSPI() {
 	// Setup output pins
@@ -78,6 +94,11 @@ void Display_SetupSPI() {
 }
 
 void Display_Init() {
+	if(Thread_MutexCreate(&Display_mutex) != TD_SUCCESS) {
+		// No user code has run yet, the heap is messed up
+		asm volatile ("udf");
+	}
+
 	switch(gSysInfo.hwVersion) {
 		case 102:
 		case 103:
@@ -91,16 +112,21 @@ void Display_Init() {
 			Display_type = DISPLAY_SSD1306;
 			break;
 	}
-	Display_Clear();
+
+	Display_ClearUnlocked();
 	Display_SSD_Init();
 }
 
 void Display_SetOn(uint8_t isOn) {
+	Thread_MutexLock(Display_mutex);
 	Display_SSD_SetOn(isOn);
+	Thread_MutexUnlock(Display_mutex);
 }
 
 void Display_SetPowerOn(uint8_t isPowerOn) {
+	Thread_MutexLock(Display_mutex);
 	Display_SSD_SetPowerOn(isPowerOn);
+	Thread_MutexUnlock(Display_mutex);
 }
 
 Display_Type_t Display_GetType() {
@@ -112,23 +138,35 @@ bool Display_IsFlipped() {
 }
 
 void Display_Flip() {
+	Thread_MutexLock(Display_mutex);
 	gSysInfo.displayFlip ^= 1;
 	Display_SSD_SetOn(0);
 	Display_SSD_Flip();
 	Display_SSD_Update(Display_framebuf);
 	Display_SSD_SetOn(1);
+	Thread_MutexUnlock(Display_mutex);
 }
 
 void Display_SetInverted(bool invert) {
+	Thread_MutexLock(Display_mutex);
 	Display_SSD_SetInverted(invert);
+	Thread_MutexUnlock(Display_mutex);
 }
 
 void Display_Update() {
+	// TODO: using critical sections as a ugly
+	// hack to make the fault handler work
+	Thread_CriticalEnter();
 	Display_SSD_Update(Display_framebuf);
+	Thread_CriticalExit();
 }
 
 void Display_Clear() {
-	memset(Display_framebuf, 0x00, DISPLAY_FRAMEBUFFER_SIZE);
+	// TODO: using critical sections as a ugly
+	// hack to make the fault handler work
+	Thread_CriticalEnter();
+	Display_ClearUnlocked();
+	Thread_CriticalExit();
 }
 
 /**
@@ -210,7 +248,17 @@ static void Display_BitCopy(uint8_t *dst, const uint8_t *src, uint32_t dstOffset
 	dst[0] |= (src[0] & bitMask1) << dstOffset;
 }
 
-void Display_PutPixels(int x, int y, const uint8_t *bitmap, int w, int h) {
+/**
+ * Copies a bitmap into the framebuffer.
+ * This is an internal function.
+ *
+ * @param x      X coordinate to place the bitmap at.
+ * @param y      Y coordinate to place the bitmap at.
+ * @param bitmap Bitmap buffer.
+ * @param w      Width of the bitmap.
+ * @param h      Height of the bitmap.
+ */
+static void Display_PutPixelsUnlocked(int x, int y, const uint8_t *bitmap, int w, int h) {
 	int colSize, startRow, curX;
 
 	// Sanity check
@@ -233,20 +281,35 @@ void Display_PutPixels(int x, int y, const uint8_t *bitmap, int w, int h) {
 	}
 }
 
+void Display_PutPixels(int x, int y, const uint8_t *bitmap, int w, int h) {
+	Thread_MutexLock(Display_mutex);
+	Display_PutPixelsUnlocked(x, y, bitmap, w, h);
+	Thread_MutexUnlock(Display_mutex);
+}
+
 void Display_PutLine(int x0, int y0, int x1, int y1) {
-	int dx = abs(x1-x0), sx = x0<x1 ? 1 : -1;
-	int dy = abs(y1-y0), sy = y0<y1 ? 1 : -1;
-	int err = (dx>dy ? dx : -dy)/2, e2;
+	const uint8_t black[] = { 0xFF };
+	int dx = abs(x1 - x0), sx = x0 < x1 ? 1 : -1;
+	int dy = abs(y1 - y0), sy = y0 < y1 ? 1 : -1;
+	int err = (dx > dy ? dx : -dy) / 2, e2;
 
-	uint8_t buff[] = { 0xFF };
-
-	for(;;){
-		Display_PutPixels(x0, y0, buff, 1, 1);
-		if (x0==x1 && y0==y1) break;
+	Thread_MutexLock(Display_mutex);
+	while(1) {
+		Display_PutPixelsUnlocked(x0, y0, black, 1, 1);
+		if(x0 == x1 && y0 == y1) {
+			break;
+		}
 		e2 = err;
-		if (e2 >-dx) { err -= dy; x0 += sx; }
-		if (e2 < dy) { err += dx; y0 += sy; }
+		if(e2 > -dx) {
+			err -= dy;
+			x0 += sx;
+		}
+		if(e2 < dy) {
+			err += dx;
+			y0 += sy;
+		}
 	}
+	Thread_MutexUnlock(Display_mutex);
 }
 
 void Display_PutText(int x, int y, const char *txt, const Font_Info_t *font) {
@@ -255,6 +318,9 @@ void Display_PutText(int x, int y, const char *txt, const Font_Info_t *font) {
 
 	curX = x;
 
+	// TODO: using critical sections as a ugly
+	// hack to make the fault handler work
+	Thread_CriticalEnter();
 	for(i = 0; i < strlen(txt); i++) {
 		// Handle newlines
 		if(txt[i] == '\n') {
@@ -284,9 +350,10 @@ void Display_PutText(int x, int y, const char *txt, const Font_Info_t *font) {
 		charPtr = font->data + font->charInfo[charIdx].offset;
 
 		// Blit character
-		Display_PutPixels(curX, y, charPtr, font->charInfo[charIdx].width, font->height);
+		Display_PutPixelsUnlocked(curX, y, charPtr, font->charInfo[charIdx].width, font->height);
 		curX += font->charInfo[charIdx].width;
 	}
+	Thread_CriticalExit();
 }
 
 uint8_t *Display_GetFramebuffer() {
@@ -294,5 +361,7 @@ uint8_t *Display_GetFramebuffer() {
 }
 
 void Display_SetContrast(uint8_t contrast) {
+	Thread_MutexLock(Display_mutex);
 	Display_SSD_SetContrast(contrast);
+	Thread_MutexUnlock(Display_mutex);
 }

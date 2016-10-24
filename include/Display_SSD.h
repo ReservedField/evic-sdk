@@ -18,6 +18,10 @@
  * Copyright (C) 2015-2016 Jussi Timperi
  */
 
+/**
+ * NOTE: this low-level interface is not thread-safe.
+ */
+
 #ifndef EVICSDK_DISPLAY_SSD_H
 #define EVICSDK_DISPLAY_SSD_H
 

@@ -27,6 +27,7 @@
 #include <M451Series.h>
 #include <USB_VirtualCOM.h>
 #include <USB.h>
+#include <Thread.h>
 
 /* Endpoints */
 #define USB_VCOM_CTRL_IN_EP  EP0
@@ -349,6 +350,11 @@ static volatile USB_VirtualCOM_RxCallback_t USB_VirtualCOM_rxCallbackPtr;
  * True if send mode is asynchronous, false if synchronous.
  */
 static uint8_t USB_VirtualCOM_isAsync;
+
+/**
+ * Virtual COM mutex.
+ */
+static Thread_Mutex_t USB_VirtualCOM_mutex;
 
 /**
  * Write data to the RX ring buffer.
@@ -679,14 +685,11 @@ static void USB_VirtualCOM_SendSync(const uint8_t *buf, uint32_t size) {
  */
 static void USB_VirtualCOM_SendAsync(const uint8_t *buf, uint32_t size) {
 	USB_VirtualCOM_TxTransfer_t *transfer;
-	uint32_t partialSize;
+	uint32_t primask, partialSize;
 
 	if(size == 0) {
 		return;
 	}
-
-	// Enter critical section
-	__set_PRIMASK(1);
 
 	partialSize = 0;
 	if(USB_VirtualCOM_bulkInWaiting) {
@@ -700,7 +703,6 @@ static void USB_VirtualCOM_SendAsync(const uint8_t *buf, uint32_t size) {
 
 	if(partialSize != 0 && partialSize < USB_VCOM_BULK_IN_MAX_PKT_SIZE) {
 		// We already transferred the whole packet
-		__set_PRIMASK(0);
 		return;
 	}
 
@@ -710,7 +712,6 @@ static void USB_VirtualCOM_SendAsync(const uint8_t *buf, uint32_t size) {
 	// allocated for the bulk IN handler to send the zero packet.
 	transfer = (USB_VirtualCOM_TxTransfer_t *) malloc(sizeof(USB_VirtualCOM_TxTransfer_t) + size);
 	if(transfer == NULL) {
-		__set_PRIMASK(0);
 		return;
 	}
 
@@ -723,6 +724,7 @@ static void USB_VirtualCOM_SendAsync(const uint8_t *buf, uint32_t size) {
 	}
 
 	// Append transfer to queue
+	primask = Thread_IrqDisable();
 	if(USB_VirtualCOM_txQueue.head == NULL) {
 		USB_VirtualCOM_txQueue.head = USB_VirtualCOM_txQueue.tail = transfer;
 	}
@@ -730,20 +732,16 @@ static void USB_VirtualCOM_SendAsync(const uint8_t *buf, uint32_t size) {
 		USB_VirtualCOM_txQueue.tail->next = transfer;
 		USB_VirtualCOM_txQueue.tail = transfer;
 	}
-
-	// Exit critical section
-	__set_PRIMASK(0);
+	Thread_IrqRestore(primask);
 }
 
 void USB_VirtualCOM_Init() {
-	// Initialize state
-	USB_VirtualCOM_lineState = 0;
-	USB_VirtualCOM_txQueue.head = USB_VirtualCOM_txQueue.tail = NULL;
 	USB_VirtualCOM_bulkInWaiting = 1;
-	USB_VirtualCOM_rxBuffer.readIndex = USB_VirtualCOM_rxBuffer.writeIndex = 0;
-	USB_VirtualCOM_rxBuffer.dataSize = 0;
-	USB_VirtualCOM_rxCallbackPtr = NULL;
-	USB_VirtualCOM_isAsync = 0;
+
+	if(Thread_MutexCreate(&USB_VirtualCOM_mutex) != TD_SUCCESS) {
+		// No user code has run yet, the heap is messed up
+		asm volatile ("udf");
+	}
 
 	// Open USB
 	USBD_Open(&USB_VirtualCOM_UsbdInfo, USB_VirtualCOM_HandleClassRequest, NULL);
@@ -783,12 +781,14 @@ void USB_VirtualCOM_Send(const uint8_t *buf, uint32_t size) {
 		return;
 	}
 
+	Thread_MutexLock(USB_VirtualCOM_mutex);
 	if(USB_VirtualCOM_isAsync) {
 		USB_VirtualCOM_SendAsync(buf, size);
 	}
 	else {
 		USB_VirtualCOM_SendSync(buf, size);
 	}
+	Thread_MutexUnlock(USB_VirtualCOM_mutex);
 }
 
 void USB_VirtualCOM_SendString(const char *str) {
@@ -801,17 +801,16 @@ uint16_t USB_VirtualCOM_GetAvailableSize() {
 
 uint16_t USB_VirtualCOM_Read(uint8_t *buf, uint16_t size) {
 	uint16_t readSize;
+	uint32_t primask;
 
-	// Read in critical section
-	__set_PRIMASK(1);
+	primask = Thread_IrqDisable();
 	readSize = USB_VirtualCOM_RxBuffer_Read(buf, size);
-	__set_PRIMASK(0);
+	Thread_IrqRestore(primask);
 
 	return readSize;
 }
 
 void USB_VirtualCOM_SetRxCallback(USB_VirtualCOM_RxCallback_t callbackPtr) {
-	// Atomic
 	USB_VirtualCOM_rxCallbackPtr = callbackPtr;
 }
 

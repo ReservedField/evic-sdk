@@ -228,6 +228,11 @@ source tree is replicated in there, to avoid conflicts between files with the sa
 you wanted to compile the file `src/foo/bar.c` for an eVic VTC Mini, debug flavor, you could
 issue `make obj/dbg/evic/src/foo/bar.o`.
 
+#### Source dependency files
+
+Source dependency files live in the same directory as object files. They have a `.d` extension
+and are generated automatically when objects are built.
+
 #### SDK builds
 
 SDK output files live in the `lib/FLAVOR/DEVICE` directory. Debug builds enable debug info

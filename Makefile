@@ -180,6 +180,9 @@ CLEAN_PATH_TMPL += clean-sdkdir-tmpl
 # Enable secondary expansion.
 .SECONDEXPANSION:
 
+# Include source dependency files.
+-include $(call get-deps,$(objs-all))
+
 # Rule to archive prerequisite objects into a library.
 $(lib-all): | $$(@D)
 	$(call info-cmd,LIB)

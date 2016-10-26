@@ -144,10 +144,12 @@ get-incflags = $(foreach d,$(call fixpath-cc,$1),-I$d)
 # CXXFLAGS: C++ compiler flags.
 # ASFLAGS: assembler flags.
 # Note that those are NOT inclusive of CPU flags.
+# The -MMD flag generates source dependency files. Those files
+# are never specified as targets to avoid a remake on include.
 __CC_FLAGS := \
 	$(call get-incflags,$(INCDIRS)) \
 	-Os -fdata-sections -ffunction-sections \
-	$(if $(CC_IS_CLANG),-nostdinc)
+	$(if $(CC_IS_CLANG),-nostdinc) -MMD
 ifndef EVICSDK_FPU_DISABLE
 	__CC_FLAGS += -DEVICSDK_FPU_SUPPORT
 	ASFLAGS += -DEVICSDK_FPU_SUPPORT
@@ -253,6 +255,9 @@ clean-devfla-tmpl = clean$(if $1,-$1)$(if $2,-$2)
 # Gets the paths to all possible sources for the given objects.
 # Argument 1: object list.
 get-srcs = $(foreach e,c cpp s,$(patsubst %.o,%.$e,$1))
+# Gets the paths to all source dependency files for the given objects.
+# Argument 1: object list.
+get-deps = $(addsuffix .d,$(basename $1))
 
 # Gets object and source paths to cache for fixpath.
 # Argument 1: object list.

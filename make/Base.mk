@@ -105,6 +105,9 @@ CLEAN_PATH_TMPL += clean-bindir-tmpl
 # Enable secondary expansion.
 .SECONDEXPANSION:
 
+# Include source dependency files.
+-include $(call get-deps,$(objs-all))
+
 # Set BUILD_* for all our targets.
 $(call build-vars-rules,elf-tmpl)
 $(call build-vars-rules,bin-dec-tmpl)

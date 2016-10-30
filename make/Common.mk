@@ -125,15 +125,18 @@ endif
 	INCDIRS_CXX += $(__INCDIRS_GCC_CXX_UNFIX)
 endif
 
-# Add include directories for SDKs to INCDIRS.
+# Add include directories for SDKs.
 INCDIRS += \
 	$(NUVOSDK)/CMSIS/Include \
 	$(NUVOSDK)/Device/Nuvoton/M451Series/Include \
 	$(NUVOSDK)/StdDriver/inc \
 	$(EVICSDK)/include
+INCDIRS_AS += \
+	$(EVICSDK)/include/asm
 
 # Cache all needed paths for fixpath.
-$(call fixpath-cache,$(INCDIRS) $(INCDIRS_C) $(INCDIRS_CXX))
+$(call fixpath-cache,$(INCDIRS) $(INCDIRS_C) $(INCDIRS_CXX) $(INCDIRS_AS) \
+	$(call tmpl-all,devincs-tmpl))
 
 # Gets the compiler flags for the specified include paths.
 # Argument 1: list of include paths.
@@ -156,8 +159,10 @@ ifndef EVICSDK_FPU_DISABLE
 endif
 __CFLAGS_INCDIRS := $(call get-incflags,$(INCDIRS_C))
 __CXXFLAGS_INCDIRS := $(call get-incflags,$(INCDIRS_CXX))
+__ASFLAGS_INCDIRS := $(call get-incflags,$(INCDIRS_AS))
 CFLAGS += $(__CFLAGS_INCDIRS) $(__CC_FLAGS)
 CXXFLAGS += $(__CXXFLAGS_INCDIRS) $(__CC_FLAGS) -fno-exceptions -fno-rtti
+ASFLAGS += $(__ASFLAGS_INCDIRS) -MMD
 __EXTRA_FLAGS_DBG := -g
 
 # Set up toolchain tool names. CC is already set.
@@ -292,18 +297,20 @@ define compile-rules
 $3: %.c
 	$$(call info-cmd,CC)
 	@$$(call trace, \
-		$$(CC) $$(CPUFLAGS) $$(CFLAGS) \
+		$$(CC) $$(CPUFLAGS) $$(CFLAGS) $$(__DEVICE_INCFLAGS) \
 			-c $$(call fixpath-cc,$$<) -o $$(call fixpath-cc,$$@))
 $3: %.cpp
 	$$(call info-cmd,CXX)
 	@$$(call trace, \
-		$$(CXX) $$(CPUFLAGS) $$(CXXFLAGS) \
+		$$(CXX) $$(CPUFLAGS) $$(CXXFLAGS) $$(__DEVICE_INCFLAGS) \
 			-c $$(call fixpath-cc,$$<) -o $$(call fixpath-cc,$$@))
 $3: %.s
 	$$(call info-cmd,AS)
 	@$$(call trace, \
 		$$(AS) $$(CPUFLAGS) $$(ASFLAGS) -c -x assembler-with-cpp \
 			$$(call fixpath-cc,$$<) -o $$(call fixpath-cc,$$@))
+
+$3: __DEVICE_INCFLAGS := $(call get-incflags,$(call devincs-tmpl,$1,$2))
 endef
 
 # Compilation rules for all object targets.

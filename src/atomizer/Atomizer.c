@@ -26,6 +26,7 @@
 #include <SysInfo.h>
 #include <Battery.h>
 #include <Thread.h>
+#include <Device.h>
 
 /**
  * \file
@@ -203,7 +204,7 @@ static volatile Atomizer_ConverterState_t Atomizer_curState = POWEROFF;
 
 /**
  * Shunt resistor value, in 100ths of a mOhm.
- * Depends on hardware version.
+ * Device-specific.
  */
 static uint8_t Atomizer_shuntRes;
 
@@ -661,32 +662,7 @@ static void Atomizer_NegativeFeedback(uint32_t unused) {
 }
 
 void Atomizer_Init() {
-	// Select shunt value based on hardware version
-	switch(gSysInfo.hwVersion) {
-		case 101:
-		case 108:
-			Atomizer_shuntRes = 125;
-			break;
-		case 103:
-		case 104:
-		case 105:
-		case 106:
-			Atomizer_shuntRes = 110;
-			break;
-		case 107:
-		case 109:
-			Atomizer_shuntRes = 120;
-			break;
-		case 110:
-		case 111:
-			Atomizer_shuntRes = 105;
-			break;
-		case 100:
-		case 102:
-		default:
-			Atomizer_shuntRes = 115;
-			break;
-	}
+	Atomizer_shuntRes = Device_GetAtomizerShunt();
 
 	// Calculate overcurrent threshold
 	Atomizer_adcOverCurrent = ATOMIZER_ADCINV_CURRENT(ATOMIZER_CURRENT_MAX);

@@ -40,6 +40,7 @@
 #include <Font.h>
 #include <SysInfo.h>
 #include <Thread.h>
+#include <Device.h>
 
 /**
  * Global framebuffer.
@@ -47,7 +48,7 @@
 static uint8_t Display_framebuf[DISPLAY_FRAMEBUFFER_SIZE];
 
 /**
- * Display type. Depends on hardware version.
+ * Display type (device-specific).
  */
 static Display_Type_t Display_type;
 
@@ -99,19 +100,7 @@ void Display_Init() {
 		asm volatile ("udf");
 	}
 
-	switch(gSysInfo.hwVersion) {
-		case 102:
-		case 103:
-		case 106:
-		case 108:
-		case 109:
-		case 111:
-			Display_type = DISPLAY_SSD1327;
-			break;
-		default:
-			Display_type = DISPLAY_SSD1306;
-			break;
-	}
+	Display_type = Device_GetDisplayType();
 
 	Display_ClearUnlocked();
 	Display_SSD_Init();

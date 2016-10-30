@@ -21,6 +21,7 @@
 #define EVICSDK_ADC_H
 
 #include <stdint.h>
+#include <Device.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -64,7 +65,7 @@ extern "C" {
  * Battery voltage module.
  * The battery voltage is read through a 1/2 voltage divider.
  */
-#define ADC_MODULE_VBAT 0x12
+#define ADC_MODULE_VBAT DEVICE_ADC_MODULE_VBAT
 
 /**
  * Function pointer type for ADC filters.

@@ -15,10 +15,27 @@
 #
 # Copyright (C) 2016 ReservedField
 
-ifndef __evicsdk_make_devices_inc
-__evicsdk_make_devices_inc := 1
+ifndef __evicsdk_make_device_inc
+__evicsdk_make_device_inc := 1
 
-# Supported devices list.
-DEVICES := evic
+# Supported devices list. Will be filled in by add-device.
+DEVICES :=
 
-endif # __evicsdk_make_devices_inc
+# Registers a new device.
+# Argument 1: device name.
+# Argument 2: object list.
+# Argument 3: crt0 object list.
+add-device = $(eval DEVICES += $1)$(eval \
+	__device-objs-$(strip $1) := $2)$(eval \
+	__device-objs-crt0-$(strip $1) := $3)
+
+# Extra device objects template. Flavor is ignored.
+devobjs-tmpl = $(__device-objs-$1)
+# Extra device crt0 objects template. Flavor is ignored.
+devobjs-crt0-tmpl = $(__device-objs-crt0-$1)
+# Device include path template. Flavor is ignored.
+devincs-tmpl = $(EVICSDK)/device/$1/include
+
+include $(wildcard $(EVICSDK)/device/*/Device.mk)
+
+endif # __evicsdk_make_device_inc

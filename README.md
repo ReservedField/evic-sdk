@@ -157,6 +157,7 @@ flavor.
 **Supported devices:**
 
 - `evic`: Joyetech eVic VTC Mini
+- `vtwom`: Joyetech eVic VTwo Mini
 - `all`: all of the above
 
 **Build flavors:**

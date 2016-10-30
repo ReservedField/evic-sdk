@@ -1,10 +1,13 @@
 /doc/
+/example/**/obj/
 /example/**/bin/
+/obj/
 /lib/
 /nuvoton-sdk/
 /src/startup/evicsdk_tag.s
 
 *.o
+*.d
 *.a
 *.map
 *.lst

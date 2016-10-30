@@ -21,6 +21,7 @@
 # INCDIRS: include directories.
 # INCDIRS_C: include directories (C only).
 # INCDIRS_CXX: include directories (C++ only).
+# INCDIRS_AS: include directories (ASM only).
 # LIBDIRS: library directories.
 # CFLAGS: C compiler flags.
 # CXXFLAGS: C++ compiler flags.

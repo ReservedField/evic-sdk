@@ -17,6 +17,7 @@
 
 include $(EVICSDK)/make/Helper.mk
 include $(EVICSDK)/make/Common.mk
+include $(EVICSDK)/make/Device.mk
 
 # Output targets.
 TARGET_SDK := libevicsdk
@@ -132,7 +133,8 @@ __get-sdktag = evic-sdk-$(or $(strip $(shell \
 $(if $(EVICSDK_MAKE_DEBUG),$(info SDK tag: $(get-sdktag)))
 
 # All objects, excluding debug-only objects.
-OBJS_ALL := $(OBJS_SDK) $(OBJS_NUVO) $(OBJS_CRT0)
+OBJS_ALL := $(OBJS_SDK) $(OBJS_NUVO) $(OBJS_CRT0) \
+	$(call tmpl-flavor,devobjs-tmpl) $(call tmpl-flavor,devobjs-crt0-tmpl)
 # All debug-only objects.
 OBJS_ALL_DBG := $(OBJS_CRT0_DBG)
 
@@ -190,13 +192,15 @@ $(lib-all): | $$(@D)
 		$(AR) -rc $(call fixpath-bu,$@) $(call fixpath-bu,$^))
 
 # Build SDK objects for SDK library.
-$(sdk-all): $$(call tmpl-build,objs-tmpl,$$(OBJS_SDK))
+$(sdk-all): $$(call tmpl-build,objs-tmpl,$$(OBJS_SDK) \
+	$$(call tmpl-build,devobjs-tmpl))
 
 # Build Nuvoton SDK objects for Nuvoton SDK library.
 $(nuvo-all): $$(call tmpl-build,objs-tmpl,$$(OBJS_NUVO))
 
 # Rule to link crt0 objects into a partially linked object.
-$(crt0-all): $$(call tmpl-build,objs-tmpl,$$(OBJS_CRT0)) | $$(@D)
+$(crt0-all): $$(call tmpl-build,objs-tmpl,$$(OBJS_CRT0) \
+	$$(call tmpl-build,devobjs-crt0-tmpl)) | $$(@D)
 	$(call info-cmd,LNK)
 	@$(call trace, \
 		$(LD) -r $(call fixpath-bu,$^) -o $(call fixpath-bu,$@))

@@ -17,18 +17,6 @@
 
 	.syntax unified
 
-	@ Verification strings
-	.section .verify
-	.ascii "Joyetech APROM" @ Vendor
-	.ascii "E052"           @ Device (eVic VTC Mini)
-	@ Maximum supported hardware version (A.BC)
-	.byte 0x01 @ A
-	.byte 0x01 @ B
-	.byte 0x01 @ C
-	@ Vendor string must start at least 26 bytes from end of file
-	@ Device string must start at least 9 bytes from end of file
-	.space 5
-
 	.section .stack
 	.align 3
 .ifndef Stack_Size
